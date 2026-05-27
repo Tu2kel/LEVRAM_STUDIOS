@@ -1,0 +1,16 @@
+{
+  "project": "The Other Side",
+  "scene_number": "SC-010",
+  "shot_type": "Tracking Shot",
+  "camera_mood": "Civilian POV",
+  "color_palette": "Cold Blue-White (Runner)",
+  "ai_engine": "Midjourney v6",
+  "shot_description": "Bewildered of the unknown timeline - the end of All - The End of time",
+  "shot_prompt": "A lone survivor stands frozen at the edge of a collapsing reality, staring into an endless white-blue void where time itself is unraveling. Massive ruined skyscrapers disappear into blinding snow and cosmic distortion. Emergency sirens echo faintly through the dead city. The atmosphere feels cold, empty, and apocalyptic. The character looks exhausted, confused, and emotionally shattered, witnessing the literal end of existence. Cinematic tracking shot from slightly behind the character, subtle handheld movement, ultra realistic lighting, volumetric fog, drifting ash and snow, faint blue light reflections, dark cinematic contrast, highly detailed textures, atmospheric depth, IMAX-style composition, end-of-time aesthetic, emotionally haunting, dystopian sci-fi realism.",
+  "character": "Hulk",
+  "duration": "\u2014",
+  "voice_character": "Hulk",
+  "voice_preset": "villain",
+  "id": "SC-010",
+  "saved_at": "20260527_183238"
+}

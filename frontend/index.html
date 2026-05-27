@@ -1184,7 +1184,7 @@ They left me for dead.</textarea
             </div>
             <div class="shot-field">
               <div class="field-label">Shot Type</div>
-              <select>
+              <select id="shot-type">
                 <option>Extreme Close-Up</option>
                 <option>Close-Up</option>
                 <option>Medium Shot</option>
@@ -1217,11 +1217,7 @@ They left me for dead.</textarea
             <div class="shot-field">
               <div class="field-label">AI Engine</div>
               <select id="shot-engine">
-                <option>Midjourney v6</option>
-                <option>DALL-E 3</option>
-                <option>Stable Diffusion XL</option>
-                <option>Runway Gen-3</option>
-                <option>Kling</option>
+                <option>Imperio AI</option>
               </select>
             </div>
             <div class="shot-field" style="grid-column: 1/-1">
@@ -1264,7 +1260,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
             </div>
             <div class="shot-field">
               <div class="field-label">Duration</div>
-              <select>
+              <select id="shot-type">
                 <option>2s</option>
                 <option>4s</option>
                 <option selected>8s</option>
@@ -1720,14 +1716,14 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
           const payload = {
             project: document.getElementById("shot-project").value,
             scene_number: document.getElementById("shot-scene").value.trim(),
-            shot_type: "Cinematic",
+            shot_type: document.getElementById("shot-type").value,
             camera_mood: document.getElementById("shot-camera").value,
             color_palette: document.getElementById("shot-palette").value,
             ai_engine: document.getElementById("shot-engine").value,
             shot_description: document.getElementById("shot-desc").value.trim(),
             shot_prompt: document.getElementById("shot-prompt-input").value.trim(),
             character: character,
-            duration: metaDuration.textContent || "8",
+            duration: metaDuration.textContent || "4",
             voice_character: character,
             voice_preset: getActiveFxPreset(),
             dialogue: dialogue,

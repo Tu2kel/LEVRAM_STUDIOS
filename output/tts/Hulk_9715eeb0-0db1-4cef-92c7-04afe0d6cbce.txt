@@ -1,0 +1,3 @@
+Spark-TTS placeholder
+Character: Hulk
+Text: They left me for dead.

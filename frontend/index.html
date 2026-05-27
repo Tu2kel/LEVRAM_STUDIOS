@@ -1,15 +1,1869 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>LEVRAM Voice Lab</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div id="root"></div>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LEVRAM Generator</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap");
 
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+      :root {
+        --gold: #c9a84c;
+        --gold-light: #f5d98b;
+        --gold-dark: #8b6914;
+        --red: #9b111e;
+        --red-bright: #cc1a2a;
+        --blue: #1f4fa3;
+        --blue-bright: #2e6fd4;
+        --black: #050505;
+        --surface: #0d0d0d;
+        --surface2: #111111;
+        --surface3: #161616;
+        --border: rgba(201, 168, 76, 0.18);
+        --border-strong: rgba(201, 168, 76, 0.45);
+        --text: #f0f0f0;
+        --text-muted: #888;
+        --text-dim: #444;
+        --chrome-gradient: linear-gradient(
+          180deg,
+          #fff 0%,
+          #d0d0d0 30%,
+          #888 60%,
+          #d0d0d0 80%,
+          #fff 100%
+        );
+      }
 
-  <script src="app.js"></script>
-</body>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: var(--black);
+        color: var(--text);
+        font-family: "Rajdhani", sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* Speed lines background */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(
+          92deg,
+          transparent,
+          transparent 120px,
+          rgba(201, 168, 76, 0.015) 121px,
+          rgba(201, 168, 76, 0.015) 122px
+        );
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* TOP BAR */
+      .top-bar {
+        position: relative;
+        z-index: 10;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 0 32px;
+        height: 64px;
+        background: linear-gradient(180deg, #0a0a0a 0%, #070707 100%);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .top-bar::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          var(--red) 0%,
+          var(--red) 33%,
+          var(--gold) 33%,
+          var(--gold-light) 50%,
+          var(--blue) 50%,
+          var(--blue) 100%
+        );
+      }
+
+      .top-bar::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 5%;
+        right: 5%;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--gold-dark),
+          var(--gold),
+          var(--gold-light),
+          var(--gold),
+          var(--gold-dark),
+          transparent
+        );
+      }
+
+      .logo {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+
+      .logo-text {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 35px;
+        letter-spacing: 6px;
+        background: var(--chrome-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
+      }
+
+      .logo-sub {
+        font-family: "Rajdhani", sans-serif;
+        font-size: 13px;
+        letter-spacing: 5px;
+        text-transform: uppercase;
+        background: linear-gradient(
+          90deg,
+          var(--gold-dark),
+          var(--gold),
+          var(--gold-light),
+          var(--gold),
+          var(--gold-dark)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .top-nav {
+        display: flex;
+        gap: 6px;
+      }
+
+      .nav-btn {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        font-family: "Rajdhani", sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        padding: 6px 16px;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .nav-btn:hover,
+      .nav-btn.active {
+        color: var(--gold);
+        border-color: var(--gold-dark);
+        background: rgba(201, 168, 76, 0.05);
+      }
+
+      .status-pill {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 14px;
+        letter-spacing: 2px;
+        color: var(--text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #2ecc71;
+        box-shadow: 0 0 8px #2ecc71;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+
+      /* MAIN GRID */
+      .main-grid {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        grid-template-rows: 1fr auto auto;
+        height: calc(100vh - 64px - 3px);
+        gap: 0;
+      }
+
+      /* LEFT PANEL */
+      .left-panel {
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--border);
+        overflow: hidden;
+      }
+
+      /* PANEL HEADERS */
+      .panel-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 20px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+
+      .panel-header-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 2px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+      }
+
+      .panel-header-icon.red {
+        background: var(--red);
+      }
+      .panel-header-icon.blue {
+        background: var(--blue);
+      }
+      .panel-header-icon.gold {
+        background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+      }
+
+      .panel-header-icon svg {
+        width: 12px;
+        height: 12px;
+        fill: white;
+      }
+
+      .panel-title {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 19px;
+        letter-spacing: 4px;
+        background: linear-gradient(
+          90deg,
+          var(--gold-dark),
+          var(--gold),
+          var(--gold-light)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .panel-badge {
+        margin-left: auto;
+        font-size: 12px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--red-bright);
+        border: 1px solid var(--red);
+        padding: 2px 8px;
+        border-radius: 2px;
+        font-weight: 700;
+      }
+
+      /* VOICE LAB */
+      .voice-lab {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .voice-lab::-webkit-scrollbar {
+        width: 3px;
+      }
+      .voice-lab::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .voice-lab::-webkit-scrollbar-thumb {
+        background: var(--gold-dark);
+      }
+
+      .field-label {
+        font-size: 13px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+
+      .field-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      textarea.script-input {
+        width: 100%;
+        height: 140px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-bottom: 1px solid var(--border-strong);
+        color: var(--text);
+        font-family: "Share Tech Mono", monospace;
+        font-size: 16px;
+        line-height: 1.6;
+        padding: 14px;
+        border-radius: 4px;
+        resize: none;
+        outline: none;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+
+      textarea.script-input:focus {
+        border-color: var(--gold-dark);
+        box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.15);
+      }
+
+      .char-presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .char-btn {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        font-family: "Rajdhani", sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 5px 12px;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .char-btn:hover {
+        color: var(--gold);
+        border-color: var(--gold-dark);
+        background: rgba(201, 168, 76, 0.06);
+      }
+
+      .char-btn.active {
+        background: linear-gradient(180deg, var(--gold-dark), #5a4000);
+        border-color: var(--gold);
+        color: var(--black);
+      }
+
+      /* FX SLIDERS */
+      .fx-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .slider-row {
+        display: grid;
+        grid-template-columns: 90px 1fr 36px;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .slider-name {
+        font-size: 13px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+
+      input[type="range"] {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+        border-radius: 2px;
+        outline: none;
+        cursor: pointer;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--gold-light);
+        border: 2px solid var(--gold-dark);
+        box-shadow: 0 0 6px rgba(201, 168, 76, 0.5);
+        cursor: pointer;
+      }
+
+      .slider-val {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 15px;
+        color: var(--gold);
+        text-align: right;
+      }
+
+      /* PRESET DROPDOWN */
+      select.fx-preset {
+        width: 100%;
+        background: var(--surface2);
+        border: 1px solid var(--border-strong);
+        color: var(--text);
+        font-family: "Rajdhani", sans-serif;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        padding: 10px 14px;
+        border-radius: 4px;
+        outline: none;
+        cursor: pointer;
+        -webkit-appearance: none;
+      }
+
+      /* GENERATE BTN */
+      .gen-btn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(
+          90deg,
+          var(--red) 0%,
+          var(--gold-dark) 35%,
+          var(--gold) 50%,
+          var(--gold-dark) 65%,
+          var(--blue) 100%
+        );
+        background-size: 200% auto;
+        border: none;
+        border-radius: 4px;
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 21px;
+        letter-spacing: 6px;
+        color: var(--black);
+        cursor: pointer;
+        transition:
+          background-position 0.4s,
+          box-shadow 0.3s;
+        text-transform: uppercase;
+      }
+
+      .gen-btn:hover {
+        background-position: right center;
+        box-shadow:
+          0 0 30px rgba(201, 168, 76, 0.35),
+          0 0 8px rgba(201, 168, 76, 0.2);
+      }
+
+      /* DIVIDER */
+      .gold-divider {
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--gold-dark),
+          var(--gold),
+          var(--gold-dark),
+          transparent
+        );
+        margin: 4px 0;
+      }
+
+      /* RIGHT PANEL - SHOT BUILDER */
+      .right-panel {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .shot-builder {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .shot-builder::-webkit-scrollbar {
+        width: 3px;
+      }
+      .shot-builder::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .shot-builder::-webkit-scrollbar-thumb {
+        background: var(--blue);
+      }
+
+      .shot-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .shot-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .shot-field input,
+      .shot-field select,
+      .shot-field textarea {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-bottom: 1px solid var(--border-strong);
+        color: var(--text);
+        font-family: "Rajdhani", sans-serif;
+        font-size: 16px;
+        font-weight: 500;
+        padding: 9px 12px;
+        border-radius: 4px;
+        outline: none;
+        transition: border-color 0.2s;
+        width: 100%;
+      }
+
+      .shot-field input:focus,
+      .shot-field select:focus,
+      .shot-field textarea:focus {
+        border-color: var(--blue-bright);
+        box-shadow: 0 0 0 1px rgba(46, 111, 212, 0.15);
+      }
+
+      .shot-field select {
+        -webkit-appearance: none;
+        cursor: pointer;
+      }
+
+      .shot-prompt {
+        grid-column: 1 / -1;
+      }
+
+      .shot-prompt textarea {
+        height: 100px;
+        resize: none;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      .color-scheme-row {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+      }
+
+      .color-swatch {
+        width: 28px;
+        height: 28px;
+        border-radius: 3px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: border-color 0.2s;
+        flex-shrink: 0;
+      }
+
+      .color-swatch:hover,
+      .color-swatch.active {
+        border-color: var(--gold);
+      }
+
+      .build-shot-btn {
+        padding: 11px 24px;
+        background: transparent;
+        border: 1px solid var(--blue-bright);
+        border-radius: 4px;
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 18px;
+        letter-spacing: 4px;
+        color: var(--blue-bright);
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+        width: 100%;
+      }
+
+      .build-shot-btn:hover {
+        background: rgba(30, 79, 163, 0.15);
+        box-shadow: 0 0 20px rgba(30, 79, 163, 0.25);
+      }
+
+      /* PREVIEW ROW */
+      .preview-row {
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        flex-shrink: 0;
+        height: 220px;
+      }
+
+      .preview-inner {
+        flex: 1;
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        overflow: hidden;
+      }
+
+      .preview-main {
+        flex: 1;
+        background: #000;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .preview-main::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 60px,
+          rgba(255, 255, 255, 0.01) 61px
+        );
+      }
+
+      .preview-placeholder {
+        text-align: center;
+        color: var(--text-dim);
+      }
+
+      .preview-placeholder .big-icon {
+        font-size: 40px;
+        display: block;
+        margin-bottom: 8px;
+        color: var(--text-dim);
+      }
+
+      .preview-placeholder p {
+        font-size: 13px;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .preview-meta {
+        width: 200px;
+        flex-shrink: 0;
+        border-left: 1px solid var(--border);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow-y: auto;
+      }
+
+      .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .meta-label {
+        font-size: 12px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        font-weight: 600;
+      }
+
+      .meta-val {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 15px;
+        color: var(--text-muted);
+      }
+
+      .meta-val.gold {
+        color: var(--gold);
+      }
+      .meta-val.red {
+        color: var(--red-bright);
+      }
+      .meta-val.blue {
+        color: var(--blue-bright);
+      }
+
+      /* WAVEFORM */
+      .waveform-area {
+        height: 56px;
+        border-top: 1px solid var(--border);
+        background: #000;
+        display: flex;
+        align-items: flex-start;
+        padding: 8px 16px 4px 16px;
+        gap: 2px;
+        flex-shrink: 0;
+      }
+
+      .wave-bar {
+        width: 2px;
+        background: var(--gold-dark);
+        border-radius: 1px;
+        animation: wave 1.2s ease-in-out infinite;
+      }
+
+      @keyframes wave {
+        0%,
+        100% {
+          height: 4px;
+        }
+        50% {
+          height: 20px;
+        }
+      }
+
+      /* TIMELINE */
+      .timeline-row {
+        height: 200px;
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+
+      .timeline-header {
+        display: flex;
+        align-items: flex-start;
+        padding: 0 20px;
+        height: 42px;
+        border-bottom: 1px solid var(--border);
+        gap: 12px;
+      }
+
+      .timeline-title {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 16px;
+        letter-spacing: 4px;
+        background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .tl-time {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 14px;
+        color: var(--text-dim);
+        margin-left: auto;
+      }
+
+      .timeline-tracks {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 6px 20px;
+        gap: 6px;
+        overflow: hidden;
+      }
+
+      .track {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        height: 22px;
+      }
+
+      .track-label {
+        font-size: 12px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        font-weight: 600;
+        width: 48px;
+        flex-shrink: 0;
+      }
+
+      .track-body {
+        flex: 1;
+        height: 100%;
+        position: relative;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+
+      .track-clip {
+        position: absolute;
+        top: 2px;
+        bottom: 2px;
+        border-radius: 2px;
+        display: flex;
+        align-items: flex-start;
+        padding: 0 8px;
+        font-size: 12px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+
+      .track-clip.voice {
+        left: 5%;
+        width: 40%;
+        background: linear-gradient(
+          90deg,
+          rgba(155, 17, 30, 0.6),
+          rgba(155, 17, 30, 0.3)
+        );
+        border: 1px solid rgba(155, 17, 30, 0.5);
+        color: #ff6b7a;
+      }
+
+      .track-clip.fx {
+        left: 5%;
+        width: 40%;
+        background: linear-gradient(
+          90deg,
+          rgba(201, 168, 76, 0.3),
+          rgba(201, 168, 76, 0.1)
+        );
+        border: 1px solid rgba(201, 168, 76, 0.3);
+        color: var(--gold);
+      }
+
+      .track-clip.shot {
+        left: 8%;
+        width: 25%;
+        background: linear-gradient(
+          90deg,
+          rgba(31, 79, 163, 0.5),
+          rgba(31, 79, 163, 0.2)
+        );
+        border: 1px solid rgba(31, 79, 163, 0.4);
+        color: #6ea8ff;
+      }
+
+      .track-clip.shot2 {
+        left: 36%;
+        width: 32%;
+        background: linear-gradient(
+          90deg,
+          rgba(31, 79, 163, 0.5),
+          rgba(31, 79, 163, 0.2)
+        );
+        border: 1px solid rgba(31, 79, 163, 0.4);
+        color: #6ea8ff;
+      }
+
+      /* BOTTOM BAR */
+      .bottom-bar {
+        height: 3px;
+        background: linear-gradient(
+          90deg,
+          var(--blue) 0%,
+          var(--blue) 33%,
+          var(--gold) 33%,
+          var(--gold-light) 50%,
+          var(--red) 50%,
+          var(--red) 100%
+        );
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        animation: sweep 4s ease-in-out infinite alternate-reverse;
+      }
+
+      @keyframes sweep {
+        0% {
+          opacity: 0.6;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      /* Scrollbar reset for shot builder selects */
+      .shot-field select option {
+        background: var(--surface2);
+        color: var(--text);
+      }
+
+      .tl-shot-card {
+        background: #0a0a0a;
+        border: 1px solid rgba(201, 168, 76, 0.18);
+        border-left: 3px solid #1f4fa3;
+        border-radius: 4px;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .tl-shot-top {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .tl-scene-badge {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 17px;
+        letter-spacing: 3px;
+        background: linear-gradient(90deg, #8b6914, #c9a84c);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .tl-char-tag,
+      .tl-preset-tag {
+        font-size: 12px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 2px;
+        border: 1px solid rgba(201, 168, 76, 0.25);
+        color: #888;
+      }
+      .tl-preset-tag {
+        border-color: rgba(31, 79, 163, 0.4);
+        color: #2e6fd4;
+      }
+      .tl-date {
+        font-size: 12px;
+        color: #444;
+        margin-left: auto;
+        letter-spacing: 1px;
+      }
+      .tl-del-btn {
+        background: transparent;
+        border: 1px solid rgba(155, 17, 30, 0.4);
+        color: #9b111e;
+        font-size: 13px;
+        padding: 2px 7px;
+        border-radius: 2px;
+        cursor: pointer;
+      }
+      .tl-dialogue {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 14px;
+        color: #c9a84c;
+        border-left: 2px solid #9b111e;
+        padding-left: 8px;
+      }
+      .tl-desc {
+        font-size: 14px;
+        color: #666;
+        line-height: 1.4;
+      }
+      .tl-prompt {
+        background: #050505;
+        border: 1px solid rgba(31, 79, 163, 0.2);
+        border-radius: 3px;
+        padding: 6px 10px;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 13px;
+        color: #555;
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- TOP BAR -->
+    <header class="top-bar">
+      <div class="logo">
+        <span class="logo-text">LEVRAM</span>
+        <span class="logo-sub">Generator v2</span>
+      </div>
+      <nav class="top-nav">
+        <button class="nav-btn active">Voice Lab</button>
+        <button class="nav-btn">Shot Builder</button>
+        <button class="nav-btn">Image Gen</button>
+        <button class="nav-btn">Timeline</button>
+        <button class="nav-btn">Export</button>
+      </nav>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        Backend Connected
+      </div>
+    </header>
+
+    <!-- MAIN LAYOUT -->
+    <div class="main-grid" style="grid-template-rows: 1fr 200px 200px">
+      <!-- LEFT: VOICE LAB -->
+      <div class="left-panel">
+        <div class="panel-header">
+          <div class="panel-header-icon red">
+            <svg viewBox="0 0 16 16">
+              <path d="M8 1a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M3 9a5 5 0 0 0 10 0" />
+            </svg>
+          </div>
+          <span class="panel-title">Voice Lab</span>
+          <span class="panel-badge">Live</span>
+        </div>
+
+        <div class="voice-lab">
+          <div class="field-group">
+            <div class="field-label">Script / Line</div>
+            <textarea
+              id="script-input"
+              class="script-input"
+              placeholder="They left me for dead. Every god abandons their creation eventually. I just decided not to let it end there."
+            >
+They left me for dead.</textarea
+            >
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">Character</div>
+            <div class="char-presets">
+              <button class="char-btn active">Hulk</button>
+              <button class="char-btn">Wally</button>
+              <button class="char-btn">Barry</button>
+              <button class="char-btn">Narrator</button>
+              <button class="char-btn">Female</button>
+              <button class="char-btn">+ Custom</button>
+            </div>
+          </div>
+
+          <div class="gold-divider"></div>
+
+          <div class="field-group">
+            <div class="field-label">Voice FX Preset</div>
+            <select class="fx-preset">
+              <option value="villain">Villain — Dark & Reverbed</option>
+              <option value="deep">Deep — Pure Bass Shift</option>
+              <option value="monster">Monster — Chorus + Growl</option>
+              <option value="ghost">Ghost — Echo Chamber</option>
+              <option value="radio">Radio — Lo-Fi Filter</option>
+              <option value="clean">Clean — No FX</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">FX Parameters</div>
+            <div class="fx-grid">
+              <div class="slider-row">
+                <span class="slider-name">Pitch Shift</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="35"
+                  oninput="
+                    this.nextElementSibling.textContent = this.value + '%'
+                  "
+                />
+                <span class="slider-val">35%</span>
+              </div>
+              <div class="slider-row">
+                <span class="slider-name">Reverb</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="55"
+                  oninput="
+                    this.nextElementSibling.textContent = this.value + '%'
+                  "
+                />
+                <span class="slider-val">55%</span>
+              </div>
+              <div class="slider-row">
+                <span class="slider-name">Timbre</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="70"
+                  oninput="
+                    this.nextElementSibling.textContent = this.value + '%'
+                  "
+                />
+                <span class="slider-val">70%</span>
+              </div>
+              <div class="slider-row">
+                <span class="slider-name">Distortion</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="20"
+                  oninput="
+                    this.nextElementSibling.textContent = this.value + '%'
+                  "
+                />
+                <span class="slider-val">20%</span>
+              </div>
+              <div class="slider-row">
+                <span class="slider-name">Volume</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="80"
+                  oninput="
+                    this.nextElementSibling.textContent = this.value + '%'
+                  "
+                />
+                <span class="slider-val">80%</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            id="btn-fx"
+            class="gen-btn"
+            style="
+              background: linear-gradient(90deg, #1f4fa3, #2e6fd4, #1f4fa3);
+              margin-bottom: 8px;
+              font-size: 17px;
+              letter-spacing: 4px;
+            "
+          >
+            Apply Voice FX
+          </button>
+          <button id="btn-generate" class="gen-btn">Generate Voice</button>
+          <p id="status-text" class="status">Ready</p>
+        </div>
+      </div>
+
+      <!-- RIGHT: SHOT BUILDER -->
+      <div class="right-panel">
+        <div class="panel-header">
+          <div class="panel-header-icon blue">
+            <svg viewBox="0 0 16 16" fill="white">
+              <path
+                d="M1 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4zm5 4l4-2.5v5L6 8z"
+              />
+            </svg>
+          </div>
+          <span class="panel-title">Shot Builder</span>
+        </div>
+
+        <div class="shot-builder">
+          <div class="shot-grid">
+            <div class="shot-field">
+              <div class="field-label">Project</div>
+              <select id="shot-project">
+                <option>The Runner</option>
+                <option>The Other Side</option>
+                <option>Levram Banner</option>
+              </select>
+            </div>
+            <div class="shot-field">
+              <div class="field-label">Scene #</div>
+              <input id="shot-scene" type="text" placeholder="SC-004" />
+            </div>
+            <div class="shot-field">
+              <div class="field-label">Shot Type</div>
+              <select>
+                <option>Extreme Close-Up</option>
+                <option>Close-Up</option>
+                <option>Medium Shot</option>
+                <option>Wide Shot</option>
+                <option>Bird's Eye</option>
+                <option>Ground Level</option>
+                <option>Tracking Shot</option>
+              </select>
+            </div>
+            <div class="shot-field">
+              <div class="field-label">Camera Mood</div>
+              <select id="shot-camera">
+                <option>Slow / Heavy / Suffocating</option>
+                <option>Violently Disorienting</option>
+                <option>Dreamlike / Still / Vast</option>
+                <option>Intimate / Invasive</option>
+                <option>Civilian POV</option>
+              </select>
+            </div>
+            <div class="shot-field">
+              <div class="field-label">Color Palette</div>
+              <select id="shot-palette">
+                <option>Cold Blue-White (Runner)</option>
+                <option>Amber Dying to Ash (Other Side)</option>
+                <option>Bio-Green + Supernova Red (Banner)</option>
+                <option>Dark Neon / Rain</option>
+                <option>Custom</option>
+              </select>
+            </div>
+            <div class="shot-field">
+              <div class="field-label">AI Engine</div>
+              <select id="shot-engine">
+                <option>Midjourney v6</option>
+                <option>DALL-E 3</option>
+                <option>Stable Diffusion XL</option>
+                <option>Runway Gen-3</option>
+                <option>Kling</option>
+              </select>
+            </div>
+            <div class="shot-field" style="grid-column: 1/-1">
+              <div class="field-label">Shot Description</div>
+              <textarea
+                id="shot-desc"
+                style="
+                  width: 100%;
+                  background: #0b0b0b;
+                  border: 1px solid rgba(201, 168, 76, 0.2);
+                  border-bottom: 1px solid rgba(201, 168, 76, 0.5);
+                  color: #f0f0f0;
+                  font-family: Rajdhani, sans-serif;
+                  font-size: 16px;
+                  padding: 10px 12px;
+                  border-radius: 4px;
+                  resize: none;
+                  outline: none;
+                  height: 60px;
+                "
+                placeholder="What physically happens in this shot..."
+              ></textarea>
+            </div>
+            <div class="shot-field shot-prompt">
+              <div class="field-label">Shot Prompt</div>
+              <textarea
+                id="shot-prompt-input"
+                placeholder="Describe the shot — atmosphere, subject, lighting, emotion. LEVRAM rules apply automatically."
+              >
+Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above — too fast, too clean. The hero never looked back.</textarea
+              >
+            </div>
+            <div class="shot-field" style="grid-column: 1 / 3">
+              <div class="field-label">Character</div>
+              <input
+                id="shot-char-override"
+                type="text"
+                placeholder="Wally / Barry / Hulk / Original..."
+              />
+            </div>
+            <div class="shot-field">
+              <div class="field-label">Duration</div>
+              <select>
+                <option>2s</option>
+                <option>4s</option>
+                <option selected>8s</option>
+                <option>16s</option>
+              </select>
+            </div>
+          </div>
+          <button id="btn-save-shot" class="build-shot-btn">
+            Save Shot Card
+          </button>
+        </div>
+      </div>
+
+      <!-- BOTTOM LEFT + RIGHT: PREVIEW SPANNING FULL WIDTH -->
+      <div class="preview-row" style="grid-column: 1 / -1">
+        <div class="panel-header" style="padding: 8px 20px">
+          <div class="panel-header-icon gold">
+            <svg viewBox="0 0 16 16" fill="black">
+              <path d="M3 3h10v10H3z" />
+            </svg>
+          </div>
+          <span class="panel-title">Preview / Generated Output</span>
+          <div style="margin-left: auto; display: flex; gap: 8px">
+            <a
+              id="dl-raw"
+              download
+              style="
+                background: transparent;
+                border: 1px solid var(--border);
+                color: var(--text-muted);
+                font-family: Rajdhani, sans-serif;
+                font-size: 13px;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                padding: 4px 12px;
+                border-radius: 2px;
+                cursor: pointer;
+                text-decoration: none;
+                display: inline-block;
+              "
+              >Download Raw</a
+            >
+            <a
+              id="dl-fx"
+              download
+              style="
+                background: transparent;
+                border: 1px solid var(--border-strong);
+                color: var(--gold);
+                font-family: Rajdhani, sans-serif;
+                font-size: 13px;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                padding: 4px 12px;
+                border-radius: 2px;
+                cursor: pointer;
+                text-decoration: none;
+                display: inline-block;
+              "
+              >Download FX</a
+            >
+          </div>
+        </div>
+        <div class="preview-inner">
+          <div id="preview-main" class="preview-main">
+            <div class="preview-placeholder">
+              <span class="big-icon">▶</span>
+              <p>No output yet — generate voice or build shot</p>
+            </div>
+          </div>
+          <div class="preview-meta">
+            <div class="meta-item">
+              <span class="meta-label">Character</span>
+              <span id="meta-char" class="meta-val gold">Hulk</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Preset</span>
+              <span id="meta-preset" class="meta-val">Villain</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Engine</span>
+              <span class="meta-val">Spark-TTS</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">FX Status</span>
+              <span id="meta-fx-status" class="meta-val red">Pending</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Duration</span>
+              <span id="meta-duration" class="meta-val">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Project</span>
+              <span class="meta-val blue">The Runner</span>
+            </div>
+          </div>
+        </div>
+        <div id="waveform-area" class="waveform-area">
+          <span
+            style="
+              font-size: 12px;
+              letter-spacing: 3px;
+              text-transform: uppercase;
+              color: var(--text-dim);
+              font-weight: 600;
+              margin-right: 12px;
+              white-space: nowrap;
+            "
+            >Waveform</span
+          >
+          <!-- Waveform bars -->
+          <script>
+            document.currentScript.insertAdjacentHTML(
+              "afterend",
+              Array.from({ length: 80 }, (_, i) => {
+                const h = Math.max(4, Math.round(Math.random() * 22));
+                const delay = (i * 0.015).toFixed(3);
+                return `<div class="wave-bar" style="height:${h}px;animation-delay:${delay}s;opacity:${0.3 + Math.random() * 0.5}"></div>`;
+              }).join(""),
+            );
+          </script>
+        </div>
+      </div>
+
+      <!-- TIMELINE SPANNING FULL WIDTH -->
+      <div class="timeline-row" style="grid-column: 1 / -1">
+        <div class="timeline-header">
+          <span class="panel-title" style="font-size: 15px; letter-spacing: 5px"
+            >Shot History / Timeline</span
+          >
+          <div style="display: flex; gap: 8px; margin-left: 16px">
+            <button
+              id="btn-clear"
+              style="
+                background: transparent;
+                border: 1px solid var(--border);
+                color: var(--text-muted);
+                font-family: Rajdhani, sans-serif;
+                font-size: 12px;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                padding: 3px 10px;
+                border-radius: 2px;
+                cursor: pointer;
+              "
+            >
+              Clear
+            </button>
+            <button
+              style="
+                background: transparent;
+                border: 1px solid var(--border);
+                color: var(--text-muted);
+                font-family: Rajdhani, sans-serif;
+                font-size: 12px;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                padding: 3px 10px;
+                border-radius: 2px;
+                cursor: pointer;
+              "
+            >
+              Export
+            </button>
+          </div>
+          <span id="tl-time" class="tl-time">00:00:00 / 00:00:00</span>
+        </div>
+        <div class="timeline-tracks">
+          <div class="track">
+            <span class="track-label">Voice</span>
+            <div id="track-voice-body" class="track-body">
+              <div class="track-clip voice">
+                Hulk — "They left me for dead."
+              </div>
+            </div>
+          </div>
+          <div class="track">
+            <span class="track-label">FX</span>
+            <div id="track-fx-body" class="track-body">
+              <div class="track-clip fx">Villain Preset</div>
+            </div>
+          </div>
+          <div class="track">
+            <span class="track-label">Shots</span>
+            <div id="track-shot-body" class="track-body">
+              <div class="track-clip shot">SC-001 Close</div>
+              <div class="track-clip shot2">SC-002 Ground Level</div>
+            </div>
+          </div>
+        </div>
+        <div
+          id="timeline-shots"
+          style="
+            overflow-y: auto;
+            flex: 1;
+            padding: 6px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border-top: 1px solid rgba(201, 168, 76, 0.08);
+          "
+        ></div>
+      </div>
+    </div>
+
+    <div class="bottom-bar"></div>
+
+    <script>
+      // ─── State ───────────────────────────────────────────────
+      let rawUrl = null;
+      let rawPath = null;
+      let fxUrl = null;
+      let fxPath = null;
+      let shots = [];
+      const BASE = "http://localhost:8000";
+
+      // ─── DOM refs ────────────────────────────────────────────
+      const statusEl = document.getElementById("status-text");
+      const previewMain = document.getElementById("preview-main");
+      const metaChar = document.getElementById("meta-char");
+      const metaPreset = document.getElementById("meta-preset");
+      const metaFxStatus = document.getElementById("meta-fx-status");
+      const metaDuration = document.getElementById("meta-duration");
+      const dlRaw = document.getElementById("dl-raw");
+      const dlFx = document.getElementById("dl-fx");
+      const waveformArea = document.getElementById("waveform-area");
+      const voiceTrackBody = document.getElementById("track-voice-body");
+      const fxTrackBody = document.getElementById("track-fx-body");
+      const shotTrackBody = document.getElementById("track-shot-body");
+      const timelineShots = document.getElementById("timeline-shots");
+      const tlTime = document.getElementById("tl-time");
+
+      // ─── Helpers ─────────────────────────────────────────────
+      function setStatus(msg, isErr = false) {
+        statusEl.textContent = msg;
+        statusEl.style.background = isErr
+          ? "linear-gradient(90deg,#7a0000,#cc0000)"
+          : "linear-gradient(90deg,#8b6914,#c9a84c,#f5d98b)";
+        statusEl.style.webkitBackgroundClip = "text";
+        statusEl.style.webkitTextFillColor = "transparent";
+        statusEl.style.backgroundClip = "text";
+      }
+
+      function activateWaveform() {
+        waveformArea.innerHTML =
+          '<span style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);font-weight:600;margin-right:12px;white-space:nowrap;">Waveform</span>';
+        for (let i = 0; i < 80; i++) {
+          const bar = document.createElement("div");
+          bar.className = "wave-bar";
+          const h = Math.max(4, Math.round(Math.random() * 22));
+          bar.style.cssText = `height:${h}px;animation-delay:${(i * 0.015).toFixed(3)}s;opacity:${(0.3 + Math.random() * 0.5).toFixed(2)};background:var(--gold)`;
+          waveformArea.appendChild(bar);
+        }
+      }
+
+      function flattenWaveform() {
+        document.querySelectorAll(".wave-bar").forEach((b) => {
+          b.style.height = "4px";
+          b.style.background = "var(--text-dim)";
+        });
+      }
+
+      function showAudioInPreview(url, label, color) {
+        previewMain.innerHTML = `
+      <div style="width:90%;text-align:center;">
+        <p style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${color};font-weight:700;margin-bottom:12px;">${label}</p>
+        <audio controls src="${url}" style="width:100%;"></audio>
+      </div>`;
+      }
+
+      function getActiveFxPreset() {
+        return document.querySelector("select.fx-preset").value;
+      }
+
+      function getActiveCharacter() {
+        const active = document.querySelector(".char-btn.active");
+        return active ? active.textContent.trim() : "Default";
+      }
+
+      function fmtTime(sec) {
+        const h = Math.floor(sec / 3600)
+          .toString()
+          .padStart(2, "0");
+        const m = Math.floor((sec % 3600) / 60)
+          .toString()
+          .padStart(2, "0");
+        const s = Math.floor(sec % 60)
+          .toString()
+          .padStart(2, "0");
+        return `${h}:${m}:${s}`;
+      }
+
+      // ─── Character preset buttons ────────────────────────────
+      document.querySelectorAll(".char-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".char-btn")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          metaChar.textContent = btn.textContent.trim();
+        });
+      });
+
+      // ─── Nav buttons ─────────────────────────────────────────
+      document.querySelectorAll(".nav-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".nav-btn")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+        });
+      });
+
+      // ─── Generate Voice ──────────────────────────────────────
+      document
+        .getElementById("btn-generate")
+        .addEventListener("click", async () => {
+          const text = document.getElementById("script-input").value.trim();
+          const character = getActiveCharacter();
+
+          if (!text) {
+            setStatus("Enter dialogue first.", true);
+            return;
+          }
+
+          setStatus("Generating voice...");
+          flattenWaveform();
+          rawUrl = null;
+          fxUrl = null;
+          metaFxStatus.textContent = "Pending";
+          metaFxStatus.className = "meta-val red";
+
+          try {
+            const fd = new FormData();
+            fd.append("text", text);
+            fd.append("character", character);
+
+            const res = await fetch(`${BASE}/generate`, {
+              method: "POST",
+              body: fd,
+            });
+            if (!res.ok) throw new Error(`Server ${res.status}`);
+            const data = await res.json();
+
+            rawPath =
+              data.output_url ||
+              "/" + data.output_path?.replace(/\\/g, "/") ||
+              null;
+            if (!rawPath) throw new Error("No path in response");
+            rawUrl = BASE + rawPath;
+
+            // Update meta
+            metaChar.textContent = character;
+            metaPreset.textContent = getActiveFxPreset();
+
+            // Preview + waveform
+            showAudioInPreview(
+              rawUrl,
+              "Raw Voice — " + character,
+              "var(--gold)",
+            );
+            activateWaveform();
+
+            // Voice track clip
+            voiceTrackBody.innerHTML = `<div class="track-clip voice">${character} — "${text.slice(0, 40)}${text.length > 40 ? "…" : ""}"</div>`;
+
+            // Duration from audio element
+            const tmpAudio = new Audio(rawUrl);
+            tmpAudio.addEventListener("loadedmetadata", () => {
+              const dur = fmtTime(tmpAudio.duration);
+              metaDuration.textContent = dur;
+              tlTime.textContent = `00:00:00 / ${dur}`;
+            });
+
+            // Download button
+            dlRaw.href = rawUrl;
+            dlRaw.style.opacity = "1";
+            dlRaw.style.pointerEvents = "auto";
+
+            setStatus("Voice generated.");
+          } catch (e) {
+            setStatus("Error: " + e.message, true);
+          }
+        });
+
+      // ─── Apply Voice FX ──────────────────────────────────────
+      document.getElementById("btn-fx").addEventListener("click", async () => {
+        if (!rawPath) {
+          setStatus("Generate raw voice first.", true);
+          return;
+        }
+
+        const preset = getActiveFxPreset();
+        setStatus("Applying FX...");
+        metaFxStatus.textContent = "Processing...";
+        metaFxStatus.className = "meta-val";
+
+        try {
+          const fd = new FormData();
+          fd.append("input_path", rawPath);
+          fd.append("preset", preset);
+
+          const res = await fetch(`${BASE}/voice-fx`, {
+            method: "POST",
+            body: fd,
+          });
+          if (!res.ok) throw new Error(`Server ${res.status}`);
+          const data = await res.json();
+
+          fxPath =
+            data.output_url ||
+            "/" + data.output_path?.replace(/\\/g, "/") ||
+            null;
+          if (!fxPath) throw new Error("No path in response");
+          fxUrl = BASE + fxPath;
+
+          // Update meta
+          metaPreset.textContent = preset;
+          metaFxStatus.textContent = "Applied ✓";
+          metaFxStatus.className = "meta-val";
+          metaFxStatus.style.color = "#2ecc71";
+
+          // Preview
+          showAudioInPreview(
+            fxUrl,
+            "FX Voice — " + preset.toUpperCase(),
+            "var(--blue-bright)",
+          );
+          activateWaveform();
+
+          // FX track clip
+          fxTrackBody.innerHTML = `<div class="track-clip fx">${preset} preset</div>`;
+
+          // Download button
+          dlFx.href = fxUrl;
+          dlFx.style.opacity = "1";
+          dlFx.style.pointerEvents = "auto";
+
+          setStatus("FX applied.");
+        } catch (e) {
+          setStatus("Error: " + e.message, true);
+          metaFxStatus.textContent = "Error";
+          metaFxStatus.className = "meta-val red";
+        }
+      });
+
+      // ─── Build / Save Shot Card ───────────────────────────────
+      document.getElementById("btn-save-shot").addEventListener("click", async () => {
+        try {
+          const character = getActiveCharacter();
+          const dialogue = document.getElementById("script-input").value.trim();
+
+          const payload = {
+            project: document.getElementById("shot-project").value,
+            scene_number: document.getElementById("shot-scene").value.trim(),
+            shot_type: "Cinematic",
+            camera_mood: document.getElementById("shot-camera").value,
+            color_palette: document.getElementById("shot-palette").value,
+            ai_engine: document.getElementById("shot-engine").value,
+            shot_description: document.getElementById("shot-desc").value.trim(),
+            shot_prompt: document.getElementById("shot-prompt-input").value.trim(),
+            character: character,
+            duration: metaDuration.textContent || "8",
+            voice_character: character,
+            voice_preset: getActiveFxPreset(),
+            dialogue: dialogue,
+            rawUrl: rawUrl,
+            fxUrl: fxUrl
+          };
+
+          const res = await fetch("http://localhost:8000/save-scene", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await res.json();
+
+          if (!data.success) {
+            throw new Error("Failed to save scene");
+          }
+
+          await loadScenes();
+
+          setStatus(`Scene ${data.scene.id} saved.`);
+        } catch (e) {
+          console.error(e);
+          setStatus("Failed to save scene", true);
+        }
+      });
+
+      // ─── Render timeline shot clips ──────────────────────────
+      function renderTimeline() {
+        if (shots.length === 0) {
+          shotTrackBody.innerHTML = "";
+          timelineShots.innerHTML =
+            '<p style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">No shots saved yet.</p>';
+          return;
+        }
+
+        // Track clips (show last 4)
+        const recent = shots.slice(0, 4);
+        const segW = Math.floor(90 / recent.length);
+        shotTrackBody.innerHTML = recent
+          .map(
+            (s, i) =>
+              `<div class="track-clip shot" style="left:${2 + i * segW}%;width:${segW - 1}%;">SC-${s.sceneNum}</div>`,
+          )
+          .join("");
+
+        // Full shot cards in expanded timeline
+        timelineShots.innerHTML = shots
+          .map(
+            (s) => `
+      <div class="tl-shot-card" data-id="${s.id}">
+        <div class="tl-shot-top">
+          <span class="tl-scene-badge">SC-${s.sceneNum}</span>
+          <span class="tl-char-tag">${s.character}</span>
+          <span class="tl-preset-tag">${s.preset}</span>
+          <span class="tl-date">${s.createdAt}</span>
+          <button class="tl-del-btn" onclick="deleteShot('${s.id}')">✕</button>
+        </div>
+        ${s.dialogue ? `<div class="tl-dialogue">"${s.dialogue}"</div>` : ""}
+        ${s.shotDesc ? `<div class="tl-desc">${s.shotDesc}</div>` : ""}
+        ${s.shotPrompt ? `<div class="tl-prompt">${s.shotPrompt}</div>` : ""}
+        ${s.fxUrl ? `<audio controls src="${s.fxUrl}" style="width:100%;margin-top:6px;"></audio>` : s.rawUrl ? `<audio controls src="${s.rawUrl}" style="width:100%;margin-top:6px;"></audio>` : ""}
+      </div>
+    `,
+          )
+          .join("");
+      }
+
+      // ─── Load saved scenes from backend ───────────────────────
+      async function loadScenes() {
+        try {
+          const res = await fetch("http://localhost:8000/scenes");
+          const data = await res.json();
+
+          if (!data.success) {
+            throw new Error("Failed to load scenes");
+          }
+
+          shots = data.scenes.map((s) => ({
+            id: s.id || Date.now(),
+            sceneNum: (s.scene_number || s.id || "???").replace("SC-", ""),
+            character: s.character || s.voice_character || "Unknown",
+            dialogue: s.dialogue || "",
+            shotDesc: s.shot_description || "",
+            shotPrompt: s.shot_prompt || "",
+            project: s.project || "",
+            cameraMood: s.camera_mood || "",
+            palette: s.color_palette || "",
+            engine: s.ai_engine || "",
+            preset: s.voice_preset || "",
+            rawUrl: s.rawUrl || "",
+            fxUrl: s.fxUrl || "",
+            createdAt: s.saved_at || ""
+          }));
+
+          renderTimeline();
+        } catch (e) {
+          console.error(e);
+          renderTimeline();
+          setStatus("Could not load saved scenes", true);
+        }
+      }
+
+
+      // ─── Delete shot ─────────────────────────────────────────
+      window.deleteShot = function (id) {
+        shots = shots.filter((s) => s.id !== id);
+        try {
+          localStorage.setItem("levram_shots", JSON.stringify(shots));
+        } catch {}
+        renderTimeline();
+      };
+
+      // ─── Clear history ───────────────────────────────────────
+      document.getElementById("btn-clear").addEventListener("click", () => {
+        shots = [];
+        try {
+          localStorage.removeItem("levram_shots");
+        } catch {}
+        voiceTrackBody.innerHTML = "";
+        fxTrackBody.innerHTML = "";
+        renderTimeline();
+        setStatus("History cleared.");
+      });
+
+      // ─── Download buttons initial state ──────────────────────
+      dlRaw.style.opacity = "0.3";
+      dlRaw.style.pointerEvents = "none";
+      dlFx.style.opacity = "0.3";
+      dlFx.style.pointerEvents = "none";
+
+      // ─── Init ─────────────────────────────────────────────────
+      loadScenes();
+    </script>
+  </body>
 </html>

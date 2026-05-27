@@ -1,152 +1,183 @@
+const API_BASE = "http://localhost:8000";
 const { useState } = React;
 
 function App() {
-  const [text, setText] = useState("They left me for dead.");
+  const [script, setScript] = useState("They left me for dead.");
   const [character, setCharacter] = useState("Hulk");
   const [preset, setPreset] = useState("villain");
-  const [rawUrl, setRawUrl] = useState("");
   const [rawPath, setRawPath] = useState("");
-  const [fxUrl, setFxUrl] = useState("");
-  const [fxPath, setFxPath] = useState("");
-  const [status, setStatus] = useState("Ready");
-
-  const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem("levramVoiceHistory");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [audioUrl, setAudioUrl] = useState("");
+  const [status, setStatus] = useState("READY");
+  const [timeline, setTimeline] = useState([]);
 
   async function generateVoice() {
-    setStatus("Generating raw voice...");
-    setFxUrl("");
-    setFxPath("");
+    setStatus("GENERATING VOICE");
 
-    const formData = new FormData();
-    formData.append("text", text);
-    formData.append("character", character);
+    const form = new FormData();
+    form.append("text", script);
+    form.append("character", character);
 
-    const response = await fetch("http://127.0.0.1:8000/generate", {
-      method: "POST",
-      body: formData
-    });
+    try {
+      const res = await fetch(`${API_BASE}/generate`, {
+        method: "POST",
+        body: form
+      });
 
-    const data = await response.json();
-    const fullUrl = "http://127.0.0.1:8000" + data.output_url;
+      const data = await res.json();
+      console.log("VOICE:", data);
 
-    setRawUrl(fullUrl);
-    setRawPath(data.output_url);
-    setStatus("Raw voice generated.");
+      if (!data.output_url) throw new Error("No output_url returned");
+
+      setRawPath(data.output_path);
+      setAudioUrl(`${API_BASE}${data.output_url}`);
+      setTimeline(prev => [...prev, `VOICE — ${character} — ${script}`]);
+      setStatus("VOICE READY");
+    } catch (err) {
+      console.error(err);
+      setStatus("VOICE ERROR");
+      alert("Voice generation failed. Check backend.");
+    }
   }
 
-  async function applyFx() {
+  async function generateFX() {
     if (!rawPath) {
-      setStatus("Generate raw voice first.");
+      alert("Generate voice first.");
       return;
     }
 
-    setStatus("Applying voice FX...");
+    setStatus("APPLYING FX");
 
-    const formData = new FormData();
-    formData.append("input_path", rawPath);
-    formData.append("preset", preset);
+    const form = new FormData();
+    form.append("input_path", rawPath);
+    form.append("preset", preset);
 
-    const response = await fetch("http://127.0.0.1:8000/voice-fx", {
-      method: "POST",
-      body: formData
-    });
+    try {
+      const res = await fetch(`${API_BASE}/voice-fx`, {
+        method: "POST",
+        body: form
+      });
 
-    const data = await response.json();
-    const fullUrl = "http://127.0.0.1:8000" + data.output_url;
+      const data = await res.json();
+      console.log("FX:", data);
 
-    setFxUrl(fullUrl);
-    setFxPath(data.output_url);
-    setStatus("Voice FX applied.");
+      if (!data.output_url) throw new Error("No output_url returned");
 
-    setHistory(prev => {
-      const updated = [
-        {
-          character,
-          preset,
-          text,
-          rawPath,
-          fxPath: data.output_url,
-          fxUrl: fullUrl,
-          createdAt: new Date().toLocaleString()
-        },
-        ...prev
-      ];
-
-      localStorage.setItem("levramVoiceHistory", JSON.stringify(updated));
-      return updated;
-    });
+      setAudioUrl(`${API_BASE}${data.output_url}`);
+      setTimeline(prev => [...prev, `FX — ${preset} — ${character}`]);
+      setStatus("FX READY");
+    } catch (err) {
+      console.error(err);
+      setStatus("FX ERROR");
+      alert("FX failed. Check backend.");
+    }
   }
 
-  function clearHistory() {
-    localStorage.removeItem("levramVoiceHistory");
-    setHistory([]);
-    setStatus("History cleared.");
+  function saveShot() {
+    const shot = document.querySelector("#shotPrompt")?.value || "";
+    setTimeline(prev => [...prev, `SHOT — ${shot.slice(0, 90)}`]);
+    setStatus("SHOT SAVED");
   }
 
-  return React.createElement("div", { className: "app" },
-    React.createElement("h1", null, "LEVRAM Voice Lab"),
+  return (
+    <div className="app">
 
-    React.createElement("textarea", {
-      value: text,
-      onChange: e => setText(e.target.value)
-    }),
+      <header className="topbar">
+        <div>
+          <div className="logo">LEVRAM</div>
+          <div className="sublogo">GENERATOR CONTROL ROOM</div>
+        </div>
+        <div className="status">{status}</div>
+      </header>
 
-    React.createElement("input", {
-      value: character,
-      onChange: e => setCharacter(e.target.value),
-      placeholder: "Character name"
-    }),
+      <main className="grid">
 
-    React.createElement("button", { onClick: generateVoice }, "Generate Voice"),
+        <section className="panel voice">
+          <h2>VOICE LAB</h2>
 
-    React.createElement("p", { className: "status" }, status),
+          <label>Script / Line</label>
+          <textarea
+            className="script-input"
+            value={script}
+            onChange={e => setScript(e.target.value)}
+          />
 
-    rawUrl && React.createElement("h2", null, "Raw Voice"),
+          <label>Character</label>
+          <div className="chars">
+            {["Hulk", "Wally", "Barry", "Narrator", "Female"].map(name => (
+              <button
+                key={name}
+                className={character === name ? "active" : ""}
+                onClick={() => setCharacter(name)}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
 
-    rawUrl && React.createElement("audio", { controls: true, src: rawUrl }),
+          <label>FX Preset</label>
+          <select value={preset} onChange={e => setPreset(e.target.value)}>
+            <option value="villain">Villain</option>
+            <option value="deep">Deep</option>
+            <option value="monster">Monster</option>
+            <option value="ghost">Ghost</option>
+            <option value="clean">Clean</option>
+          </select>
 
-    rawUrl && React.createElement("p", { className: "file-path" }, rawPath),
+          <div className="btn-row">
+            <button className="main-btn" onClick={generateVoice}>GENERATE VOICE</button>
+            <button className="main-btn blue" onClick={generateFX}>GENERATE FX</button>
+          </div>
+        </section>
 
-    rawUrl && React.createElement("a", { href: rawUrl, download: true }, "Download Raw Voice"),
+        <section className="panel shot">
+          <h2>SHOT BUILDER</h2>
 
-    rawUrl && React.createElement("div", { className: "fx-section" },
-      React.createElement("select", {
-        value: preset,
-        onChange: e => setPreset(e.target.value)
-      },
-        React.createElement("option", { value: "villain" }, "Villain"),
-        React.createElement("option", { value: "deep" }, "Deep"),
-        React.createElement("option", { value: "clean" }, "Clean Boost")
-      ),
-      React.createElement("button", { onClick: applyFx }, "Apply Voice FX")
-    ),
+          <div className="shot-grid">
+            <input placeholder="Project" defaultValue="The Runner" />
+            <input placeholder="Scene #" defaultValue="SC-001" />
+            <select>
+              <option>Extreme Close-Up</option>
+              <option>Close-Up</option>
+              <option>Wide Shot</option>
+              <option>Tracking Shot</option>
+            </select>
+          </div>
 
-    fxUrl && React.createElement("h2", null, "Processed Voice"),
+          <textarea
+            id="shotPrompt"
+            defaultValue="Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Blue-white speed blur in the sky above. The hero never looked back."
+          />
 
-    fxUrl && React.createElement("audio", { controls: true, src: fxUrl }),
+          <button className="main-btn blue" onClick={saveShot}>SAVE SHOT CARD</button>
+        </section>
 
-    fxUrl && React.createElement("p", { className: "file-path" }, fxPath),
+        <section className="preview">
+          <h2>PREVIEW / GENERATED OUTPUT</h2>
 
-    fxUrl && React.createElement("a", { href: fxUrl, download: true }, "Download Processed Voice"),
+          {audioUrl ? (
+            <audio controls src={audioUrl}></audio>
+          ) : (
+            <div className="empty">NO OUTPUT YET</div>
+          )}
+        </section>
 
-    history.length > 0 && React.createElement("div", { className: "history-header" },
-      React.createElement("h2", null, "Generation History"),
-      React.createElement("button", { onClick: clearHistory }, "Clear History")
-    ),
+        <section className="timeline">
+          <h2>SHOT HISTORY / TIMELINE</h2>
 
-    history.map((item, index) =>
-      React.createElement("div", { className: "history-card", key: index },
-        React.createElement("strong", null, item.character + " / " + item.preset),
-        React.createElement("p", null, item.text),
-        React.createElement("p", { className: "file-path" }, item.createdAt),
-        React.createElement("p", { className: "file-path" }, item.fxPath),
-        React.createElement("audio", { controls: true, src: item.fxUrl })
-      )
-    )
+          <div className="tracks">
+            {timeline.length === 0 ? (
+              <div className="empty">NO CLIPS YET</div>
+            ) : (
+              timeline.map((item, i) => (
+                <div className="clip" key={i}>{item}</div>
+              ))
+            )}
+          </div>
+        </section>
+
+      </main>
+    </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);

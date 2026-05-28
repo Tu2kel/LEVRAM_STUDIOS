@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
@@ -23,6 +23,8 @@ class ScenePayload(BaseModel):
     duration: str = ""
     voice_character: str = ""
     voice_preset: str = ""
+    rawUrl: str | None = None
+    fxUrl: str | None = None
 
 
 @router.post("/save-scene")
@@ -35,6 +37,7 @@ def save_scene(scene: ScenePayload):
     data = scene.model_dump()
     data["id"] = scene_id
     data["saved_at"] = timestamp
+    data["updated_at"] = timestamp
 
     file_path = SCENES_DIR / f"{scene_id}_{timestamp}.json"
 
@@ -67,4 +70,57 @@ def list_scenes():
         "success": True,
         "count": len(scenes),
         "scenes": scenes
+    }
+
+
+@router.put("/scene/{scene_id}")
+def update_scene(scene_id: str, scene: ScenePayload):
+    SCENES_DIR.mkdir(parents=True, exist_ok=True)
+
+    matches = sorted(SCENES_DIR.glob(f"{scene_id}_*.json"), reverse=True)
+
+    if not matches:
+        raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")
+
+    file_path = matches[0]
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        existing = json.load(f)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+    data = scene.model_dump()
+    data["id"] = scene_id
+    data["saved_at"] = existing.get("saved_at")
+    data["updated_at"] = timestamp
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+    return {
+        "success": True,
+        "scene": data,
+        "file": str(file_path)
+    }
+
+
+@router.delete("/scene/{scene_id}")
+def delete_scene(scene_id: str):
+    SCENES_DIR.mkdir(parents=True, exist_ok=True)
+
+    matches = list(SCENES_DIR.glob(f"{scene_id}_*.json"))
+
+    if not matches:
+        raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")
+
+    deleted = []
+
+    for file in matches:
+        file.unlink()
+        deleted.append(str(file))
+
+    return {
+        "success": True,
+        "scene_id": scene_id,
+        "deleted": deleted
     }

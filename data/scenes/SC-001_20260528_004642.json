@@ -1,0 +1,19 @@
+{
+  "project": "Levram Banner",
+  "scene_number": "SC-001",
+  "shot_type": "Bird's Eye",
+  "camera_mood": "Violently Disorienting",
+  "color_palette": "Custom",
+  "ai_engine": "Imperio AI",
+  "shot_description": "Kelz slowly emerges from an endless black void, fragments of dust and ash floating around him as if gravity no longer exists. His eyes remain locked forward with exhausted rage while distant red light pulses through the darkness behind him. The camera drifts slowly inward as if the void itself is breathing.",
+  "shot_prompt": "Cinematic dark fantasy scene, Kelz floating through infinite darkness, ash particles suspended in the air, deep black environment with faint crimson volumetric lighting, emotional atmosphere, exhausted but dangerous expression, subtle camera drift, ultra detailed face, dramatic shadows, high contrast lighting, atmospheric haze, unreal engine cinematic look, shallow depth of field, moody composition, dark superhero multiverse aesthetic, realistic skin texture, slow tension, 4k film still",
+  "character": "+ Custom",
+  "duration": "4s",
+  "voice_character": "+ Custom",
+  "voice_preset": "deep",
+  "rawUrl": null,
+  "fxUrl": null,
+  "id": "SC-001",
+  "saved_at": "20260528_004642",
+  "updated_at": "20260528_004728"
+}

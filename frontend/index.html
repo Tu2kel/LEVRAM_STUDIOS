@@ -746,7 +746,7 @@
 
       /* TIMELINE */
       .timeline-row {
-        height: 200px;
+        min-height: 200px;
         border-top: 1px solid var(--border);
         background: var(--surface);
         display: flex;
@@ -781,7 +781,7 @@
       }
 
       .timeline-tracks {
-        flex: 1;
+        flex: 0 0 86px;
         display: flex;
         flex-direction: column;
         padding: 6px 20px;
@@ -910,7 +910,7 @@
 
       /* Scrollbar reset for shot builder selects */
       .shot-field select option {
-        background: var(--surface2);
+        /* background: var(--surface2); */
         color: var(--text);
       }
 
@@ -992,6 +992,129 @@
         color: #555;
         line-height: 1.4;
       }
+
+      html[data-theme="ivory"] {
+        --bg: #faf7f2;
+        --surface: rgba(250, 247, 242, 0.92);
+        --surface-2: #f0ebe1;
+        --text: #1a0a12;
+        --text-dim: rgba(26, 10, 18, 0.72);
+        --gold: #7a5000;
+        --gold-light: #b8860b;
+        --gold-dark: rgba(120, 80, 0, 0.65);
+        --border: rgba(201, 168, 76, 0.38);
+        --border-strong: rgba(201, 168, 76, 0.55);
+        --red: #7a0018;
+        --red-bright: #b30024;
+        --blue: #314f7a;
+      }
+
+      html[data-theme="ivory"] body {
+        background: #faf7f2;
+        color: #1a0a12;
+        font-size: calc(100% + 4px);
+      }
+
+      html[data-theme="ivory"] input,
+      html[data-theme="ivory"] select,
+      html[data-theme="ivory"] textarea {
+        background: rgba(250, 247, 242, 0.92);
+        color: #1a0a12;
+        border-color: rgba(201, 168, 76, 0.38);
+      }
+
+      html[data-theme="ivory"] input,
+      html[data-theme="ivory"] select,
+      html[data-theme="ivory"] textarea,
+      html[data-theme="ivory"] .script-input {
+        background: #fffdf8;
+        color: #1a0a12;
+        border-color: rgba(122, 80, 0, 0.55);
+      }
+
+      html[data-theme="ivory"] input::placeholder,
+      html[data-theme="ivory"] textarea::placeholder {
+        color: rgba(26, 10, 18, 0.55);
+      }
+
+      html[data-theme="ivory"] .track-body {
+        background: #efe7da;
+        border: 1px solid rgba(122, 80, 0, 0.28);
+      }
+
+      html[data-theme="ivory"] .track-clip.voice {
+        background: rgba(122, 0, 24, 0.78);
+        color: #fff7ec;
+        border-color: rgba(122, 0, 24, 0.55);
+      }
+
+      html[data-theme="ivory"] .track-clip.fx {
+        background: rgba(122, 80, 0, 0.72);
+        color: #fff7ec;
+        border-color: rgba(122, 80, 0, 0.48);
+      }
+
+      html[data-theme="ivory"] .track-clip.shot,
+      html[data-theme="ivory"] .track-clip.shot2 {
+        background: rgba(49, 79, 122, 0.78);
+        color: #fff7ec;
+        border-color: rgba(49, 79, 122, 0.55);
+      }
+
+      html[data-theme="ivory"] .waveform-label,
+      html[data-theme="ivory"] .track-label,
+      html[data-theme="ivory"] .field-label,
+      html[data-theme="ivory"] .meta-label {
+        color: #7a0018;
+      }
+
+      html[data-theme="ivory"] .wave-bar {
+        background: #7a5000;
+      }
+
+      html[data-theme="ivory"] input[type="range"] {
+        accent-color: #7a0018;
+      }
+
+      html[data-theme="ivory"] .slider-val,
+      html[data-theme="ivory"] .timeline-title,
+      html[data-theme="ivory"] .tl-time {
+        color: #7a0018;
+        -webkit-text-fill-color: #7a0018;
+        background: none;
+      }
+
+      html[data-theme="ivory"] .preview-main,
+      html[data-theme="ivory"] .tl-shot-card,
+      html[data-theme="ivory"] .tl-prompt,
+      html[data-theme="ivory"] .tl-desc {
+        background: transparent;
+      }
+
+      html[data-theme="ivory"] .tl-shot-card {
+        border: 1px solid rgba(122, 80, 0, 0.22);
+      }
+
+      html[data-theme="ivory"] .tl-prompt,
+      html[data-theme="ivory"] .tl-desc {
+        color: #3a1d12;
+      }
+
+      html[data-theme="ivory"] #shot-desc,
+      html[data-theme="ivory"] #shot-prompt-input,
+      html[data-theme="ivory"] textarea {
+        background: #f7f1e7;
+      }
+
+      html[data-theme="ivory"] #shot-desc {
+        background: #f7f1e7 !important;
+        color: #1a0a12;
+        border-color: rgba(122, 80, 0, 0.35);
+      }
+
+      html[data-theme="ivory"] .voice-lab {
+        background: #f7f1e7;
+      }
     </style>
   </head>
   <body>
@@ -1007,6 +1130,7 @@
         <button class="nav-btn">Image Gen</button>
         <button class="nav-btn">Timeline</button>
         <button class="nav-btn">Export</button>
+        <button id="theme-toggle" class="nav-btn">Ivory Mode</button>
       </nav>
       <div class="status-pill">
         <span class="status-dot"></span>
@@ -1229,7 +1353,7 @@ They left me for dead.</textarea
                   background: #0b0b0b;
                   border: 1px solid rgba(201, 168, 76, 0.2);
                   border-bottom: 1px solid rgba(201, 168, 76, 0.5);
-                  color: #f0f0f0;
+                  color: #000000;
                   font-family: Rajdhani, sans-serif;
                   font-size: 16px;
                   padding: 10px 12px;
@@ -1260,10 +1384,9 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
             </div>
             <div class="shot-field">
               <div class="field-label">Duration</div>
-              <select id="shot-type">
+              <select id="shot-duration">
                 <option>2s</option>
-                <option>4s</option>
-                <option selected>8s</option>
+                <option selected>4s</option>
                 <option>16s</option>
               </select>
             </div>
@@ -1454,9 +1577,10 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
         <div
           id="timeline-shots"
           style="
-            overflow-y: auto;
-            flex: 1;
-            padding: 6px 20px;
+            overflow-y: visible;
+            flex: 0 0 auto;
+            padding: 10px 20px 6px 20px;
+            margin-top: 4px;
             display: flex;
             flex-direction: column;
             gap: 6px;
@@ -1475,6 +1599,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
       let fxUrl = null;
       let fxPath = null;
       let shots = [];
+      let selectedSceneId = null;
       const BASE = "http://localhost:8000";
 
       // ─── DOM refs ────────────────────────────────────────────
@@ -1492,6 +1617,28 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
       const shotTrackBody = document.getElementById("track-shot-body");
       const timelineShots = document.getElementById("timeline-shots");
       const tlTime = document.getElementById("tl-time");
+
+      function loadSceneIntoEditor(scene) {
+        selectedSceneId = scene.id;
+
+        document.getElementById("shot-project").value = scene.project || "";
+        document.getElementById("shot-scene").value = scene.sceneNum
+          ? `SC-${scene.sceneNum}`
+          : scene.id || "";
+        document.getElementById("shot-desc").value = scene.shotDesc || "";
+        document.getElementById("shot-prompt-input").value =
+          scene.shotPrompt || "";
+        document.getElementById("script-input").value = scene.dialogue || "";
+
+        if (scene.duration) {
+          document.getElementById("shot-duration").value = scene.duration;
+        }
+
+        rawUrl = scene.rawUrl || null;
+        fxUrl = scene.fxUrl || null;
+
+        setStatus(`Loaded ${scene.id} for editing.`);
+      }
 
       // ─── Helpers ─────────────────────────────────────────────
       function setStatus(msg, isErr = false) {
@@ -1708,51 +1855,71 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
       });
 
       // ─── Build / Save Shot Card ───────────────────────────────
-      document.getElementById("btn-save-shot").addEventListener("click", async () => {
-        try {
-          const character = getActiveCharacter();
-          const dialogue = document.getElementById("script-input").value.trim();
+      document
+        .getElementById("btn-save-shot")
+        .addEventListener("click", async () => {
+          try {
+            const character = getActiveCharacter();
+            const dialogue = document
+              .getElementById("script-input")
+              .value.trim();
 
-          const payload = {
-            project: document.getElementById("shot-project").value,
-            scene_number: document.getElementById("shot-scene").value.trim(),
-            shot_type: document.getElementById("shot-type").value,
-            camera_mood: document.getElementById("shot-camera").value,
-            color_palette: document.getElementById("shot-palette").value,
-            ai_engine: document.getElementById("shot-engine").value,
-            shot_description: document.getElementById("shot-desc").value.trim(),
-            shot_prompt: document.getElementById("shot-prompt-input").value.trim(),
-            character: character,
-            duration: metaDuration.textContent || "4",
-            voice_character: character,
-            voice_preset: getActiveFxPreset(),
-            dialogue: dialogue,
-            rawUrl: rawUrl,
-            fxUrl: fxUrl
-          };
+            const payload = {
+              project: document.getElementById("shot-project").value,
+              scene_number: document.getElementById("shot-scene").value.trim(),
+              shot_type: document.getElementById("shot-type").value,
+              camera_mood: document.getElementById("shot-camera").value,
+              color_palette: document.getElementById("shot-palette").value,
+              ai_engine: document.getElementById("shot-engine").value,
+              shot_description: document
+                .getElementById("shot-desc")
+                .value.trim(),
+              shot_prompt: document
+                .getElementById("shot-prompt-input")
+                .value.trim(),
+              character: character,
+              duration: document.getElementById("shot-duration").value,
+              voice_character: character,
+              voice_preset: getActiveFxPreset(),
+              dialogue: dialogue,
+              rawUrl: rawUrl,
+              fxUrl: fxUrl,
+            };
 
-          const res = await fetch("http://localhost:8000/save-scene", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-          });
+            const saveUrl = selectedSceneId
+              ? `http://localhost:8000/scene/${selectedSceneId}`
+              : "http://localhost:8000/save-scene";
 
-          const data = await res.json();
+            const saveMethod = selectedSceneId ? "PUT" : "POST";
 
-          if (!data.success) {
-            throw new Error("Failed to save scene");
+            const res = await fetch(saveUrl, {
+              method: saveMethod,
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            });
+
+            const data = await res.json();
+
+            if (!data.success) {
+              throw new Error("Failed to save scene");
+            }
+
+            await loadScenes();
+
+            selectedSceneId = data.scene.id;
+
+            setStatus(
+              saveMethod === "PUT"
+                ? `Scene ${data.scene.id} updated.`
+                : `Scene ${data.scene.id} saved.`,
+            );
+          } catch (e) {
+            console.error(e);
+            setStatus("Failed to save scene", true);
           }
-
-          await loadScenes();
-
-          setStatus(`Scene ${data.scene.id} saved.`);
-        } catch (e) {
-          console.error(e);
-          setStatus("Failed to save scene", true);
-        }
-      });
+        });
 
       // ─── Render timeline shot clips ──────────────────────────
       function renderTimeline() {
@@ -1777,13 +1944,13 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
         timelineShots.innerHTML = shots
           .map(
             (s) => `
-      <div class="tl-shot-card" data-id="${s.id}">
+      <div class="tl-shot-card" data-id="${s.id}" onclick="loadSceneIntoEditor(shots.find(x => x.id === '${s.id}'))">
         <div class="tl-shot-top">
           <span class="tl-scene-badge">SC-${s.sceneNum}</span>
           <span class="tl-char-tag">${s.character}</span>
           <span class="tl-preset-tag">${s.preset}</span>
           <span class="tl-date">${s.createdAt}</span>
-          <button class="tl-del-btn" onclick="deleteShot('${s.id}')">✕</button>
+          <button class="tl-del-btn" onclick="event.stopPropagation(); deleteShot('${s.id}')">✕</button>
         </div>
         ${s.dialogue ? `<div class="tl-dialogue">"${s.dialogue}"</div>` : ""}
         ${s.shotDesc ? `<div class="tl-desc">${s.shotDesc}</div>` : ""}
@@ -1819,7 +1986,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
             preset: s.voice_preset || "",
             rawUrl: s.rawUrl || "",
             fxUrl: s.fxUrl || "",
-            createdAt: s.saved_at || ""
+            createdAt: s.saved_at || "",
           }));
 
           renderTimeline();
@@ -1830,14 +1997,25 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
         }
       }
 
-
       // ─── Delete shot ─────────────────────────────────────────
-      window.deleteShot = function (id) {
-        shots = shots.filter((s) => s.id !== id);
+      window.deleteShot = async function (id) {
         try {
-          localStorage.setItem("levram_shots", JSON.stringify(shots));
-        } catch {}
-        renderTimeline();
+          const res = await fetch(`${BASE}/scene/${id}`, {
+            method: "DELETE",
+          });
+
+          const data = await res.json();
+
+          if (!data.success) {
+            throw new Error("Failed to delete scene");
+          }
+
+          await loadScenes();
+          setStatus(`Scene ${id} deleted.`);
+        } catch (e) {
+          console.error(e);
+          setStatus(`Failed to delete scene ${id}`, true);
+        }
       };
 
       // ─── Clear history ───────────────────────────────────────
@@ -1857,6 +2035,30 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
       dlRaw.style.pointerEvents = "none";
       dlFx.style.opacity = "0.3";
       dlFx.style.pointerEvents = "none";
+
+      // ─── Theme toggle ─────────────────────────────────────────
+      const savedTheme = localStorage.getItem("levram-theme") || "dark";
+      document.documentElement.setAttribute("data-theme", savedTheme);
+
+      const themeToggle = document.getElementById("theme-toggle");
+
+      if (themeToggle) {
+        themeToggle.textContent =
+          savedTheme === "ivory" ? "Dark Mode" : "Ivory Mode";
+
+        themeToggle.addEventListener("click", () => {
+          const current =
+            document.documentElement.getAttribute("data-theme") || "dark";
+
+          const next = current === "ivory" ? "dark" : "ivory";
+
+          document.documentElement.setAttribute("data-theme", next);
+          localStorage.setItem("levram-theme", next);
+
+          themeToggle.textContent =
+            next === "ivory" ? "Dark Mode" : "Ivory Mode";
+        });
+      }
 
       // ─── Init ─────────────────────────────────────────────────
       loadScenes();

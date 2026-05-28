@@ -1,0 +1,12 @@
+{
+  "shots": [
+    {
+      "title": "Opening shot",
+      "shot_number": "SC-001"
+    },
+    {
+      "title": "Second shot",
+      "shot_number": "SC-002"
+    }
+  ]
+}

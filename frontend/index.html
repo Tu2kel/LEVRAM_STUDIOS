@@ -1533,10 +1533,11 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
               Clear
             </button>
             <button
+              id="btn-save-timeline-order"
               style="
                 background: transparent;
                 border: 1px solid var(--border);
-                color: var(--text-muted);
+                color: var(--gold);
                 font-family: Rajdhani, sans-serif;
                 font-size: 12px;
                 letter-spacing: 2px;
@@ -1546,7 +1547,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
                 cursor: pointer;
               "
             >
-              Export
+              Save Order
             </button>
           </div>
           <span id="tl-time" class="tl-time">00:00:00 / 00:00:00</span>
@@ -1587,7 +1588,48 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
             border-top: 1px solid rgba(201, 168, 76, 0.08);
           "
         ></div>
+      
+      <!-- RENDER QUEUE -->
+      <div class="timeline-row" style="grid-column: 1 / -1; margin-top:12px;">
+        <div class="timeline-header">
+          <span class="panel-title" style="font-size:15px;letter-spacing:5px;">
+            Render Queue
+          </span>
+
+          <div style="display:flex;gap:8px;margin-left:16px;">
+            <button
+              id="btn-clear-render-queue"
+              style="
+                background:transparent;
+                border:1px solid var(--border);
+                color:var(--text-muted);
+                font-family:Rajdhani,sans-serif;
+                font-size:12px;
+                letter-spacing:2px;
+                text-transform:uppercase;
+                padding:3px 10px;
+                border-radius:2px;
+                cursor:pointer;
+              "
+            >
+              Clear Queue
+            </button>
+          </div>
+
+          <span id="rq-count" class="tl-time">0 Jobs</span>
+        </div>
+
+        <div
+          id="render-queue-panel"
+          style="
+            padding:14px 20px;
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+          "
+        ></div>
       </div>
+</div>
     </div>
 
     <div class="bottom-bar"></div>
@@ -1600,6 +1642,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
       let fxPath = null;
       let shots = [];
       let selectedSceneId = null;
+      let renderQueue = [];
       const BASE = "http://localhost:8000";
 
       // ─── DOM refs ────────────────────────────────────────────
@@ -1922,6 +1965,223 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
         });
 
       // ─── Render timeline shot clips ──────────────────────────
+      function getShotNumber(index) {
+        return `SC-${String(index + 1).padStart(3, "0")}`;
+      }
+
+      function renumberShots() {
+        shots = shots.map((shot, index) => ({
+          ...shot,
+          shot_number: getShotNumber(index),
+        }));
+      }
+
+      async function saveTimelineOrder() {
+        try {
+          renumberShots();
+
+          const res = await fetch(`${BASE}/timeline/save-order`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ shots }),
+          });
+
+          if (!res.ok) throw new Error(`Server ${res.status}`);
+
+          const data = await res.json();
+          shots = data.shots || shots;
+          renderTimeline();
+
+          setStatus(`Timeline order saved. ${shots.length} shots sequenced.`);
+        } catch (e) {
+          console.error(e);
+          setStatus("Failed to save timeline order.", true);
+        }
+      }
+
+      let draggedShotId = null;
+
+      function moveShot(id, direction) {
+        const index = shots.findIndex((s) => s.id === id);
+        if (index === -1) return;
+
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= shots.length) return;
+
+        const temp = shots[index];
+        shots[index] = shots[newIndex];
+        shots[newIndex] = temp;
+
+        renumberShots();
+        renderTimeline();
+      }
+
+      function handleDragStart(e, id) {
+        draggedShotId = id;
+        e.currentTarget.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+      }
+
+      function handleDragEnd(e) {
+        e.currentTarget.classList.remove("dragging");
+        document.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
+        draggedShotId = null;
+      }
+
+      function handleDragOver(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add("drop-target");
+      }
+
+      function handleDragLeave(e) {
+        e.currentTarget.classList.remove("drop-target");
+      }
+
+      function handleDrop(e, targetId) {
+        e.preventDefault();
+
+        if (!draggedShotId || draggedShotId === targetId) return;
+
+        const fromIndex = shots.findIndex((s) => s.id === draggedShotId);
+        const toIndex = shots.findIndex((s) => s.id === targetId);
+
+        if (fromIndex === -1 || toIndex === -1) return;
+
+        const [movedShot] = shots.splice(fromIndex, 1);
+        shots.splice(toIndex, 0, movedShot);
+
+        document.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
+        draggedShotId = null;
+        renumberShots();
+        renderTimeline();
+      }
+
+      async function addShotToRenderQueue(id) {
+        try {
+          const shot = shots.find((s) => s.id === id);
+          if (!shot) return;
+
+          const res = await fetch(`${BASE}/render-queue/add`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ shot }),
+          });
+
+          if (!res.ok) throw new Error(`Server ${res.status}`);
+
+          const data = await res.json();
+          renderQueue = data.queue || [];
+          renderRenderQueue();
+          setStatus(`${shot.shot_number || shot.id} added to render queue.`);
+        } catch (e) {
+          console.error(e);
+          setStatus("Failed to add shot to render queue.", true);
+        }
+      }
+
+
+      async function loadRenderQueue() {
+        try {
+          const res = await fetch(`${BASE}/render-queue/load`);
+          if (!res.ok) throw new Error(`Server ${res.status}`);
+
+          const data = await res.json();
+          renderQueue = data.queue || [];
+          renderRenderQueue();
+
+          renderRenderQueue();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function clearRenderQueue() {
+        try {
+          const res = await fetch(`${BASE}/render-queue/clear`, {
+            method: "POST",
+          });
+
+          if (!res.ok) throw new Error(`Server ${res.status}`);
+
+          renderQueue = [];
+          renderRenderQueue();
+
+          setStatus("Render queue cleared.");
+        } catch (e) {
+          console.error(e);
+          setStatus("Failed to clear render queue.", true);
+        }
+      }
+
+      function renderRenderQueue() {
+        const panel = document.getElementById("render-queue-panel");
+        const count = document.getElementById("rq-count");
+
+        count.textContent = `${renderQueue.length} Jobs`;
+
+        if (!renderQueue.length) {
+          panel.innerHTML = `
+            <p style="
+              color:var(--text-dim);
+              font-size:11px;
+              letter-spacing:2px;
+              text-transform:uppercase;
+            ">
+              Queue empty.
+            </p>
+          `;
+          return;
+        }
+
+        panel.innerHTML = renderQueue.map((item) => {
+          const shot = item.shot || {};
+
+          return `
+            <div style="
+              border:1px solid rgba(201,168,76,.14);
+              padding:10px 12px;
+              border-radius:4px;
+              background:rgba(255,255,255,.02);
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:12px;
+            ">
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <span style="
+                  color:var(--gold);
+                  font-size:13px;
+                  letter-spacing:1px;
+                  font-weight:700;
+                ">
+                  ${shot.shot_number || shot.scene || "UNKNOWN"}
+                </span>
+
+                <span style="
+                  color:var(--text-muted);
+                  font-size:11px;
+                ">
+                  ${shot.shotDesc || shot.title || "Untitled Shot"}
+                </span>
+              </div>
+
+              <div style="
+                color:${item.status === "complete" ? "#2ecc71" : "#f1c40f"};
+                font-size:11px;
+                letter-spacing:2px;
+                text-transform:uppercase;
+              ">
+                ${item.status}
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
       function renderTimeline() {
         if (shots.length === 0) {
           shotTrackBody.innerHTML = "";
@@ -1930,28 +2190,42 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
           return;
         }
 
-        // Track clips (show last 4)
+        renumberShots();
+
         const recent = shots.slice(0, 4);
         const segW = Math.floor(90 / recent.length);
+
         shotTrackBody.innerHTML = recent
           .map(
             (s, i) =>
-              `<div class="track-clip shot" style="left:${2 + i * segW}%;width:${segW - 1}%;">SC-${s.sceneNum}</div>`,
+              `<div class="track-clip shot" style="left:${2 + i * segW}%;width:${segW - 1}%;">${s.shot_number}</div>`,
           )
           .join("");
 
-        // Full shot cards in expanded timeline
         timelineShots.innerHTML = shots
           .map(
-            (s) => `
-      <div class="tl-shot-card" data-id="${s.id}" onclick="loadSceneIntoEditor(shots.find(x => x.id === '${s.id}'))">
+            (s, index) => `
+      <div class="tl-shot-card"
+        draggable="true"
+        data-id="${s.id}"
+        ondragstart="handleDragStart(event, '${s.id}')"
+        ondragend="handleDragEnd(event)"
+        ondragover="handleDragOver(event)"
+        ondragleave="handleDragLeave(event)"
+        ondrop="handleDrop(event, '${s.id}')"
+        onclick="loadSceneIntoEditor(shots.find(x => x.id === '${s.id}'))">
         <div class="tl-shot-top">
-          <span class="tl-scene-badge">SC-${s.sceneNum}</span>
-          <span class="tl-char-tag">${s.character}</span>
-          <span class="tl-preset-tag">${s.preset}</span>
-          <span class="tl-date">${s.createdAt}</span>
-          <button class="tl-del-btn" onclick="event.stopPropagation(); deleteShot('${s.id}')">✕</button>
+          <span class="tl-scene-badge" style="cursor:grab;">☰ ${s.shot_number}</span>
+          <span class="tl-char-tag">${s.character || "Unknown"}</span>
+          <span class="tl-preset-tag">${s.preset || s.voice_preset || "No FX"}</span>
+          <span class="tl-date">${s.createdAt || ""}</span>
+
+          <button class="tl-del-btn" title="Move Up" onclick="event.stopPropagation(); moveShot('${s.id}', -1)">↑</button>
+          <button class="tl-del-btn" title="Move Down" onclick="event.stopPropagation(); moveShot('${s.id}', 1)">↓</button>
+          <button class="tl-del-btn" title="Queue Render" onclick="event.stopPropagation(); addShotToRenderQueue('${s.id}')">🎬</button>
+          <button class="tl-del-btn" title="Delete" onclick="event.stopPropagation(); deleteShot('${s.id}')">✕</button>
         </div>
+
         ${s.dialogue ? `<div class="tl-dialogue">"${s.dialogue}"</div>` : ""}
         ${s.shotDesc ? `<div class="tl-desc">${s.shotDesc}</div>` : ""}
         ${s.shotPrompt ? `<div class="tl-prompt">${s.shotPrompt}</div>` : ""}
@@ -1961,6 +2235,16 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
           )
           .join("");
       }
+
+      document
+        .getElementById("btn-save-timeline-order")
+        .addEventListener("click", saveTimelineOrder);
+
+      document
+        .getElementById("btn-clear-render-queue")
+        .addEventListener("click", clearRenderQueue);
+
+      loadRenderQueue();
 
       // ─── Load saved scenes from backend ───────────────────────
       async function loadScenes() {
@@ -2065,3 +2349,29 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
     </script>
   </body>
 </html>
+<style>
+  .tl-shot-card.dragging {
+    opacity: 0.55 !important;
+    transform: scale(0.985);
+    box-shadow: 0 0 18px rgba(201, 168, 76, 0.45);
+    border: 1px solid var(--gold) !important;
+  }
+
+  .tl-shot-card.drop-target {
+    border: 1px dashed var(--gold) !important;
+    box-shadow: inset 0 0 18px rgba(201, 168, 76, 0.25);
+    position: relative;
+  }
+
+  .tl-shot-card.drop-target::before {
+    content: "DROP HERE";
+    position: absolute;
+    top: -10px;
+    left: 14px;
+    background: var(--bg);
+    color: var(--gold);
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 1px 6px;
+  }
+</style>

@@ -1,0 +1,19 @@
+{
+  "project": "The Other Side",
+  "scene_number": "SC-004",
+  "shot_type": "Tracking Shot",
+  "camera_mood": "Violently Disorienting",
+  "color_palette": "Dark Neon / Rain",
+  "ai_engine": "Imperio AI",
+  "shot_description": "A wtf moment, how did the character get here",
+  "shot_prompt": "Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above \u2014 too fast, too clean. The hero never looked back.",
+  "character": "+ Custom",
+  "duration": "4s",
+  "voice_character": "+ Custom",
+  "voice_preset": "villain",
+  "rawUrl": null,
+  "fxUrl": null,
+  "id": "SC-004",
+  "saved_at": "20260528_033839",
+  "updated_at": "20260528_033839"
+}

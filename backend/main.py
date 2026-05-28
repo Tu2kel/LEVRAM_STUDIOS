@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.routes.tts import router as tts_router
 from backend.routes.voice_fx import router as voice_fx_router
 from backend.routes.scenes import router as scenes_router
+from backend.routes.timeline import router as timeline_router
+from backend.routes.render_queue import router as render_queue_router
 
 app = FastAPI()
 
@@ -21,3 +23,5 @@ app.mount("/output", StaticFiles(directory="output"), name="output")
 app.include_router(tts_router)
 app.include_router(voice_fx_router)
 app.include_router(scenes_router)
+app.include_router(timeline_router)
+app.include_router(render_queue_router)

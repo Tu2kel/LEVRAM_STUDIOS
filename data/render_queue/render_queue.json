@@ -1,0 +1,70 @@
+{
+  "queue": [
+    {
+      "id": "29c72b25-d268-4253-8d37-646c2da59d3d",
+      "shot": {
+        "id": "SC-010",
+        "sceneNum": "010",
+        "character": "Hulk",
+        "dialogue": "",
+        "shotDesc": "Bewildered of the unknown timeline - the end of All - The End of time",
+        "shotPrompt": "A lone survivor stands frozen at the edge of a collapsing reality, staring into an endless white-blue void where time itself is unraveling. Massive ruined skyscrapers disappear into blinding snow and cosmic distortion. Emergency sirens echo faintly through the dead city. The atmosphere feels cold, empty, and apocalyptic. The character looks exhausted, confused, and emotionally shattered, witnessing the literal end of existence. Cinematic tracking shot from slightly behind the character, subtle handheld movement, ultra realistic lighting, volumetric fog, drifting ash and snow, faint blue light reflections, dark cinematic contrast, highly detailed textures, atmospheric depth, IMAX-style composition, end-of-time aesthetic, emotionally haunting, dystopian sci-fi realism.",
+        "project": "The Other Side",
+        "cameraMood": "Civilian POV",
+        "palette": "Cold Blue-White (Runner)",
+        "engine": "Midjourney v6",
+        "preset": "villain",
+        "rawUrl": "",
+        "fxUrl": "",
+        "createdAt": "20260527_183238",
+        "shot_number": "SC-002"
+      },
+      "status": "pending",
+      "createdAt": "2026-05-27 23:41:26"
+    },
+    {
+      "id": "3d1d187e-c4fa-4ee8-9db0-619ff3debac8",
+      "shot": {
+        "id": "SC-001",
+        "sceneNum": "001",
+        "character": "+ Custom",
+        "dialogue": "",
+        "shotDesc": "Kelz slowly emerges from an endless black void, fragments of dust and ash floating around him as if gravity no longer exists. His eyes remain locked forward with exhausted rage while distant red light pulses through the darkness behind him. The camera drifts slowly inward as if the void itself is breathing.",
+        "shotPrompt": "Cinematic dark fantasy scene, Kelz floating through infinite darkness, ash particles suspended in the air, deep black environment with faint crimson volumetric lighting, emotional atmosphere, exhausted but dangerous expression, subtle camera drift, ultra detailed face, dramatic shadows, high contrast lighting, atmospheric haze, unreal engine cinematic look, shallow depth of field, moody composition, dark superhero multiverse aesthetic, realistic skin texture, slow tension, 4k film still",
+        "project": "Levram Banner",
+        "cameraMood": "Violently Disorienting",
+        "palette": "Custom",
+        "engine": "Imperio AI",
+        "preset": "deep",
+        "rawUrl": "",
+        "fxUrl": "",
+        "createdAt": "20260528_004642",
+        "shot_number": "SC-004"
+      },
+      "status": "pending",
+      "createdAt": "2026-05-27 23:41:31"
+    },
+    {
+      "id": "6827d183-612e-4b4c-b54a-ef4885b865db",
+      "shot": {
+        "id": "SC-004",
+        "sceneNum": "004",
+        "character": "+ Custom",
+        "dialogue": "",
+        "shotDesc": "A wtf moment, how did the character get here",
+        "shotPrompt": "Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above \u2014 too fast, too clean. The hero never looked back.",
+        "project": "The Other Side",
+        "cameraMood": "Violently Disorienting",
+        "palette": "Dark Neon / Rain",
+        "engine": "Imperio AI",
+        "preset": "villain",
+        "rawUrl": "",
+        "fxUrl": "",
+        "createdAt": "20260528_033839",
+        "shot_number": "SC-003"
+      },
+      "status": "pending",
+      "createdAt": "2026-05-27 23:41:44"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "project": "The Other Side",
+  "scene_number": "SC-005",
+  "shot_type": "Extreme Close-Up",
+  "camera_mood": "Slow / Heavy / Suffocating",
+  "color_palette": "Dark Neon / Rain",
+  "ai_engine": "Imperio AI",
+  "shot_description": "Panned in and out with ease",
+  "shot_prompt": "Chicks apartment",
+  "character": "+ Custom",
+  "duration": "4s",
+  "voice_character": "+ Custom",
+  "voice_preset": "villain",
+  "rawUrl": "http://localhost:8000/output/tts/+ Custom_a456cabf-0373-4a61-8dc1-e24d25ba2119.mp3",
+  "fxUrl": null,
+  "id": "SC-005",
+  "saved_at": "20260529_201612",
+  "updated_at": "20260529_201612"
+}

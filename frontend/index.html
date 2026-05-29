@@ -1116,7 +1116,60 @@
         background: #f7f1e7;
       }
     </style>
-  </head>
+  
+<style>
+.render-status-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+.render-status-pending {
+  color: #ffd166;
+  border: 1px solid #ffd166;
+}
+
+.render-status-rendering {
+  color: #00d4ff;
+  border: 1px solid #00d4ff;
+}
+
+.render-status-complete {
+  color: #00ff88;
+  border: 1px solid #00ff88;
+}
+
+.render-status-failed {
+  color: #ff4d6d;
+  border: 1px solid #ff4d6d;
+}
+
+.render-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.render-actions button {
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid #C9A84C;
+  background: #160008;
+  color: #C9A84C;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.render-actions button:hover {
+  background: #2a000a;
+}
+</style>
+
+</head>
   <body>
     <!-- TOP BAR -->
     <header class="top-bar">
@@ -2063,7 +2116,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
           const shot = shots.find((s) => s.id === id);
           if (!shot) return;
 
-          const res = await fetch(`${BASE}/render-queue/add`, {
+          const res = await fetch(`${BASE}/render-queue`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -2086,7 +2139,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
 
       async function loadRenderQueue() {
         try {
-          const res = await fetch(`${BASE}/render-queue/load`);
+          const res = await fetch(`${BASE}/render-queue`);
           if (!res.ok) throw new Error(`Server ${res.status}`);
 
           const data = await res.json();
@@ -2170,12 +2223,21 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
               </div>
 
               <div style="
-                color:${item.status === "complete" ? "#2ecc71" : "#f1c40f"};
-                font-size:11px;
-                letter-spacing:2px;
-                text-transform:uppercase;
+                display:flex;
+                flex-direction:column;
+                align-items:flex-end;
+                gap:8px;
               ">
-                ${item.status}
+                <div style="
+                  color:${item.status === "complete" ? "#2ecc71" : item.status === "failed" ? "#ff4d6d" : item.status === "rendering" ? "#00d4ff" : "#f1c40f"};
+                  font-size:11px;
+                  letter-spacing:2px;
+                  text-transform:uppercase;
+                ">
+                  ${item.status}
+                </div>
+
+                ${renderStatusControls(item)}
               </div>
             </div>
           `;
@@ -2347,7 +2409,75 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
       // ─── Init ─────────────────────────────────────────────────
       loadScenes();
     </script>
-  </body>
+  
+<script>
+async function updateRenderStatus(itemId, status) {
+  try {
+    const res = await fetch(`http://localhost:8000/render-queue/${itemId}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || "Status update failed");
+      return;
+    }
+
+    if (typeof loadRenderQueue === "function") {
+      loadRenderQueue();
+    } else {
+      location.reload();
+    }
+  } catch (err) {
+    alert("Render status error: " + err.message);
+  }
+}
+
+async function deleteRenderQueueItem(itemId) {
+  try {
+    const res = await fetch(`http://localhost:8000/render-queue/${itemId}`, {
+      method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || "Delete failed");
+      return;
+    }
+
+    if (typeof loadRenderQueue === "function") {
+      loadRenderQueue();
+    } else {
+      location.reload();
+    }
+  } catch (err) {
+    alert("Delete error: " + err.message);
+  }
+}
+
+function renderStatusControls(item) {
+  const status = item.status || "pending";
+
+  return `
+    <div class="render-status-pill render-status-${status}">
+      ${status}
+    </div>
+
+    <div class="render-actions">
+      <button onclick="updateRenderStatus('${item.id}', 'rendering')">Start</button>
+      <button onclick="updateRenderStatus('${item.id}', 'complete')">Complete</button>
+      <button onclick="updateRenderStatus('${item.id}', 'failed')">Failed</button>
+      <button onclick="deleteRenderQueueItem('${item.id}')">Delete</button>
+    </div>
+  `;
+}
+</script>
+
+</body>
 </html>
 <style>
   .tl-shot-card.dragging {

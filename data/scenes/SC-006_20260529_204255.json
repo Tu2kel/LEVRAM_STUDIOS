@@ -1,0 +1,19 @@
+{
+  "project": "The Other Side",
+  "scene_number": "SC-006",
+  "shot_type": "Bird's Eye",
+  "camera_mood": "Intimate / Invasive",
+  "color_palette": "Cold Blue-White (Runner)",
+  "ai_engine": "Imperio AI",
+  "shot_description": "I don't know yet, the AI will do it",
+  "shot_prompt": "Japan flower garden red scenery",
+  "character": "Female",
+  "duration": "4s",
+  "voice_character": "Female",
+  "voice_preset": "deep",
+  "rawUrl": "http://localhost:8000/output/tts/Female_a8b76e20-0977-47ad-add3-a7f705779875.mp3",
+  "fxUrl": "http://localhost:8000/output/voice_fx/deep_1309813a-cc8d-45ec-9cf2-c3b3ee25cae9.mp3",
+  "id": "SC-006",
+  "saved_at": "20260529_204255",
+  "updated_at": "20260529_204255"
+}

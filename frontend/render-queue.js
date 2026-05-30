@@ -5,16 +5,13 @@ async function addShotToRenderQueue(id) {
 
     const res = await fetch(`${BASE}/render-queue`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ shot }),
     });
 
     if (!res.ok) throw new Error(`Server ${res.status}`);
-
     const data = await res.json();
-    renderQueue = data.queue || [];
+    renderQueue = data.queue || data.jobs || data.items || [];
     renderRenderQueue();
     setStatus(`${shot.shot_number || shot.id} added to render queue.`);
   } catch (e) {
@@ -27,26 +24,26 @@ async function loadRenderQueue() {
   try {
     const res = await fetch(`${BASE}/render-queue`);
     if (!res.ok) throw new Error(`Server ${res.status}`);
-
     const data = await res.json();
-    renderQueue = data.queue || [];
-    renderRenderQueue();
+
+    renderQueue = data.queue || data.jobs || data.items || [];
+
+    console.log("RQ API DATA:", data);
+    console.log("RQ LOADED:", renderQueue.length);
   } catch (e) {
-    console.error(e);
+    console.error("RQ API failed:", e);
+    renderQueue = [];
   }
+
+  renderRenderQueue();
 }
 
 async function clearRenderQueue() {
   try {
-    const res = await fetch(`${BASE}/render-queue/clear`, {
-      method: "POST",
-    });
-
+    const res = await fetch(`${BASE}/render-queue/clear`, { method: "POST" });
     if (!res.ok) throw new Error(`Server ${res.status}`);
-
     renderQueue = [];
     renderRenderQueue();
-
     setStatus("Render queue cleared.");
   } catch (e) {
     console.error(e);
@@ -57,66 +54,66 @@ async function clearRenderQueue() {
 function renderRenderQueue() {
   const panel = document.getElementById("render-queue-panel");
   const count = document.getElementById("rq-count");
+  if (!panel || !count) return;
 
-  count.textContent = `${renderQueue.length} Jobs`;
+  count.textContent = `${renderQueue.length} Job${renderQueue.length !== 1 ? "s" : ""}`;
 
   if (!renderQueue.length) {
-    panel.innerHTML = `
-      <p style="
-        color:var(--text-dim);
-        font-size:11px;
-        letter-spacing:2px;
-        text-transform:uppercase;
-      ">
-        Queue empty.
-      </p>
-    `;
+    panel.innerHTML = `<div class="rq-empty">Queue empty — API returned 0 jobs</div>`;
     return;
   }
 
-  panel.innerHTML = renderQueue.map((item) => {
-    const shot = item.shot || {};
+  panel.innerHTML = renderQueue
+    .map((item) => {
+      const shot = item.shot || item || {};
+      const status = item.status || "pending";
+      const title =
+        shot.shot_number ||
+        item.shot_number ||
+        shot.scene ||
+        shot.id ||
+        "UNKNOWN";
 
-    return `
-      <div style="
-        border:1px solid rgba(201,168,76,.14);
-        padding:10px 12px;
-        border-radius:4px;
-        background:rgba(255,255,255,.02);
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:12px;
-      ">
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <span style="
-            color:var(--gold);
-            font-size:13px;
-            letter-spacing:1px;
-            font-weight:700;
-          ">
-            ${shot.shot_number || shot.scene || "UNKNOWN"}
-          </span>
+      const sub =
+        shot.shotDesc ||
+        shot.shot_description ||
+        item.shotDesc ||
+        item.shot_description ||
+        shot.title ||
+        "Untitled Shot";
 
-          <span style="
-            color:var(--text-muted);
-            font-size:11px;
-          ">
-            ${shot.shotDesc || shot.title || "Untitled Shot"}
-          </span>
+      const char =
+        shot.character ||
+        item.character ||
+        shot.voice_character ||
+        "";
+
+      const preset =
+        shot.preset ||
+        item.preset ||
+        shot.voice_preset ||
+        "";
+
+      return `
+      <div class="rq-job-card">
+        <div>
+          <div class="rq-job-title">${title}${char ? " · " + char : ""}${preset ? " · " + preset : ""}</div>
+          <div class="rq-job-sub">${sub}</div>
+          ${shot.dialogue ? `<div class="tl-dialogue" style="margin-top:8px;">"${String(shot.dialogue).slice(0, 80)}${String(shot.dialogue).length > 80 ? "…" : ""}"</div>` : ""}
         </div>
 
-        <div style="
-          display:flex;
-          flex-direction:column;
-          align-items:flex-end;
-          gap:8px;
-        ">
-          ${renderStatusControls(item)}
+        <div class="rq-job-right">
+          <div class="render-status-pill render-status-${status}">${status}</div>
+          <div class="render-actions">
+            <button onclick="updateRenderStatus('${item.id}','rendering')">Start</button>
+            <button onclick="updateRenderStatus('${item.id}','complete')">Complete</button>
+            <button onclick="updateRenderStatus('${item.id}','failed')">Failed</button>
+            <button onclick="deleteRenderQueueItem('${item.id}')">Delete</button>
+          </div>
         </div>
-      </div>
-    `;
-  }).join("");
+      </div>`;
+    })
+    .join("");
 }
 
 async function updateRenderStatus(itemId, status) {
@@ -124,7 +121,7 @@ async function updateRenderStatus(itemId, status) {
     const res = await fetch(`${BASE}/render-queue/${itemId}/status`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status })
+      body: JSON.stringify({ status }),
     });
 
     const data = await res.json();
@@ -143,7 +140,7 @@ async function updateRenderStatus(itemId, status) {
 async function deleteRenderQueueItem(itemId) {
   try {
     const res = await fetch(`${BASE}/render-queue/${itemId}`, {
-      method: "DELETE"
+      method: "DELETE",
     });
 
     const data = await res.json();
@@ -157,21 +154,4 @@ async function deleteRenderQueueItem(itemId) {
   } catch (err) {
     alert("Delete error: " + err.message);
   }
-}
-
-function renderStatusControls(item) {
-  const status = item.status || "pending";
-
-  return `
-    <div class="render-status-pill render-status-${status}">
-      ${status}
-    </div>
-
-    <div class="render-actions">
-      <button onclick="updateRenderStatus('${item.id}', 'rendering')">Start</button>
-      <button onclick="updateRenderStatus('${item.id}', 'complete')">Complete</button>
-      <button onclick="updateRenderStatus('${item.id}', 'failed')">Failed</button>
-      <button onclick="deleteRenderQueueItem('${item.id}')">Delete</button>
-    </div>
-  `;
 }

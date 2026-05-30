@@ -1,0 +1,19 @@
+{
+  "project": "The Runner",
+  "scene_number": "SC-009",
+  "shot_type": "Tracking Shot",
+  "camera_mood": "Dreamlike / Still / Vast",
+  "color_palette": "Bio-Green + Supernova Red (Banner)",
+  "ai_engine": "Imperio AI",
+  "shot_description": "Ground-level civilian POV. Rubble.",
+  "shot_prompt": "A child alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above \u2014 too fast, too clean. The hero never looked back.",
+  "character": "Narrator",
+  "duration": "4s",
+  "voice_character": "Narrator",
+  "voice_preset": "monster",
+  "rawUrl": "http://localhost:8000/output/tts/Narrator_477b93ee-37cf-493d-95a0-18930fbde827.mp3",
+  "fxUrl": "http://localhost:8000/output/voice_fx/monster_139aace7-67e5-41cd-8223-3b9cb5e4adc9.mp3",
+  "id": "SC-009",
+  "saved_at": "20260529_233408",
+  "updated_at": "20260529_233415"
+}

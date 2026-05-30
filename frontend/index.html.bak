@@ -534,8 +534,8 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
     <script src="project-battery.js"></script>
     <script src="shot-builder.js"></script>
     <script src="voice-lab.js"></script>
-    <script src="render-queue.js"></script>
     <script src="timeline.js"></script>
+    <script src="render-queue.js"></script>
 
     <!-- Workspace switcher -->
     <script>

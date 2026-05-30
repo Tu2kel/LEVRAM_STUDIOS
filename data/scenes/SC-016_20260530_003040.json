@@ -1,0 +1,19 @@
+{
+  "project": "The Runner",
+  "scene_number": "SC-016",
+  "shot_type": "Close-Up",
+  "camera_mood": "Dreamlike / Still / Vast",
+  "color_palette": "Bio-Green + Supernova Red (Banner)",
+  "ai_engine": "Imperio AI",
+  "shot_description": "Homelander on his knees, realizing his powers are gone. Begging for his life.",
+  "shot_prompt": "Presidential office, room torn from all the figting.",
+  "character": "+ Custom",
+  "duration": "4s",
+  "voice_character": "+ Custom",
+  "voice_preset": "clean",
+  "rawUrl": "http://localhost:8000/output/tts/+ Custom_b73c9999-eacc-4f5e-ba25-b62648486915.mp3",
+  "fxUrl": "http://localhost:8000/output/voice_fx/clean_1d3143c9-b180-475a-ad1f-4da411d6c17f.mp3",
+  "id": "SC-016",
+  "saved_at": "20260530_003040",
+  "updated_at": "20260530_003040"
+}

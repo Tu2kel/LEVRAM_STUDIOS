@@ -1,3 +1,12 @@
+document.currentScript.insertAdjacentHTML(
+  "afterend",
+  Array.from({ length: 80 }, (_, i) => {
+    const h = Math.max(4, Math.round(Math.random() * 22));
+    const delay = (i * 0.015).toFixed(3);
+    return `<div class="wave-bar" style="height:${h}px;animation-delay:${delay}s;opacity:${0.3 + Math.random() * 0.5}"></div>`;
+  }).join(""),
+);
+
 // ─── State ───────────────────────────────────────────────
 let rawUrl = null;
 let rawPath = null;

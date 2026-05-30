@@ -1,0 +1,19 @@
+{
+  "project": "Levram Banner",
+  "scene_number": "SC-014",
+  "shot_type": "Bird's Eye",
+  "camera_mood": "Civilian POV",
+  "color_palette": "Custom",
+  "ai_engine": "Imperio AI",
+  "shot_description": "Out of focus to blur to clear - Ground-level civilian POV.",
+  "shot_prompt": "Rubble. A woman stands alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above \u2014 too fast, too clean. The hero never looked back.",
+  "character": "Female",
+  "duration": "4s",
+  "voice_character": "Female",
+  "voice_preset": "clean",
+  "rawUrl": "http://localhost:8000/output/tts/Female_5074c971-6c8c-4c12-802e-a99d1a2766cb.mp3",
+  "fxUrl": "http://localhost:8000/output/voice_fx/clean_238069e9-3c3c-48cb-95b9-a388fcd8a647.mp3",
+  "id": "SC-009",
+  "saved_at": "20260529_234940",
+  "updated_at": "20260529_235243"
+}

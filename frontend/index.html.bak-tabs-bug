@@ -4,9 +4,63 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LEVRAM Generator</title>
-    <link rel="stylesheet" href="app.css" />
-    <link rel="stylesheet" href="project-battery.css" />
-  </head>
+    <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="project-battery.css">
+
+  
+<style>
+.render-status-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+.render-status-pending {
+  color: #ffd166;
+  border: 1px solid #ffd166;
+}
+
+.render-status-rendering {
+  color: #00d4ff;
+  border: 1px solid #00d4ff;
+}
+
+.render-status-complete {
+  color: #00ff88;
+  border: 1px solid #00ff88;
+}
+
+.render-status-failed {
+  color: #ff4d6d;
+  border: 1px solid #ff4d6d;
+}
+
+.render-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.render-actions button {
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid #C9A84C;
+  background: #160008;
+  color: #C9A84C;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.render-actions button:hover {
+  background: #2a000a;
+}
+</style>
+
+</head>
   <body>
     <!-- TOP BAR -->
     <header class="top-bar">
@@ -29,16 +83,11 @@
       </div>
     </header>
 
-    <!-- MAIN GRID: battery | panels | tab-bar | workspace -->
+    <!-- MAIN LAYOUT -->
     <div class="main-grid">
-      <!-- ROW 1 — Project Battery -->
-      <div
-        id="project-battery-host"
-        style="grid-column: 1/-1; grid-row: 1"
-      ></div>
-
-      <!-- ROW 2 LEFT — Voice Lab -->
-      <div class="left-panel" style="grid-row: 2">
+      <div id="project-battery-host" class="levram-battery-dock"></div>
+      <!-- LEFT: VOICE LAB -->
+      <div class="left-panel">
         <div class="panel-header">
           <div class="panel-header-icon red">
             <svg viewBox="0 0 16 16">
@@ -49,17 +98,19 @@
           <span class="panel-title">Voice Lab</span>
           <span class="panel-badge">Live</span>
         </div>
+
         <div class="voice-lab">
           <div class="field-group">
             <div class="field-label">Script / Line</div>
             <textarea
               id="script-input"
               class="script-input"
-              placeholder="They left me for dead. Every god abandons their creation eventually."
+              placeholder="They left me for dead. Every god abandons their creation eventually. I just decided not to let it end there."
             >
 They left me for dead.</textarea
             >
           </div>
+
           <div class="field-group">
             <div class="field-label">Character</div>
             <div class="char-presets">
@@ -71,11 +122,13 @@ They left me for dead.</textarea
               <button class="char-btn">+ Custom</button>
             </div>
           </div>
+
           <div class="gold-divider"></div>
+
           <div class="field-group">
             <div class="field-label">Voice FX Preset</div>
             <select class="fx-preset">
-              <option value="villain">Villain — Dark &amp; Reverbed</option>
+              <option value="villain">Villain — Dark & Reverbed</option>
               <option value="deep">Deep — Pure Bass Shift</option>
               <option value="monster">Monster — Chorus + Growl</option>
               <option value="ghost">Ghost — Echo Chamber</option>
@@ -83,12 +136,13 @@ They left me for dead.</textarea
               <option value="clean">Clean — No FX</option>
             </select>
           </div>
+
           <div class="field-group">
             <div class="field-label">FX Parameters</div>
             <div class="fx-grid">
               <div class="slider-row">
-                <span class="slider-name">Pitch Shift</span
-                ><input
+                <span class="slider-name">Pitch Shift</span>
+                <input
                   type="range"
                   min="0"
                   max="100"
@@ -96,11 +150,12 @@ They left me for dead.</textarea
                   oninput="
                     this.nextElementSibling.textContent = this.value + '%'
                   "
-                /><span class="slider-val">35%</span>
+                />
+                <span class="slider-val">35%</span>
               </div>
               <div class="slider-row">
-                <span class="slider-name">Reverb</span
-                ><input
+                <span class="slider-name">Reverb</span>
+                <input
                   type="range"
                   min="0"
                   max="100"
@@ -108,11 +163,12 @@ They left me for dead.</textarea
                   oninput="
                     this.nextElementSibling.textContent = this.value + '%'
                   "
-                /><span class="slider-val">55%</span>
+                />
+                <span class="slider-val">55%</span>
               </div>
               <div class="slider-row">
-                <span class="slider-name">Timbre</span
-                ><input
+                <span class="slider-name">Timbre</span>
+                <input
                   type="range"
                   min="0"
                   max="100"
@@ -120,11 +176,12 @@ They left me for dead.</textarea
                   oninput="
                     this.nextElementSibling.textContent = this.value + '%'
                   "
-                /><span class="slider-val">70%</span>
+                />
+                <span class="slider-val">70%</span>
               </div>
               <div class="slider-row">
-                <span class="slider-name">Distortion</span
-                ><input
+                <span class="slider-name">Distortion</span>
+                <input
                   type="range"
                   min="0"
                   max="100"
@@ -132,11 +189,12 @@ They left me for dead.</textarea
                   oninput="
                     this.nextElementSibling.textContent = this.value + '%'
                   "
-                /><span class="slider-val">20%</span>
+                />
+                <span class="slider-val">20%</span>
               </div>
               <div class="slider-row">
-                <span class="slider-name">Volume</span
-                ><input
+                <span class="slider-name">Volume</span>
+                <input
                   type="range"
                   min="0"
                   max="100"
@@ -144,10 +202,12 @@ They left me for dead.</textarea
                   oninput="
                     this.nextElementSibling.textContent = this.value + '%'
                   "
-                /><span class="slider-val">80%</span>
+                />
+                <span class="slider-val">80%</span>
               </div>
             </div>
           </div>
+
           <button
             id="btn-fx"
             class="gen-btn"
@@ -165,8 +225,9 @@ They left me for dead.</textarea
         </div>
       </div>
 
-      <!-- ROW 2 RIGHT — Shot Builder -->
-      <div class="right-panel" style="grid-row: 2">
+
+      <!-- RIGHT: SHOT BUILDER -->
+      <div class="right-panel">
         <div class="panel-header">
           <div class="panel-header-icon blue">
             <svg viewBox="0 0 16 16" fill="white">
@@ -177,6 +238,7 @@ They left me for dead.</textarea
           </div>
           <span class="panel-title">Shot Builder</span>
         </div>
+
         <div class="shot-builder">
           <div class="shot-grid">
             <div class="shot-field">
@@ -233,20 +295,33 @@ They left me for dead.</textarea
               <div class="field-label">Shot Description</div>
               <textarea
                 id="shot-desc"
+                style="
+                  width: 100%;
+                  background: #0b0b0b;
+                  border: 1px solid rgba(201, 168, 76, 0.2);
+                  border-bottom: 1px solid rgba(201, 168, 76, 0.5);
+                  color: #000000;
+                  font-family: Rajdhani, sans-serif;
+                  font-size: 16px;
+                  padding: 10px 12px;
+                  border-radius: 4px;
+                  resize: none;
+                  outline: none;
+                  height: 60px;
+                "
                 placeholder="What physically happens in this shot..."
-                style="height: 60px; resize: none"
               ></textarea>
             </div>
             <div class="shot-field shot-prompt">
               <div class="field-label">Shot Prompt</div>
               <textarea
                 id="shot-prompt-input"
-                placeholder="Describe the shot — atmosphere, subject, lighting, emotion."
+                placeholder="Describe the shot — atmosphere, subject, lighting, emotion. LEVRAM rules apply automatically."
               >
 Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above — too fast, too clean. The hero never looked back.</textarea
               >
             </div>
-            <div class="shot-field" style="grid-column: 1/3">
+            <div class="shot-field" style="grid-column: 1 / 3">
               <div class="field-label">Character</div>
               <input
                 id="shot-char-override"
@@ -269,26 +344,9 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
         </div>
       </div>
 
-      <!-- ROW 3 — Workspace Tab Bar -->
-      <div class="workspace-tabs-bar" style="grid-column: 1/-1; grid-row: 3">
-        <button class="workspace-tab-btn active" data-ws="preview">
-          ▶ &nbsp;Preview
-        </button>
-        <button class="workspace-tab-btn" data-ws="timeline">
-          ☰ &nbsp;Timeline
-        </button>
-        <button class="workspace-tab-btn" data-ws="queue">
-          🎬 &nbsp;Render Queue
-        </button>
-      </div>
-
-      <!-- ROW 4a — PREVIEW workspace -->
-      <div
-        id="ws-preview"
-        class="workspace-panel"
-        style="grid-column: 1/-1; grid-row: 4"
-      >
-        <div class="panel-header" style="padding: 8px 20px; flex-shrink: 0">
+      <!-- BOTTOM LEFT + RIGHT: PREVIEW SPANNING FULL WIDTH -->
+      <div class="preview-row" style="grid-column: 1 / -1">
+        <div class="panel-header" style="padding: 8px 20px">
           <div class="panel-header-icon gold">
             <svg viewBox="0 0 16 16" fill="black">
               <path d="M3 3h10v10H3z" />
@@ -309,6 +367,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
                 text-transform: uppercase;
                 padding: 4px 12px;
                 border-radius: 2px;
+                cursor: pointer;
                 text-decoration: none;
                 display: inline-block;
               "
@@ -327,6 +386,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
                 text-transform: uppercase;
                 padding: 4px 12px;
                 border-radius: 2px;
+                cursor: pointer;
                 text-decoration: none;
                 display: inline-block;
               "
@@ -334,10 +394,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
             >
           </div>
         </div>
-        <div
-          class="preview-inner"
-          style="flex: 1; min-height: 0; display: flex; overflow: hidden"
-        >
+        <div class="preview-inner">
           <div id="preview-main" class="preview-main">
             <div class="preview-placeholder">
               <span class="big-icon">▶</span>
@@ -346,32 +403,32 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
           </div>
           <div class="preview-meta">
             <div class="meta-item">
-              <span class="meta-label">Character</span
-              ><span id="meta-char" class="meta-val gold">Hulk</span>
+              <span class="meta-label">Character</span>
+              <span id="meta-char" class="meta-val gold">Hulk</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Preset</span
-              ><span id="meta-preset" class="meta-val">Villain</span>
+              <span class="meta-label">Preset</span>
+              <span id="meta-preset" class="meta-val">Villain</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Engine</span
-              ><span class="meta-val">Spark-TTS</span>
+              <span class="meta-label">Engine</span>
+              <span class="meta-val">Spark-TTS</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">FX Status</span
-              ><span id="meta-fx-status" class="meta-val red">Pending</span>
+              <span class="meta-label">FX Status</span>
+              <span id="meta-fx-status" class="meta-val red">Pending</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Duration</span
-              ><span id="meta-duration" class="meta-val">—</span>
+              <span class="meta-label">Duration</span>
+              <span id="meta-duration" class="meta-val">—</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Project</span
-              ><span class="meta-val blue">The Runner</span>
+              <span class="meta-label">Project</span>
+              <span class="meta-val blue">The Runner</span>
             </div>
           </div>
         </div>
-        <div id="waveform-area" class="waveform-area" style="flex-shrink: 0">
+        <div id="waveform-area" class="waveform-area">
           <span
             style="
               font-size: 12px;
@@ -384,28 +441,56 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
             "
             >Waveform</span
           >
+          <!-- Waveform bars -->
+          
         </div>
       </div>
 
-      <!-- ROW 4b — TIMELINE workspace -->
-      <div
-        id="ws-timeline"
-        class="workspace-panel"
-        style="grid-column: 1/-1; grid-row: 4; display: none"
-      >
-        <div class="timeline-header" style="flex-shrink: 0">
+      <!-- TIMELINE SPANNING FULL WIDTH -->
+      <div id="timeline-workspace" class="timeline-row" style="grid-column: 1 / -1">
+        <div class="timeline-header">
           <span class="panel-title" style="font-size: 15px; letter-spacing: 5px"
             >Shot History / Timeline</span
           >
           <div style="display: flex; gap: 8px; margin-left: 16px">
-            <button id="btn-clear" class="ws-ctrl-btn">Clear</button>
-            <button id="btn-save-timeline-order" class="ws-ctrl-btn gold">
+            <button
+              id="btn-clear"
+              style="
+                background: transparent;
+                border: 1px solid var(--border);
+                color: var(--text-muted);
+                font-family: Rajdhani, sans-serif;
+                font-size: 12px;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                padding: 3px 10px;
+                border-radius: 2px;
+                cursor: pointer;
+              "
+            >
+              Clear
+            </button>
+            <button
+              id="btn-save-timeline-order"
+              style="
+                background: transparent;
+                border: 1px solid var(--border);
+                color: var(--gold);
+                font-family: Rajdhani, sans-serif;
+                font-size: 12px;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                padding: 3px 10px;
+                border-radius: 2px;
+                cursor: pointer;
+              "
+            >
               Save Order
             </button>
           </div>
           <span id="tl-time" class="tl-time">00:00:00 / 00:00:00</span>
         </div>
-        <div class="timeline-tracks" style="flex-shrink: 0">
+        <div class="timeline-tracks">
           <div class="track">
             <span class="track-label">Voice</span>
             <div id="track-voice-body" class="track-body">
@@ -428,137 +513,100 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
             </div>
           </div>
         </div>
-        <!-- Shot cards — scrollable -->
         <div
           id="timeline-shots"
           style="
-            flex: 1 1 0;
-            min-height: 0;
-            overflow-y: scroll;
-            padding: 12px 20px 32px;
+            max-height: 70vh; overflow-y: auto; padding-right: 6px;
+            flex: 0 0 auto;
+            padding: 10px 20px 6px 20px;
+            margin-top: 4px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 6px;
             border-top: 1px solid rgba(201, 168, 76, 0.08);
           "
         ></div>
+      
       </div>
 
-      <!-- ROW 4c — RENDER QUEUE workspace -->
-      <div
-        id="ws-queue"
-        class="workspace-panel"
-        style="grid-column: 1/-1; grid-row: 4; display: none"
-      >
-        <div class="timeline-header" style="flex-shrink: 0">
-          <span class="panel-title" style="font-size: 15px; letter-spacing: 5px"
-            >Render Queue</span
-          >
-          <div style="display: flex; gap: 8px; margin-left: 16px">
-            <button id="btn-clear-render-queue" class="ws-ctrl-btn">
+      <!-- RENDER QUEUE -->
+      <div id="render-queue-workspace" class="timeline-row" style="grid-column: 1 / -1; margin-top:12px;">
+        <div class="timeline-header">
+          <span class="panel-title" style="font-size:15px;letter-spacing:5px;">
+            Render Queue
+          </span>
+
+          <div style="display:flex;gap:8px;margin-left:16px;">
+            <button
+              id="btn-clear-render-queue"
+              style="
+                background:transparent;
+                border:1px solid var(--border);
+                color:var(--text-muted);
+                font-family:Rajdhani,sans-serif;
+                font-size:12px;
+                letter-spacing:2px;
+                text-transform:uppercase;
+                padding:3px 10px;
+                border-radius:2px;
+                cursor:pointer;
+              "
+            >
               Clear Queue
             </button>
           </div>
+
           <span id="rq-count" class="tl-time">0 Jobs</span>
         </div>
-        <!-- Job cards — scrollable -->
+
         <div
           id="render-queue-panel"
           style="
-            flex: 1 1 0;
-            min-height: 0;
-            overflow-y: scroll;
-            padding: 16px 20px 32px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            padding:14px 20px;
+            display:flex;
+            flex-direction:column;
+            gap:8px;
           "
         ></div>
       </div>
+</div>
     </div>
-    <!-- /.main-grid -->
 
     <div class="bottom-bar"></div>
 
-    <!-- drag-drop styles -->
-    <style>
-      .ws-ctrl-btn {
-        background: transparent;
-        border: 1px solid var(--border);
-        color: var(--text-muted);
-        font-family: Rajdhani, sans-serif;
-        font-size: 12px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        padding: 3px 10px;
-        border-radius: 2px;
-        cursor: pointer;
-        clip-path: none;
-        box-shadow: none;
-        transform: none;
-      }
-      .ws-ctrl-btn.gold {
-        color: var(--gold);
-        border-color: rgba(201, 168, 76, 0.4);
-      }
-      .ws-ctrl-btn:hover {
-        border-color: var(--gold);
-        color: var(--gold);
-      }
-
-      .tl-shot-card.dragging {
-        opacity: 0.55 !important;
-        transform: scale(0.985) !important;
-        box-shadow: 0 0 18px rgba(201, 168, 76, 0.45) !important;
-        border: 1px solid var(--gold) !important;
-      }
-      .tl-shot-card.drop-target {
-        border: 1px dashed var(--gold) !important;
-        box-shadow: inset 0 0 18px rgba(201, 168, 76, 0.25) !important;
-        position: relative;
-      }
-      .tl-shot-card.drop-target::before {
-        content: "DROP HERE";
-        position: absolute;
-        top: -10px;
-        left: 14px;
-        background: var(--surface);
-        color: var(--gold);
-        font-size: 10px;
-        letter-spacing: 2px;
-        padding: 1px 6px;
-      }
-    </style>
-
-    <script src="app.js"></script>
-    <script src="project-battery.js"></script>
-    <script src="shot-builder.js"></script>
-    <script src="voice-lab.js"></script>
-    <script src="render-queue.js"></script>
-    <script src="timeline.js"></script>
-
-    <!-- Workspace switcher -->
-    <script>
-      (function () {
-        const panels = {
-          preview: document.getElementById("ws-preview"),
-          timeline: document.getElementById("ws-timeline"),
-          queue: document.getElementById("ws-queue"),
-        };
-        function show(key) {
-          Object.entries(panels).forEach(([k, el]) => {
-            el.style.display = k === key ? "flex" : "none";
-          });
-          document.querySelectorAll(".workspace-tab-btn").forEach((btn) => {
-            btn.classList.toggle("active", btn.dataset.ws === key);
-          });
-        }
-        document.querySelectorAll(".workspace-tab-btn").forEach((btn) => {
-          btn.addEventListener("click", () => show(btn.dataset.ws));
-        });
-        // expose so render-queue can switch to its tab after loading
-        window.showWorkspace = show;
-      })();
-    </script>
-  </body>
+    
+  
+</body>
 </html>
+<style>
+  .tl-shot-card.dragging {
+    opacity: 0.55 !important;
+    transform: scale(0.985);
+    box-shadow: 0 0 18px rgba(201, 168, 76, 0.45);
+    border: 1px solid var(--gold) !important;
+  }
+
+  .tl-shot-card.drop-target {
+    border: 1px dashed var(--gold) !important;
+    box-shadow: inset 0 0 18px rgba(201, 168, 76, 0.25);
+    position: relative;
+  }
+
+  .tl-shot-card.drop-target::before {
+    content: "DROP HERE";
+    position: absolute;
+    top: -10px;
+    left: 14px;
+    background: var(--bg);
+    color: var(--gold);
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 1px 6px;
+  }
+</style>
+<script src="app.js"></script>
+<script src="project-battery.js"></script>
+<script src="shot-builder.js"></script>
+<script src="voice-lab.js"></script>
+<script src="timeline.js"></script>
+<script src="render-queue.js"></script>

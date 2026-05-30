@@ -101,15 +101,13 @@
           return;
         }
 
-        renumberShots();
-
         const recent = shots.slice(0, 4);
         const segW = Math.floor(90 / recent.length);
 
         shotTrackBody.innerHTML = recent
           .map(
             (s, i) =>
-              `<div class="track-clip shot" style="left:${2 + i * segW}%;width:${segW - 1}%;">${s.shot_number}</div>`,
+              `<div class="track-clip shot" style="left:${2 + i * segW}%;width:${segW - 1}%;">${s.shot_number || s.id || s.sceneNum || 'UNKNOWN'}</div>`,
           )
           .join("");
 
@@ -126,7 +124,7 @@
         ondrop="handleDrop(event, '${s.id}')"
         onclick="loadSceneIntoEditor(shots.find(x => x.id === '${s.id}'))">
         <div class="tl-shot-top">
-          <span class="tl-scene-badge" style="cursor:grab;">☰ ${s.shot_number}</span>
+          <span class="tl-scene-badge" style="cursor:grab;">☰ ${s.shot_number || s.id || s.sceneNum || 'UNKNOWN'}</span>
           <span class="tl-char-tag">${s.character || "Unknown"}</span>
           <span class="tl-preset-tag">${s.preset || s.voice_preset || "No FX"}</span>
           <span class="tl-date">${s.createdAt || ""}</span>
@@ -145,6 +143,8 @@
     `,
           )
           .join("");
+
+        timelineShots.scrollTop = timelineShots.scrollHeight;
       }
 
       document

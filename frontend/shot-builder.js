@@ -17,6 +17,8 @@ function loadSceneIntoEditor(scene) {
         rawUrl = scene.rawUrl || null;
         fxUrl = scene.fxUrl || null;
 
+        setActiveSceneForBattery(scene);
+
         setStatus(`Loaded ${scene.id} for editing.`);
       }
 

@@ -244,3 +244,26 @@
   display:block !important;
 }
 
+
+.rv-actions{
+  display:flex;
+  gap:10px;
+  margin-top:16px;
+}
+
+.rv-btn{
+  border:1px solid rgba(201,168,76,.45);
+  background:#080604;
+  color:#C9A84C;
+  padding:9px 12px;
+  font-size:11px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  text-decoration:none;
+  cursor:pointer;
+}
+
+.rv-btn:hover{
+  background:rgba(201,168,76,.14);
+  color:#f9f295;
+}

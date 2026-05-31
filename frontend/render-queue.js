@@ -101,7 +101,7 @@ function renderRenderQueue() {
           <div class="rq-job-sub">${sub}</div>
           ${shot.dialogue ? `<div class="tl-dialogue" style="margin-top:8px;">"${String(shot.dialogue).slice(0, 80)}${String(shot.dialogue).length > 80 ? "…" : ""}"</div>` : ""}
           ${item.renderOutputUrl ? `
-            <img class="rq-thumb" src="${BASE}${item.renderOutputUrl}" alt="Generated keyframe" onclick="window.location.href='render-viewer.html?id=${item.renderId || item.id}'">
+            <img class="rq-thumb" src="${BASE}${item.renderOutputUrl}" alt="Generated keyframe" onclick="window.location.href='render-viewer.html?id=${item.id}'">
             <div class="rq-prompt">
               <strong>Prompt Used:</strong>
               ${item.promptUsed || "Not recorded"}

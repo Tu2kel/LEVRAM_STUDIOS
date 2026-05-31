@@ -74,11 +74,40 @@
                 <strong>Prompt Used</strong>
                 <p>${item.promptUsed || "Not recorded"}</p>
               </div>
+
+              <div class="rv-actions">
+                ${
+                  item.renderOutputUrl
+                    ? `<a class="rv-btn" href="${BASE}${item.renderOutputUrl}" download>Download</a>`
+                    : ""
+                }
+                <button class="rv-btn" onclick="regenerateViewerRender('${item.id}')">Regenerate</button>
+              </div>
             </div>
           </div>
         `;
       } catch (err) {
         root.innerHTML = `<p>Viewer error: ${err.message}</p>`;
+      }
+    }
+
+
+    async function regenerateViewerRender(itemId){
+      try {
+        const res = await fetch(`${BASE}/render-queue/${itemId}/keyframe`, {
+          method: "POST",
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+          alert(data.error || "Regenerate failed");
+          return;
+        }
+
+        window.location.href = `render-viewer.html?id=${data.item?.renderId || itemId}`;
+      } catch (err) {
+        alert("Regenerate error: " + err.message);
       }
     }
 

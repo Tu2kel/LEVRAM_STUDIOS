@@ -158,9 +158,14 @@
       "dialogue": null,
       "voicePath": null,
       "renderStyle": "cinematic",
-      "status": "rendering",
+      "status": "complete",
       "createdAt": "2026-05-29 22:43:04",
-      "updatedAt": "2026-05-29 22:44:37"
+      "updatedAt": "2026-05-31 09:37:13",
+      "renderId": "03ed9f9a-20de-4358-a938-5fae2f5a82c6",
+      "renderOutputPath": "output/renders/images/SC-001_20260531_093713_03ed9f9a.png",
+      "renderOutputUrl": "/output/renders/images/SC-001_20260531_093713_03ed9f9a.png",
+      "promptUsed": "+ Custom, Kelz slowly emerges from an endless black void, fragments of dust and ash floating around him as if gravity no longer exists. His eyes remain locked forward with exhausted rage while distant red light pulses through the darkness behind him. The camera drifts slowly inward as if the void itself is breathing., Cinematic dark fantasy scene, Kelz floating through infinite darkness, ash particles suspended in the air, deep black environment with faint crimson volumetric lighting, emotional atmosphere, exhausted but dangerous expression, subtle camera drift, ultra detailed face, dramatic shadows, high contrast lighting, atmospheric haze, unreal engine cinematic look, shallow depth of field, moody composition, dark superhero multiverse aesthetic, realistic skin texture, slow tension, 4k film still, cinematic",
+      "comfyPromptId": "575d031e-1a4b-4131-ad45-de66f8c93086"
     },
     {
       "id": "d654d31e-5d13-4442-bb32-a788601cf2b1",
@@ -226,36 +231,6 @@
       "status": "rendering",
       "createdAt": "2026-05-29 18:35:22",
       "updatedAt": "2026-05-30 22:45:00"
-    },
-    {
-      "id": "e5c1ed73-11ba-41a4-9f4c-c393b11c9be5",
-      "shot": {
-        "id": "SC-006",
-        "sceneNum": "006",
-        "character": "Female",
-        "dialogue": "",
-        "shotDesc": "I don't know yet, the AI will do it",
-        "shotPrompt": "Japan flower garden red scenery",
-        "project": "The Other Side",
-        "cameraMood": "Intimate / Invasive",
-        "palette": "Cold Blue-White (Runner)",
-        "engine": "Imperio AI",
-        "preset": "deep",
-        "rawUrl": "http://localhost:8000/output/tts/Female_a8b76e20-0977-47ad-add3-a7f705779875.mp3",
-        "fxUrl": "http://localhost:8000/output/voice_fx/deep_1309813a-cc8d-45ec-9cf2-c3b3ee25cae9.mp3",
-        "createdAt": "20260529_204255",
-        "shot_number": "SC-004"
-      },
-      "shotId": "SC-006",
-      "shot_number": "SC-004",
-      "project": "The Other Side",
-      "character": "Female",
-      "dialogue": null,
-      "voicePath": null,
-      "renderStyle": "cinematic",
-      "status": "rendering",
-      "createdAt": "2026-05-29 16:21:24",
-      "updatedAt": "2026-05-29 16:28:17"
     },
     {
       "id": "b6d9d1c6-e0bc-4fa4-8b68-a17ff34bdac4",

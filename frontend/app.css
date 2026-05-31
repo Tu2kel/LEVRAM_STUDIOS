@@ -1513,3 +1513,17 @@ html[data-theme="ivory"] .tl-prompt {
   letter-spacing: 2px;
   padding: 1px 6px;
 }
+
+/* LEVRAM full-page scroll, keep internal panels scrollable */
+html,
+body {
+  min-height: 100%;
+  overflow-y: auto !important;
+}
+
+.main-grid {
+  min-height: 100vh !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+

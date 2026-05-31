@@ -108,48 +108,13 @@ def generate_comfy_keyframe(queue_item: dict):
 
     shot = queue_item.get("shot") or {}
 
-    character = (
-        shot.get("character")
-        or queue_item.get("character")
-        or "Unknown Character"
-    )
-
-    shot_desc = (
-        shot.get("shotDesc")
-        or shot.get("description")
-        or ""
-    )
-
-    shot_prompt = (
+    prompt = (
         shot.get("shotPrompt")
         or shot.get("prompt")
-        or ""
-    )
-
-    render_style = (
-        shot.get("renderStyle")
-        or queue_item.get("renderStyle")
-        or "cinematic photorealistic"
-    )
-
-    dialogue = queue_item.get("dialogue") or ""
-
-    prompt_parts = [
-        character,
-        shot_desc,
-        shot_prompt,
-        render_style,
-    ]
-
-    if dialogue:
-        prompt_parts.append(
-            f'dialogue context: "{dialogue}"'
-        )
-
-    prompt = ", ".join(
-        p.strip()
-        for p in prompt_parts
-        if p and p.strip()
+        or shot.get("shotDesc")
+        or shot.get("description")
+        or queue_item.get("dialogue")
+        or "cinematic portrait, dramatic lighting"
     )
 
     workflow = _build_workflow(prompt)
@@ -216,6 +181,5 @@ def generate_comfy_keyframe(queue_item: dict):
         "outputPath": str(output_path),
         "outputUrl": "/" + str(output_path),
         "prompt": prompt,
-        "promptUsed": prompt,
         "comfyPromptId": prompt_id,
     }

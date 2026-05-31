@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEVRAM Render Queue</title>
+  <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="render-queue.css" />
+</head>
+<body>
+  <div class="rq-page">
+    <div class="rq-page-header">
+      <button class="rq-back" onclick="window.location.href='index.html'">← Return to LEVRAM</button>
+      <div>
+        <div class="rq-page-title">🎬 Full Render Queue</div>
+        <div class="rq-page-subtitle">Render management, prompt debugging, and output review.</div>
+      </div>
+      <span id="rq-count" class="rq-page-count">Loading...</span>
+    </div>
+
+    <div id="render-queue-panel" class="rq-page-panel"></div>
+  </div>
+
+  <script>
+    const BASE = "http://127.0.0.1:8000";
+    let renderQueue = [];
+    window.renderQueue = renderQueue;
+    function setStatus(){}
+  </script>
+
+  <script src="render-queue.js"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      if (typeof loadRenderQueue === "function") loadRenderQueue();
+    });
+  </script>
+</body>
+</html>

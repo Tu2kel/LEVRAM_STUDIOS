@@ -176,6 +176,8 @@ def generate_keyframe(item_id: str):
             item["renderId"] = render_result["renderId"]
             item["renderOutputPath"] = render_result["outputPath"]
             item["renderOutputUrl"] = render_result["outputUrl"]
+            item["promptUsed"] = render_result.get("promptUsed") or render_result.get("prompt") or ""
+            item["comfyPromptId"] = render_result.get("comfyPromptId") or ""
             item["updatedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             save_queue_data(data)

@@ -277,8 +277,8 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
         <button class="workspace-tab-btn" data-ws="timeline">
           ☰ &nbsp;Timeline
         </button>
-        <button class="workspace-tab-btn" data-ws="queue">
-          🎬 &nbsp;Render Queue
+        <button class="workspace-tab-btn" type="button" onclick="window.open('render-queue.html','_blank')">
+          🎬 &nbsp;Render Queue ↗
         </button>
       </div>
 
@@ -455,7 +455,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
             >Render Queue</span
           >
           <div style="display: flex; gap: 8px; margin-left: 16px">
-            <button id="btn-clear-render-queue" class="ws-ctrl-btn">
+          <button id="btn-clear-render-queue" class="ws-ctrl-btn">
               Clear Queue
             </button>
           </div>

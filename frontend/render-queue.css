@@ -1,10 +1,246 @@
-
 .rq-thumb {
   width: 180px;
-  max-height: 120px;
   object-fit: cover;
   display: block;
-  margin-top: 10px;
+  margin-top: 8px;
+  margin-bottom: 4px;
   border-radius: 10px;
   border: 1px solid rgba(201, 168, 76, 0.35);
 }
+
+.rq-prompt {
+  margin-top: 0;
+  padding: 4px 8px 6px;
+  border: 1px solid rgba(201,168,76,.22);
+  border-radius: 8px;
+  background: rgba(42,0,10,.10);
+  color: #3d3320;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.rq-prompt strong {
+  display: inline;
+  margin: 0 6px 0 0;
+  color: #2a2112;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+.rq-page{
+  padding:22px;
+  min-height:100vh;
+}
+
+.rq-page-header{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  padding:14px 16px;
+  border:1px solid rgba(201,168,76,.22);
+  background:rgba(0,0,0,.75);
+  margin-bottom:14px;
+}
+
+.rq-back,
+.rq-toolbar span,
+.rq-page-count{
+  border:1px solid rgba(201,168,76,.35);
+  background:#080604;
+  color:#C9A84C;
+  padding:8px 12px;
+  font-size:11px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+
+.rq-page-title{
+  color:#C9A84C;
+  font-size:16px;
+  letter-spacing:4px;
+  text-transform:uppercase;
+}
+
+.rq-page-subtitle{
+  color:#8d7a55;
+  font-size:11px;
+  margin-top:4px;
+}
+
+.rq-page-count{
+  margin-left:auto;
+}
+
+.rq-toolbar{
+  display:flex;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.rq-page-panel{
+  display:grid;
+  gap:12px;
+}
+
+.rq-job-card{
+  display:grid !important;
+  grid-template-columns: 260px 1fr 220px;
+  gap:16px;
+  align-items:start;
+}
+
+.rq-thumb{
+  width:240px;
+  height:150px;
+  max-height:none;
+}
+
+.rq-prompt{
+  margin-top:8px;
+}
+
+.render-actions{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.render-actions button{
+  width:100%;
+}
+
+
+.rv-root{
+  margin-top:16px;
+}
+
+.rv-layout{
+  display:grid;
+  grid-template-columns: minmax(420px, 1fr) 420px;
+  gap:18px;
+  align-items:start;
+}
+
+.rv-image-wrap{
+  border:1px solid rgba(201,168,76,.25);
+  background:rgba(0,0,0,.78);
+  padding:14px;
+  border-radius:14px;
+}
+
+.rv-image{
+  width:100%;
+  max-height:78vh;
+  object-fit:contain;
+  display:block;
+  border-radius:10px;
+}
+
+.rv-meta{
+  border:1px solid rgba(201,168,76,.25);
+  background:rgba(0,0,0,.72);
+  padding:16px;
+  border-radius:14px;
+  color:#C9A84C;
+}
+
+.rv-meta-title{
+  font-size:18px;
+  letter-spacing:4px;
+  text-transform:uppercase;
+  margin-bottom:14px;
+  color:#f9f295;
+}
+
+.rv-row{
+  font-size:13px;
+  margin-bottom:10px;
+  color:#c9a84c;
+}
+
+.rv-row strong{
+  color:#f9f295;
+}
+
+.rv-prompt{
+  margin-top:16px;
+  padding:12px;
+  border:1px solid rgba(201,168,76,.25);
+  border-radius:10px;
+  background:rgba(42,0,10,.25);
+}
+
+.rv-prompt strong{
+  display:block;
+  margin-bottom:8px;
+  color:#f9f295;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  font-size:12px;
+}
+
+.rv-prompt p{
+  color:#e8d7a0;
+  font-size:14px;
+  line-height:1.6;
+  margin:0;
+}
+
+.rv-missing{
+  color:#C9A84C;
+  padding:40px;
+  text-align:center;
+}
+
+
+/* Full queue page compact cards */
+.rq-page-panel .rq-job-card{
+  display:grid !important;
+  grid-template-columns: 280px 1fr 120px !important;
+  gap:18px !important;
+  align-items:start !important;
+  min-height:0 !important;
+  padding:14px 16px !important;
+}
+
+.rq-page-panel .rq-job-card > div:first-child{
+  width:280px !important;
+}
+
+.rq-page-panel .rq-thumb{
+  width:240px !important;
+  height:150px !important;
+  max-height:none !important;
+  object-fit:cover !important;
+  cursor:pointer !important;
+}
+
+.rq-page-panel .rq-prompt{
+  width:240px !important;
+  margin-top:8px !important;
+  padding:8px !important;
+  min-height:0 !important;
+  max-height:none !important;
+  overflow:visible !important;
+}
+
+.rq-page-panel .rq-job-right{
+  width:120px !important;
+  justify-self:end !important;
+}
+
+.rq-page-panel .render-actions{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:8px !important;
+}
+
+.rq-page-panel .render-actions button{
+  width:100% !important;
+  display:block !important;
+}
+

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEVRAM Render Viewer</title>
+  <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="render-queue.css" />
+</head>
+<body>
+  <div class="rq-page">
+    <div class="rq-page-header">
+      <button class="rq-back" onclick="window.location.href='render-queue.html'">← Back to Queue</button>
+      <div>
+        <div class="rq-page-title">🖼 Render Viewer</div>
+        <div class="rq-page-subtitle">Full output review, prompt debugging, and render metadata.</div>
+      </div>
+    </div>
+
+    <div id="render-viewer-root" class="rv-root">
+      Loading render...
+    </div>
+  </div>
+
+  <script>
+    const BASE = "http://127.0.0.1:8000";
+
+    async function loadRenderViewer(){
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("id");
+
+      const root = document.getElementById("render-viewer-root");
+
+      if (!id) {
+        root.innerHTML = "<p>No render id provided.</p>";
+        return;
+      }
+
+      try {
+        const res = await fetch(`${BASE}/render-queue`);
+        const data = await res.json();
+        const queue = data.queue || data.jobs || data.items || [];
+
+        const item = queue.find(q =>
+          q.id === id ||
+          q.renderId === id ||
+          q.comfyPromptId === id
+        );
+
+        if (!item) {
+          root.innerHTML = "<p>Render not found.</p>";
+          return;
+        }
+
+        root.innerHTML = `
+          <div class="rv-layout">
+            <div class="rv-image-wrap">
+              ${
+                item.renderOutputUrl
+                  ? `<img class="rv-image" src="${BASE}${item.renderOutputUrl}" alt="Render output">`
+                  : `<div class="rv-missing">No image found</div>`
+              }
+            </div>
+
+            <div class="rv-meta">
+              <div class="rv-meta-title">${item.shot?.id || item.shotId || "Render"}</div>
+
+              <div class="rv-row"><strong>Status:</strong> ${item.status || "unknown"}</div>
+              <div class="rv-row"><strong>Render ID:</strong> ${item.renderId || "N/A"}</div>
+              <div class="rv-row"><strong>Comfy Prompt ID:</strong> ${item.comfyPromptId || "N/A"}</div>
+              <div class="rv-row"><strong>Created:</strong> ${item.createdAt || "N/A"}</div>
+              <div class="rv-row"><strong>Updated:</strong> ${item.updatedAt || "N/A"}</div>
+
+              <div class="rv-prompt">
+                <strong>Prompt Used</strong>
+                <p>${item.promptUsed || "Not recorded"}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        root.innerHTML = `<p>Viewer error: ${err.message}</p>`;
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", loadRenderViewer);
+  </script>
+</body>
+</html>

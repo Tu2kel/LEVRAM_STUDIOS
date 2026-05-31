@@ -188,9 +188,14 @@
       "dialogue": null,
       "voicePath": null,
       "renderStyle": "cinematic",
-      "status": "rendering",
+      "status": "complete",
       "createdAt": "2026-05-29 19:28:05",
-      "updatedAt": "2026-05-29 19:28:11"
+      "updatedAt": "2026-05-30 22:29:12",
+      "renderId": "e1efe8d3-96b7-498f-9c3a-bd9975e40cd7",
+      "renderOutputPath": "output/renders/images/SC-015_20260530_222912_e1efe8d3.png",
+      "renderOutputUrl": "/output/renders/images/SC-015_20260530_222912_e1efe8d3.png",
+      "promptUsed": "Hulk, in -out-in  pulsating - Ground-level civilian POV, A woman alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above \u2014 too fast, too clean. The hero never looked back., cinematic",
+      "comfyPromptId": "135bf86c-5d0b-44e1-b0ea-e8c1ba175b27"
     },
     {
       "id": "3336152c-a11c-4372-9dbd-a7d5239d3a56",
@@ -218,9 +223,9 @@
       "dialogue": null,
       "voicePath": null,
       "renderStyle": "cinematic",
-      "status": "failed",
+      "status": "rendering",
       "createdAt": "2026-05-29 18:35:22",
-      "updatedAt": "2026-05-29 18:36:48"
+      "updatedAt": "2026-05-30 22:45:00"
     },
     {
       "id": "e5c1ed73-11ba-41a4-9f4c-c393b11c9be5",

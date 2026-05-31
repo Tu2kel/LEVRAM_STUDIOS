@@ -100,16 +100,19 @@ function renderRenderQueue() {
           <div class="rq-job-title">${title}${char ? " · " + char : ""}${preset ? " · " + preset : ""}</div>
           <div class="rq-job-sub">${sub}</div>
           ${shot.dialogue ? `<div class="tl-dialogue" style="margin-top:8px;">"${String(shot.dialogue).slice(0, 80)}${String(shot.dialogue).length > 80 ? "…" : ""}"</div>` : ""}
-          ${item.renderOutputUrl ? `<img class="rq-thumb" src="${BASE}${item.renderOutputUrl}" alt="Generated keyframe">` : ""}
+          ${item.renderOutputUrl ? `
+            <img class="rq-thumb" src="${BASE}${item.renderOutputUrl}" alt="Generated keyframe" onclick="window.location.href='render-viewer.html?id=${item.renderId || item.id}'">
+            <div class="rq-prompt">
+              <strong>Prompt Used:</strong>
+              ${item.promptUsed || "Not recorded"}
+            </div>
+          ` : ""}
         </div>
 
         <div class="rq-job-right">
           <div class="render-status-pill render-status-${status}">${status}</div>
           <div class="render-actions">
-            <button onclick="startRenderQueueItem('${item.id}')">Start</button>
-            <button onclick="generateKeyframeForQueueItem('${item.id}')">Generate Keyframe</button>
-            <button onclick="updateRenderStatus('${item.id}','complete')">Complete</button>
-            <button onclick="updateRenderStatus('${item.id}','failed')">Failed</button>
+            <button onclick="generateKeyframeForQueueItem('${item.id}')">Generate</button>
             <button onclick="deleteRenderQueueItem('${item.id}')">Delete</button>
           </div>
         </div>

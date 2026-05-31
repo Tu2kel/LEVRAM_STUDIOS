@@ -1,0 +1,19 @@
+{
+  "project": "The Runner",
+  "scene_number": "SC-019",
+  "shot_type": "Extreme Close-Up",
+  "camera_mood": "Slow / Heavy / Suffocating",
+  "color_palette": "Cold Blue-White (Runner)",
+  "ai_engine": "Imperio AI",
+  "shot_description": "",
+  "shot_prompt": "Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above \u2014 too fast, too clean. The hero never looked back.",
+  "character": "Hulk",
+  "duration": "4s",
+  "voice_character": "Hulk",
+  "voice_preset": "villain",
+  "rawUrl": "http://localhost:8000/output/tts/Hulk_11585315-aa6a-4f9c-b048-b5b9e408996c.mp3",
+  "fxUrl": "http://localhost:8000/output/voice_fx/villain_166f386c-9b57-4760-a554-98dcfff46988.mp3",
+  "id": "SC-019",
+  "saved_at": "20260531_015843",
+  "updated_at": "20260531_015843"
+}

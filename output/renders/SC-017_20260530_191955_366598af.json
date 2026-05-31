@@ -1,0 +1,13 @@
+{
+  "renderId": "366598af-27df-4538-952b-0d50340ce30c",
+  "queueId": "ee92b4a5-73a3-43e3-868a-0af0bd6228da",
+  "shotId": "SC-017",
+  "shotNumber": "SC-017",
+  "project": "The Other Side",
+  "character": "Hulk",
+  "renderStyle": "cinematic",
+  "prompt": "Alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above \u2014 too fast, too clean. The hero never looked back.",
+  "status": "manifest_created",
+  "createdAt": "20260530_191955",
+  "note": "MVP placeholder. Replace this service with ComfyUI/image generation next."
+}

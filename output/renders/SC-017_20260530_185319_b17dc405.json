@@ -1,0 +1,13 @@
+{
+  "renderId": "b17dc405-3920-4d32-90a1-cd012943b40a",
+  "queueId": "3fa38bc6-191c-4d56-8be6-8656c1116d4f",
+  "shotId": "SC-017",
+  "shotNumber": "SC-017",
+  "project": "The Other Side",
+  "character": "Barry",
+  "renderStyle": "cinematic",
+  "prompt": "Alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above \u2014 too fast, too clean. The hero never looked back.",
+  "status": "manifest_created",
+  "createdAt": "20260530_185319",
+  "note": "MVP placeholder. Replace this service with ComfyUI/image generation next."
+}

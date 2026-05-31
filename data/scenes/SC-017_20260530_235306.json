@@ -1,0 +1,19 @@
+{
+  "project": "The Other Side",
+  "scene_number": "SC-017",
+  "shot_type": "Extreme Close-Up",
+  "camera_mood": "Slow / Heavy / Suffocating",
+  "color_palette": "Cold Blue-White (Runner)",
+  "ai_engine": "Imperio AI",
+  "shot_description": "What physically is happening in this scene",
+  "shot_prompt": "Alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above \u2014 too fast, too clean. The hero never looked back.",
+  "character": "Hulk",
+  "duration": "4s",
+  "voice_character": "Hulk",
+  "voice_preset": "monster",
+  "rawUrl": "http://localhost:8000/output/tts/Barry_1137bee0-0e7c-4c8f-8c6b-67732773aeab.mp3",
+  "fxUrl": "http://localhost:8000/output/voice_fx/villain_1adce5a3-e5b1-4afd-999b-dcc1271dc1bd.mp3",
+  "id": "SC-017",
+  "saved_at": "20260530_235306",
+  "updated_at": "20260531_001822"
+}

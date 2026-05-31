@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 import json
 import uuid
+from backend.services.comfy_service import generate_comfy_keyframe
 
 router = APIRouter()
 
@@ -95,6 +96,7 @@ def update_queue_status(item_id: str, payload: StatusPayload):
     data = load_queue_data()
 
     for item in data["queue"]:
+        print("QUEUE ID:", item["id"])
         if item["id"] == item_id:
             item["status"] = payload.status
             item["updatedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -130,6 +132,68 @@ def delete_queue_item(item_id: str):
         "success": True,
         "queue": data["queue"]
     }
+
+
+@router.post("/render-queue/{item_id}/start")
+def start_render(item_id: str):
+    data = load_queue_data()
+
+    for item in data["queue"]:
+        print("QUEUE ID:", item["id"])
+        if item["id"] == item_id:
+            item["status"] = "rendering"
+            item["updatedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            save_queue_data(data)
+
+            return {
+                "success": True,
+                "message": "Render started",
+                "item": item,
+                "queue": data["queue"]
+            }
+
+    return {
+        "success": False,
+        "error": "Queue item not found"
+    }
+
+
+@router.post("/render-queue/{item_id}/keyframe")
+def generate_keyframe(item_id: str):
+    print("\n=== KEYFRAME REQUEST ===")
+    print("REQUESTED ID:", item_id)
+    data = load_queue_data()
+
+    for item in data["queue"]:
+        print("QUEUE ID:", item["id"])
+        if item["id"] == item_id:
+            item["status"] = "rendering"
+            item["updatedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            render_result = generate_comfy_keyframe(item)
+
+            item["status"] = "complete"
+            item["renderId"] = render_result["renderId"]
+            item["renderOutputPath"] = render_result["outputPath"]
+            item["renderOutputUrl"] = render_result["outputUrl"]
+            item["updatedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            save_queue_data(data)
+
+            return {
+                "success": True,
+                "message": "Keyframe image created",
+                "item": item,
+                "render": render_result,
+                "queue": data["queue"]
+            }
+
+    return {
+        "success": False,
+        "error": "Queue item not found"
+    }
+
+
 
 # ─── Legacy compatibility routes ─────────────────────────────
 

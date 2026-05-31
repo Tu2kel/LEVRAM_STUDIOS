@@ -1,0 +1,19 @@
+{
+  "project": "Levram Banner",
+  "scene_number": "SC-018",
+  "shot_type": "Extreme Close-Up",
+  "camera_mood": "Slow / Heavy / Suffocating",
+  "color_palette": "Cold Blue-White (Runner)",
+  "ai_engine": "Imperio AI",
+  "shot_description": "d sidewalk. Emergency sirens, no one answers. Blue-white speed blur in th",
+  "shot_prompt": "Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above \u2014 too fast, too clean. The hero never looked back.",
+  "character": "Hulk",
+  "duration": "4s",
+  "voice_character": "Hulk",
+  "voice_preset": "villain",
+  "rawUrl": "http://localhost:8000/output/tts/Hulk_123d360a-e0fa-472d-8940-25c671f9ac29.mp3",
+  "fxUrl": "http://localhost:8000/output/voice_fx/villain_073fe18f-bb95-4604-a601-d1adce49496b.mp3",
+  "id": "SC-018",
+  "saved_at": "20260531_012215",
+  "updated_at": "20260531_012215"
+}

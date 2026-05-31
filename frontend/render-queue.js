@@ -100,12 +100,14 @@ function renderRenderQueue() {
           <div class="rq-job-title">${title}${char ? " · " + char : ""}${preset ? " · " + preset : ""}</div>
           <div class="rq-job-sub">${sub}</div>
           ${shot.dialogue ? `<div class="tl-dialogue" style="margin-top:8px;">"${String(shot.dialogue).slice(0, 80)}${String(shot.dialogue).length > 80 ? "…" : ""}"</div>` : ""}
+          ${item.renderOutputUrl ? `<img class="rq-thumb" src="${BASE}${item.renderOutputUrl}" alt="Generated keyframe">` : ""}
         </div>
 
         <div class="rq-job-right">
           <div class="render-status-pill render-status-${status}">${status}</div>
           <div class="render-actions">
-            <button onclick="updateRenderStatus('${item.id}','rendering')">Start</button>
+            <button onclick="startRenderQueueItem('${item.id}')">Start</button>
+            <button onclick="generateKeyframeForQueueItem('${item.id}')">Generate Keyframe</button>
             <button onclick="updateRenderStatus('${item.id}','complete')">Complete</button>
             <button onclick="updateRenderStatus('${item.id}','failed')">Failed</button>
             <button onclick="deleteRenderQueueItem('${item.id}')">Delete</button>
@@ -114,6 +116,44 @@ function renderRenderQueue() {
       </div>`;
     })
     .join("");
+}
+
+async function startRenderQueueItem(itemId) {
+  try {
+    const res = await fetch(`${BASE}/render-queue/${itemId}/start`, {
+      method: "POST",
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || "Render start failed");
+      return;
+    }
+
+    loadRenderQueue();
+  } catch (err) {
+    alert("Render start error: " + err.message);
+  }
+}
+
+async function generateKeyframeForQueueItem(itemId) {
+  try {
+    const res = await fetch(`${BASE}/render-queue/${itemId}/keyframe`, {
+      method: "POST",
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || "Keyframe generation failed");
+      return;
+    }
+
+    loadRenderQueue();
+  } catch (err) {
+    alert("Keyframe error: " + err.message);
+  }
 }
 
 async function updateRenderStatus(itemId, status) {
@@ -155,3 +195,9 @@ async function deleteRenderQueueItem(itemId) {
     alert("Delete error: " + err.message);
   }
 }
+
+window.loadRenderQueue = loadRenderQueue;
+window.startRenderQueueItem = startRenderQueueItem;
+window.generateKeyframeForQueueItem = generateKeyframeForQueueItem;
+window.updateRenderStatus = updateRenderStatus;
+window.deleteRenderQueueItem = deleteRenderQueueItem;

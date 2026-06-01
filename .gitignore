@@ -20,3 +20,9 @@ Download
 Shot
 Waveform
 
+
+# Local AI engines / nested repos
+engines/MusicGen/
+engines/RVC/
+engines/Real-ESRGAN/
+engines/Spark-TTS/

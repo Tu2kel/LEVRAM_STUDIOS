@@ -8,6 +8,7 @@ from backend.routes.scenes import router as scenes_router
 from backend.routes.timeline import router as timeline_router
 from backend.routes.render_queue import router as render_queue_router
 from backend.routes.ideas import router as ideas_router
+from backend.routes.ai import router as ai_router
 
 app = FastAPI()
 
@@ -27,3 +28,4 @@ app.include_router(scenes_router)
 app.include_router(timeline_router)
 app.include_router(render_queue_router)
 app.include_router(ideas_router)
+app.include_router(ai_router)

@@ -11,6 +11,7 @@ SCENES_DIR = Path("data/scenes")
 
 
 class ScenePayload(BaseModel):
+    saga: str = ""
     project: str = ""
     scene_number: str = ""
     shot_type: str = ""
@@ -19,6 +20,7 @@ class ScenePayload(BaseModel):
     ai_engine: str = ""
     shot_description: str = ""
     shot_prompt: str = ""
+    negative_prompt: str = ""
     character: str = ""
     duration: str = ""
     voice_character: str = ""
@@ -36,10 +38,13 @@ def save_scene(scene: ScenePayload):
 
     data = scene.model_dump()
     data["id"] = scene_id
+    data["prompt_version"] = "v1_cinematic"
+    data["prompt_score"] = min(100, 40 + len(data.get("shot_prompt", "")) // 8)
     data["saved_at"] = timestamp
     data["updated_at"] = timestamp
 
-    file_path = SCENES_DIR / f"{scene_id}_{timestamp}.json"
+    saga_slug = (scene.saga or scene.project or "default").replace(" ", "_").replace("/", "_")
+    file_path = SCENES_DIR / f"{saga_slug}_{scene_id}_{timestamp}.json"
 
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
@@ -91,6 +96,8 @@ def update_scene(scene_id: str, scene: ScenePayload):
 
     data = scene.model_dump()
     data["id"] = scene_id
+    data["prompt_version"] = "v1_cinematic"
+    data["prompt_score"] = min(100, 40 + len(data.get("shot_prompt", "")) // 8)
     data["saved_at"] = existing.get("saved_at")
     data["updated_at"] = timestamp
 

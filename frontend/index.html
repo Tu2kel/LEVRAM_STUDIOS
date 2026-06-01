@@ -55,10 +55,8 @@
             <textarea
               id="script-input"
               class="script-input"
-              placeholder="They left me for dead. Every god abandons their creation eventually."
-            >
-They left me for dead.</textarea
-            >
+              placeholder="Enter dialogue or leave blank for silent shot..."
+            ></textarea>
           </div>
           <div class="field-group">
             <div class="field-label">Character</div>
@@ -179,21 +177,44 @@ They left me for dead.</textarea
         </div>
         <div class="shot-builder">
           <div class="shot-grid">
-            <div class="shot-field">
-              <div class="field-label">Project</div>
-              <select id="shot-project">
-                <option>The Runner</option>
-                <option>The Other Side</option>
-                <option>Levram Banner</option>
-              </select>
+            <div class="shot-field" style="grid-column: 1/-1">
+              <div class="field-label">AI Shot Idea</div>
+              <textarea
+                id="ai-shot-idea"
+                placeholder="Give LEVRAM a rough idea..."
+                style="height: 54px; resize: none"
+              ></textarea>
             </div>
+
+            <div class="shot-field" style="grid-column: 1/-1">
+              <div class="field-label">Director Notes</div>
+              <textarea
+                id="ai-override-notes"
+                placeholder="Director notes: make camera closer, add rain, remove city, make darker..."
+                style="height: 54px; resize: none"
+              ></textarea>
+            </div>
+
+            <div class="shot-field">
+              <div class="field-label">Saga / Universe</div>
+              <select id="shot-project">
+                <option>Kelz Saga</option>
+                <option>Hulk Saga</option>
+                <option>Flash Saga</option>
+                <option>Batman Saga</option>
+                <option>Alpha Centurium</option>
+                <option>Hero Fallout</option>
+                <option>Custom Saga</option>
+              </select>            </div>
             <div class="shot-field">
               <div class="field-label">Scene #</div>
-              <input id="shot-scene" type="text" placeholder="SC-004" />
+              <input id="shot-scene" type="text" placeholder="020" />
             </div>
             <div class="shot-field">
               <div class="field-label">Shot Type</div>
               <select id="shot-type">
+                <option selected>AI Suggested</option>
+                <option>Manual Override</option>
                 <option>Extreme Close-Up</option>
                 <option>Close-Up</option>
                 <option>Medium Shot</option>
@@ -201,21 +222,23 @@ They left me for dead.</textarea
                 <option>Bird's Eye</option>
                 <option>Ground Level</option>
                 <option>Tracking Shot</option>
-              </select>
-            </div>
+              </select>            </div>
             <div class="shot-field">
               <div class="field-label">Camera Mood</div>
               <select id="shot-camera">
+                <option selected>AI Suggested</option>
+                <option>Manual Override</option>
                 <option>Slow / Heavy / Suffocating</option>
                 <option>Violently Disorienting</option>
                 <option>Dreamlike / Still / Vast</option>
                 <option>Intimate / Invasive</option>
                 <option>Civilian POV</option>
-              </select>
-            </div>
+              </select>            </div>
             <div class="shot-field">
               <div class="field-label">Color Palette</div>
               <select id="shot-palette">
+                <option selected>AI Suggested</option>
+                <option>Manual Override</option>
                 <option>Cold Blue-White (Runner)</option>
                 <option>Amber Dying to Ash (Other Side)</option>
                 <option>Bio-Green + Supernova Red (Banner)</option>
@@ -242,17 +265,17 @@ They left me for dead.</textarea
               <textarea
                 id="shot-prompt-input"
                 placeholder="Describe the shot — atmosphere, subject, lighting, emotion."
-              >
-Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergency sirens, no one answers. Blue-white speed blur in the sky above — too fast, too clean. The hero never looked back.</textarea
+              ></textarea
               >
             </div>
             <div class="shot-field" style="grid-column: 1/3">
-              <div class="field-label">Character</div>
+              <div class="field-label">Visual Character</div>
               <input
                 id="shot-char-override"
                 type="text"
-                placeholder="Wally / Barry / Hulk / Original..."
+                placeholder="Who is visible? Leave blank to use Voice Lab character..."
               />
+              <div class="field-hint">Voice Lab controls who speaks. Visual Character controls who appears on screen.</div>
             </div>
             <div class="shot-field">
               <div class="field-label">Duration</div>
@@ -263,6 +286,18 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
               </select>
             </div>
           </div>
+          <button id="btn-ai-build-shot" class="build-shot-btn">
+            AI Build Shot
+          </button>
+
+          <button id="btn-ai-revise-shot" class="build-shot-btn">
+            AI Revise Shot
+          </button>
+
+          <button id="btn-generate-prompt" class="build-shot-btn">
+            Generate Prompt
+          </button>
+
           <button id="btn-save-shot" class="build-shot-btn">
             Save Shot Card
           </button>
@@ -536,6 +571,7 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
     <script src="voice-lab.js"></script>
     <script src="render-queue.js"></script>
     <script src="timeline.js"></script>
+    <script src="preview-drawer.js"></script>
 
     <!-- Workspace switcher -->
     <script>
@@ -545,19 +581,47 @@ Ground-level civilian POV. Rubble. A child alone on a cracked sidewalk. Emergenc
           timeline: document.getElementById("ws-timeline"),
           queue: document.getElementById("ws-queue"),
         };
-        function show(key) {
-          Object.entries(panels).forEach(([k, el]) => {
-            el.style.display = k === key ? "flex" : "none";
+
+        let activeWorkspace = null;
+
+        function hideAll() {
+          Object.values(panels).forEach((el) => {
+            if (el) el.style.display = "none";
           });
+
+          document.querySelectorAll(".workspace-tab-btn").forEach((btn) => {
+            btn.classList.remove("active");
+          });
+
+          activeWorkspace = null;
+        }
+
+        function show(key) {
+          if (activeWorkspace === key) {
+            hideAll();
+            return;
+          }
+
+          Object.entries(panels).forEach(([k, el]) => {
+            if (el) el.style.display = k === key ? "flex" : "none";
+          });
+
           document.querySelectorAll(".workspace-tab-btn").forEach((btn) => {
             btn.classList.toggle("active", btn.dataset.ws === key);
           });
+
+          activeWorkspace = key;
         }
+
         document.querySelectorAll(".workspace-tab-btn").forEach((btn) => {
+          if (!btn.dataset.ws) return;
           btn.addEventListener("click", () => show(btn.dataset.ws));
         });
-        // expose so render-queue can switch to its tab after loading
+
+        hideAll();
+
         window.showWorkspace = show;
+        window.hideWorkspace = hideAll;
       })();
     </script>
   </body>

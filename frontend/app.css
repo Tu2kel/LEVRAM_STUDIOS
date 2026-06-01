@@ -1527,3 +1527,103 @@ body {
   overflow: visible !important;
 }
 
+
+/* Preview Drawer — keeps Shot Builder visible while preview is open */
+#ws-preview {
+  position: fixed !important;
+  top: 0;
+  right: 0;
+  width: 52vw;
+  max-width: 980px;
+  min-width: 720px;
+  height: 100vh;
+  z-index: 9999;
+  display: flex !important;
+  flex-direction: column;
+  transform: translateX(105%);
+  transition: transform 0.28s ease;
+  box-shadow: -18px 0 40px rgba(0, 0, 0, 0.38);
+  border-left: 2px solid rgba(201, 168, 76, 0.45);
+}
+
+body.preview-drawer-open #ws-preview {
+  transform: translateX(0);
+}
+
+.preview-drawer-close {
+  margin-left: 10px;
+  border: 1px solid rgba(201, 168, 76, 0.45);
+  background: rgba(42, 0, 10, 0.88);
+  color: #C9A84C;
+  font-family: Rajdhani, sans-serif;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+#ws-preview .preview-inner {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#ws-preview .preview-main {
+  min-height: 55vh;
+}
+
+@media (max-width: 1200px) {
+  #ws-preview {
+    width: 65vw;
+    min-width: 560px;
+  }
+}
+
+/* Move workspace tabs to footer and stop empty workspace row from eating screen */
+.workspace-tabs-bar {
+  position: fixed !important;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42px;
+  z-index: 10000;
+  display: flex !important;
+  background: #050505;
+  border-top: 1px solid rgba(201, 168, 76, 0.45);
+  border-bottom: none !important;
+}
+
+/* remove the big blank row under shot builder */
+#ws-preview,
+#ws-timeline,
+#ws-queue {
+  grid-row: auto !important;
+}
+
+/* preview is drawer only, never page space */
+#ws-preview {
+  position: fixed !important;
+}
+
+/* timeline should not reserve page space unless active */
+#ws-timeline,
+#ws-queue {
+  position: fixed !important;
+  left: 0;
+  right: 0;
+  bottom: 42px;
+  height: 42vh;
+  z-index: 9998;
+  background: var(--panel-bg, #0b0b0b);
+  border-top: 1px solid rgba(201, 168, 76, 0.35);
+  box-shadow: 0 -12px 35px rgba(0, 0, 0, 0.35);
+}
+
+/* give room for footer buttons */
+body {
+  padding-bottom: 42px;
+}
+
+/* stop main grid from creating that giant empty workspace area */
+.main-grid {
+  grid-template-rows: auto auto auto !important;
+}

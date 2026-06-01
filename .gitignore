@@ -1,0 +1,22 @@
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Env
+.env
+
+# Generated media
+output/
+data/scenes/
+
+# Temporary backups
+*.bak
+*.bak-*
+
+# Local junk
+Download
+Shot
+Waveform
+

@@ -107,7 +107,7 @@
         shotTrackBody.innerHTML = recent
           .map(
             (s, i) =>
-              `<div class="track-clip shot" style="left:${2 + i * segW}%;width:${segW - 1}%;">${s.shot_number || s.id || s.sceneNum || 'UNKNOWN'}</div>`,
+              `<div class="track-clip shot" style="left:${2 + i * segW}%;width:${segW - 1}%;">${s.shot_number || s.id || s.sceneNum || s.scene_number || 'UNKNOWN'}</div>`,
           )
           .join("");
 
@@ -124,7 +124,7 @@
         ondrop="handleDrop(event, '${s.id}')"
         onclick="loadSceneIntoEditor(shots.find(x => x.id === '${s.id}'))">
         <div class="tl-shot-top">
-          <span class="tl-scene-badge" style="cursor:grab;">☰ ${s.shot_number || s.id || s.sceneNum || 'UNKNOWN'}</span>
+          <span class="tl-scene-badge" style="cursor:grab;">☰ ${s.shot_number || s.id || s.sceneNum || s.scene_number || 'UNKNOWN'}</span>
           <span class="tl-char-tag">${s.character || "Unknown"}</span>
           <span class="tl-preset-tag">${s.preset || s.voice_preset || "No FX"}</span>
           <span class="tl-date">${s.createdAt || ""}</span>
@@ -136,8 +136,8 @@
         </div>
 
         ${s.dialogue ? `<div class="tl-dialogue">"${s.dialogue}"</div>` : ""}
-        ${s.shotDesc ? `<div class="tl-desc">${s.shotDesc}</div>` : ""}
-        ${s.shotPrompt ? `<div class="tl-prompt">${s.shotPrompt}</div>` : ""}
+        ${s.shotDesc || s.shot_description ? `<div class="tl-desc">${s.shotDesc || s.shot_description}</div>` : ""}
+        ${s.shotPrompt || s.shot_prompt ? `<div class="tl-prompt">${s.shotPrompt || s.shot_prompt}</div>` : ""}
         ${s.fxUrl ? `<audio controls src="${s.fxUrl}" style="width:100%;margin-top:6px;"></audio>` : s.rawUrl ? `<audio controls src="${s.rawUrl}" style="width:100%;margin-top:6px;"></audio>` : ""}
       </div>
     `,

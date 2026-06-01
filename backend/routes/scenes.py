@@ -82,7 +82,7 @@ def list_scenes():
 def update_scene(scene_id: str, scene: ScenePayload):
     SCENES_DIR.mkdir(parents=True, exist_ok=True)
 
-    matches = sorted(SCENES_DIR.glob(f"{scene_id}_*.json"), reverse=True)
+    matches = sorted(SCENES_DIR.glob(f"*_{scene_id}_*.json"), reverse=True)
 
     if not matches:
         raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")
@@ -115,7 +115,7 @@ def update_scene(scene_id: str, scene: ScenePayload):
 def delete_scene(scene_id: str):
     SCENES_DIR.mkdir(parents=True, exist_ok=True)
 
-    matches = list(SCENES_DIR.glob(f"{scene_id}_*.json"))
+    matches = list(SCENES_DIR.glob(f"*_{scene_id}_*.json"))
 
     if not matches:
         raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")

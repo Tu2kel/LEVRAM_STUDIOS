@@ -177,44 +177,52 @@ document
 
       const data = await res.json();
 
-      if (!data.success) {
-        throw new Error("AI build failed");
+      console.log("AI BUILD RESPONSE:", data);
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || data.message || "AI build failed");
       }
 
+      const ai = data.data || data.shot || data.result || {};
+
       document.getElementById("shot-desc").value =
-        data.data.shot_description || "";
+        ai.shot_description || ai.description || "";
 
       document.getElementById("shot-prompt-input").value =
-        data.data.shot_prompt || "";
+        ai.shot_prompt || ai.prompt || "";
 
-      document.getElementById("shot-type-ai").textContent =
-        "AI: " + (data.data.suggested_shot_type || "Unknown");
+      const shotTypeAi = document.getElementById("shot-type-ai");
+      const shotCameraAi = document.getElementById("shot-camera-ai");
+      const shotPaletteAi = document.getElementById("shot-palette-ai");
 
-      document.getElementById("shot-camera-ai").textContent =
-        "AI: " + (data.data.suggested_camera_mood || "Unknown");
+      if (shotTypeAi) shotTypeAi.textContent =
+        "AI: " + (ai.suggested_shot_type || "Unknown");
 
-      document.getElementById("shot-palette-ai").textContent =
-        "AI: " + (data.data.suggested_color_palette || "Unknown");
+      if (shotCameraAi) shotCameraAi.textContent =
+        "AI: " + (ai.suggested_camera_mood || "Unknown");
+
+      if (shotPaletteAi) shotPaletteAi.textContent =
+        "AI: " + (ai.suggested_color_palette || "Unknown");
 
       setSelectIfOptionExists(
         "shot-type",
-        data.data.suggested_shot_type
+        ai.suggested_shot_type
       );
 
       setSelectIfOptionExists(
         "shot-camera",
-        data.data.suggested_camera_mood
+        ai.suggested_camera_mood
       );
 
       setSelectIfOptionExists(
         "shot-palette",
-        data.data.suggested_color_palette
+        ai.suggested_color_palette
       );
 
       setStatus("AI shot generated.");
     } catch (err) {
-      console.error(err);
-      setStatus("AI shot generation failed.", true);
+      console.error("AI BUILD ERROR:", err);
+      setStatus(err.message || "AI shot generation failed.", true);
     }
   });
 

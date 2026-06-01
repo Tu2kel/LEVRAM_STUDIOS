@@ -74,6 +74,8 @@ class ReviseShotPayload(BaseModel):
 
 @router.post("/ai/revise-shot")
 def revise_shot(payload: ReviseShotPayload):
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY missing from .env")
 
     system = """
 You are LEVRAM Shot Revision AI.
@@ -89,7 +91,8 @@ You may modify:
 
 Follow the direction creatively while preserving story intent.
 
-Return ONLY JSON.
+Return ONLY valid JSON.
+Do not include markdown.
 
 JSON keys:
 shot_description,
@@ -110,16 +113,23 @@ Revision Request:
 {payload.override_notes}
 """
 
-    res = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {"role":"system","content":system},
-            {"role":"user","content":user}
-        ],
-        temperature=0.7
-    )
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": system.strip()},
+                {"role": "user", "content": user.strip()}
+            ],
+            temperature=0.7
+        )
 
-    return {
-        "success": True,
-        "data": json.loads(res.choices[0].message.content)
-    }
+        text = res.choices[0].message.content.strip()
+        data = json.loads(text)
+
+        return {
+            "success": True,
+            "data": data
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

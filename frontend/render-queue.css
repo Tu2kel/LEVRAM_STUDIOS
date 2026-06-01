@@ -267,3 +267,155 @@
   background:rgba(201,168,76,.14);
   color:#f9f295;
 }
+
+/* ─── Render Queue Compact Card Fix ───────────────────────── */
+
+.rq-card,
+.render-card {
+  display: grid !important;
+  grid-template-columns: 280px 1fr 110px !important;
+  align-items: start !important;
+  gap: 18px !important;
+  min-height: unset !important;
+  padding: 14px 16px !important;
+}
+
+.rq-card img,
+.render-card img,
+.rq-thumb {
+  width: 260px !important;
+  max-width: 260px !important;
+  height: 150px !important;
+  object-fit: cover !important;
+  border-radius: 10px !important;
+}
+
+.rq-prompt,
+.render-prompt,
+.prompt-used {
+  max-width: 720px !important;
+  width: 100% !important;
+  min-height: 120px !important;
+  max-height: 230px !important;
+  overflow-y: auto !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.45 !important;
+  padding: 14px !important;
+}
+
+.rq-actions,
+.render-actions {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  align-items: stretch !important;
+}
+
+.rq-actions button,
+.render-actions button {
+  width: 100% !important;
+}
+
+/* ─── Compact Render Queue Job Cards ───────────────────── */
+
+.rq-job-card {
+  display: grid !important;
+  grid-template-columns: 280px minmax(360px, 1fr) 120px !important;
+  gap: 18px !important;
+  align-items: start !important;
+  min-height: unset !important;
+  padding: 14px 16px !important;
+}
+
+.rq-job-card > div:first-child {
+  display: grid !important;
+  grid-template-columns: 260px minmax(320px, 1fr) !important;
+  gap: 14px !important;
+  align-items: start !important;
+}
+
+.rq-job-title,
+.rq-job-sub {
+  grid-column: 1 / -1 !important;
+}
+
+.rq-thumb {
+  width: 260px !important;
+  height: 150px !important;
+  object-fit: cover !important;
+  margin-top: 4px !important;
+}
+
+.rq-prompt {
+  width: 100% !important;
+  min-height: 150px !important;
+  max-height: 230px !important;
+  overflow-y: auto !important;
+  margin-top: 4px !important;
+  padding: 14px !important;
+  line-height: 1.45 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.rq-job-right {
+  justify-self: end !important;
+  width: 110px !important;
+}
+
+.render-actions {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.render-actions button {
+  width: 100% !important;
+}
+
+/* FORCE PROMPT USED TO READ HORIZONTALLY */
+.rq-job-card {
+  display: grid !important;
+  grid-template-columns: 260px 1fr 120px !important;
+  column-gap: 24px !important;
+  align-items: start !important;
+}
+
+.rq-job-card > div:first-child {
+  display: grid !important;
+  grid-template-columns: 260px minmax(700px, 1fr) !important;
+  column-gap: 24px !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+.rq-job-title,
+.rq-job-sub,
+.tl-dialogue {
+  grid-column: 1 / -1 !important;
+}
+
+.rq-thumb {
+  grid-column: 1 !important;
+  width: 260px !important;
+  height: 150px !important;
+}
+
+.rq-prompt {
+  grid-column: 2 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 700px !important;
+  min-height: 120px !important;
+  max-height: 160px !important;
+  overflow-y: auto !important;
+  white-space: normal !important;
+  line-height: 1.45 !important;
+}
+
+.rq-job-right {
+  grid-column: 3 !important;
+}

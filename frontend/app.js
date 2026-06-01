@@ -58,7 +58,7 @@ function showAudioInPreview(url, label, color) {
   previewMain.innerHTML = `
       <div style="width:90%;text-align:center;">
         <p style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${color};font-weight:700;margin-bottom:12px;">${label}</p>
-        <audio controls src="${url}" style="width:100%;"></audio>
+        <audio controls src="${url}" style="width:100%;margin-top:34px;"></audio>
       </div>`;
 }
 

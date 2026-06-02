@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEVRAM Character Lab</title>
+  <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="character-lab.css" />
+</head>
+<body>
+  <main class="character-lab-page">
+    <header class="character-lab-page-header">
+      <div>
+        <h1>CHARACTER LAB</h1>
+        <p>Reusable cast profiles</p>
+      </div>
+      <button onclick="window.close()">CLOSE TAB</button>
+    </header>
+
+    <section id="character-lab-content" class="character-lab-shell">
+      <div id="character-lab-status" class="character-lab-status" style="display:none;"></div>
+
+      <div class="character-lab-grid">
+        <div class="character-form">
+          <input id="character-name" placeholder="Character Name" />
+          <input id="character-gender" placeholder="Gender" />
+          <input id="character-age" placeholder="Age" />
+          <textarea id="character-appearance" placeholder="Appearance"></textarea>
+          <textarea id="character-wardrobe" placeholder="Wardrobe"></textarea>
+          <textarea id="character-voice" placeholder="Voice"></textarea>
+          <textarea id="character-personality" placeholder="Personality"></textarea>
+          <textarea id="character-notes" placeholder="Notes"></textarea>
+          <button id="save-character-btn" type="button" onclick="saveCharacter()">Save Character</button>
+        </div>
+
+        <div class="character-list-wrap">
+          <div class="character-list-title">Saved Characters</div>
+          <div id="character-list" class="character-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="character-lab.js"></script>
+</body>
+</html>

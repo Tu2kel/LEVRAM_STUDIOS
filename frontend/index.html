@@ -6,7 +6,8 @@
     <title>LEVRAM Generator</title>
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="project-battery.css" />
-  </head>
+    <link rel="stylesheet" href="character-lab.css">
+</head>
   <body>
     <!-- TOP BAR -->
     <header class="top-bar">
@@ -205,7 +206,8 @@
                 <option>Alpha Centurium</option>
                 <option>Hero Fallout</option>
                 <option>Custom Saga</option>
-              </select>            </div>
+              </select>
+            </div>
             <div class="shot-field">
               <div class="field-label">Scene #</div>
               <input id="shot-scene" type="text" placeholder="020" />
@@ -222,7 +224,8 @@
                 <option>Bird's Eye</option>
                 <option>Ground Level</option>
                 <option>Tracking Shot</option>
-              </select>            </div>
+              </select>
+            </div>
             <div class="shot-field">
               <div class="field-label">Camera Mood</div>
               <select id="shot-camera">
@@ -233,7 +236,8 @@
                 <option>Dreamlike / Still / Vast</option>
                 <option>Intimate / Invasive</option>
                 <option>Civilian POV</option>
-              </select>            </div>
+              </select>
+            </div>
             <div class="shot-field">
               <div class="field-label">Color Palette</div>
               <select id="shot-palette">
@@ -265,8 +269,7 @@
               <textarea
                 id="shot-prompt-input"
                 placeholder="Describe the shot — atmosphere, subject, lighting, emotion."
-              ></textarea
-              >
+              ></textarea>
             </div>
             <div class="shot-field" style="grid-column: 1/3">
               <div class="field-label">Visual Character</div>
@@ -275,7 +278,10 @@
                 type="text"
                 placeholder="Who is visible? Leave blank to use Voice Lab character..."
               />
-              <div class="field-hint">Voice Lab controls who speaks. Visual Character controls who appears on screen.</div>
+              <div class="field-hint">
+                Voice Lab controls who speaks. Visual Character controls who
+                appears on screen.
+              </div>
             </div>
             <div class="shot-field">
               <div class="field-label">Duration</div>
@@ -312,8 +318,19 @@
         <button class="workspace-tab-btn" data-ws="timeline">
           ☰ &nbsp;Timeline
         </button>
-        <button class="workspace-tab-btn" type="button" onclick="window.open('render-queue.html','_blank')">
+        <button
+          class="workspace-tab-btn"
+          type="button"
+          onclick="window.open('render-queue.html', '_blank')"
+        >
           🎬 &nbsp;Render Queue ↗
+        </button>
+        <button
+          class="workspace-tab-btn"
+          type="button"
+          onclick="window.open('character-lab.html','_blank')"
+        >
+          👤 &nbsp;Character Lab ↗
         </button>
       </div>
 
@@ -428,7 +445,7 @@
         class="workspace-panel"
         style="grid-column: 1/-1; grid-row: 4; display: none"
       >
-        <div class="timeline-header" style="flex-shrink: 0">
+        <div class="timeline-header character-lab-header" style="flex-shrink: 0">
           <span class="panel-title" style="font-size: 15px; letter-spacing: 5px"
             >Shot History / Timeline</span
           >
@@ -483,20 +500,16 @@
       <div
         id="ws-queue"
         class="workspace-panel"
-        style="grid-column: 1/-1; grid-row: 4; display: none"
+        style="grid-column: 1/-1; grid-row: 4; display: none; flex-direction: column; min-height: 0; overflow: hidden"
       >
         <div class="timeline-header" style="flex-shrink: 0">
-          <span class="panel-title" style="font-size: 15px; letter-spacing: 5px"
-            >Render Queue</span
-          >
+          <span class="panel-title" style="font-size: 15px; letter-spacing: 5px">Render Queue</span>
           <div style="display: flex; gap: 8px; margin-left: 16px">
-          <button id="btn-clear-render-queue" class="ws-ctrl-btn">
-              Clear Queue
-            </button>
+            <button id="btn-clear-render-queue" class="ws-ctrl-btn">Clear Queue</button>
           </div>
           <span id="rq-count" class="tl-time">0 Jobs</span>
         </div>
-        <!-- Job cards — scrollable -->
+
         <div
           id="render-queue-panel"
           style="
@@ -509,6 +522,58 @@
             gap: 10px;
           "
         ></div>
+      </div>
+
+      <!-- ROW 4d — CHARACTER LAB workspace -->
+      <div
+        id="ws-character"
+        class="workspace-panel"
+        style="grid-column: 1/-1; grid-row: 4; display: none; min-height: 400px; overflow: hidden;"
+      >
+        <div class="timeline-header" style="flex-shrink: 0">
+          <span class="panel-title" style="font-size: 15px; letter-spacing: 5px">
+            Character Lab
+          </span>
+          <span class="tl-time">Reusable cast profiles</span>
+          <div class="character-lab-header-actions">
+            <button id="character-lab-collapse-btn" class="character-lab-collapse-btn" type="button" aria-expanded="true">COLLAPSE</button>
+          </div>
+        </div>
+
+        <!-- Character content — scrollable, same behavior as timeline-shots -->
+        <div
+          id="character-lab-content"
+          style="
+            flex: 1 1 0;
+            min-height: 0;
+            overflow-y: scroll;
+            padding: 12px 20px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-top: 1px solid rgba(201, 168, 76, 0.08);
+          "
+        >
+          <div id="character-lab-status" class="character-lab-status" style="display:none;"></div>
+
+          <div class="character-lab-grid">
+            <div class="character-form">
+              <input id="character-name" placeholder="Character Name" />
+              <input id="character-gender" placeholder="Gender" />
+              <input id="character-age" placeholder="Age" />
+              <textarea id="character-appearance" placeholder="Appearance"></textarea>
+              <textarea id="character-wardrobe" placeholder="Wardrobe"></textarea>
+              <textarea id="character-voice" placeholder="Voice"></textarea>
+              <textarea id="character-personality" placeholder="Personality"></textarea>
+              <textarea id="character-notes" placeholder="Notes"></textarea>
+              <button id="save-character-btn" type="button" onclick="saveCharacter()">Save Character</button>
+            </div>
+
+            <div class="character-list">
+              <div id="character-list-panel"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <!-- /.main-grid -->
@@ -570,6 +635,7 @@
     <script src="shot-builder.js"></script>
     <script src="voice-lab.js"></script>
     <script src="render-queue.js"></script>
+    <script src="character-lab.js"></script>
     <script src="timeline.js"></script>
     <script src="preview-drawer.js"></script>
 
@@ -580,6 +646,7 @@
           preview: document.getElementById("ws-preview"),
           timeline: document.getElementById("ws-timeline"),
           queue: document.getElementById("ws-queue"),
+          character: document.getElementById("ws-character"),
         };
 
         let activeWorkspace = null;
@@ -603,7 +670,14 @@
           }
 
           Object.entries(panels).forEach(([k, el]) => {
-            if (el) el.style.display = k === key ? "flex" : "none";
+            if (el) {
+              el.style.display = k === key ? "flex" : "none";
+              if (k === key) {
+                el.style.flexDirection = "column";
+                el.style.minHeight = k === "character" ? "400px" : "0";
+                el.style.overflow = "hidden";
+              }
+            }
           });
 
           document.querySelectorAll(".workspace-tab-btn").forEach((btn) => {

@@ -7,6 +7,7 @@ from backend.routes.voice_fx import router as voice_fx_router
 from backend.routes.scenes import router as scenes_router
 from backend.routes.timeline import router as timeline_router
 from backend.routes.render_queue import router as render_queue_router
+from backend.routes.characters import router as characters_router
 from backend.routes.ideas import router as ideas_router
 from backend.routes.ai import router as ai_router
 
@@ -29,3 +30,4 @@ app.include_router(timeline_router)
 app.include_router(render_queue_router)
 app.include_router(ideas_router)
 app.include_router(ai_router)
+app.include_router(characters_router)

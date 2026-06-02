@@ -32,3 +32,6 @@ engines/RVC/
 engines/Real-ESRGAN/
 engines/Spark-TTS/
 
+
+# LEVRAM Agent backups
+*.bak_levram_agent

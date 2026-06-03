@@ -115,3 +115,17 @@ async def generate_character_preview(payload: dict):
         "data": render_result
     }
 
+
+# ===============================
+# PHASE 8C — CHARACTER RETRIEVAL
+# ===============================
+
+@router.get("/characters")
+@router.get("/api/characters")
+def get_characters():
+    data = load_data()
+    characters = data.get("characters", []) if isinstance(data, dict) else []
+    return {
+        "success": True,
+        "characters": characters
+    }

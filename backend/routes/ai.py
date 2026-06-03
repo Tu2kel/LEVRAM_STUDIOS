@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import os
 import json
+from pathlib import Path
 
 load_dotenv()
 
@@ -15,10 +16,48 @@ class BuildShotPayload(BaseModel):
     idea: str
     visual_character: str = ""
     voice_character: str = ""
+    character: str = ""
     shot_type: str = ""
     camera_mood: str = ""
     color_palette: str = ""
 
+
+
+def get_character_context(character_name: str = ""):
+    if not character_name or character_name == "None":
+        return ""
+
+    file_path = Path("data/characters.json")
+
+    if not file_path.exists():
+        return ""
+
+    try:
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        print("PHASE 8C CHARACTER LOAD ERROR:", e)
+        return ""
+
+    characters = data.get("characters", []) if isinstance(data, dict) else []
+
+    for c in characters:
+        if c.get("name") == character_name:
+            context = f"""
+Name: {c.get("name", "")}
+Gender: {c.get("gender", "")}
+Age: {c.get("age", "")}
+Appearance: {c.get("appearance", "")}
+Wardrobe: {c.get("wardrobe", "")}
+Voice: {c.get("voice", "")}
+Personality: {c.get("personality", "")}
+Notes: {c.get("notes", "")}
+""".strip()
+
+            print("PHASE 8C CHARACTER CONTEXT INJECTED:", c.get("name"))
+            return context
+
+    print("PHASE 8C CHARACTER NOT FOUND:", character_name)
+    return ""
 
 @router.post("/ai/build-shot")
 def build_shot(payload: BuildShotPayload):
@@ -36,10 +75,16 @@ JSON keys:
 shot_description, shot_prompt, negative_prompt, title, suggested_shot_type, suggested_camera_mood, suggested_color_palette
 """
 
+    character_context = get_character_context(payload.character)
+
     user = f"""
+Character Context:
+{character_context}
+
 Idea: {payload.idea}
 Visual Character: {payload.visual_character}
 Voice Character: {payload.voice_character}
+Selected Character: {payload.character}
 Shot Type: {payload.shot_type}
 Camera Mood: {payload.camera_mood}
 Color Palette: {payload.color_palette}
@@ -70,6 +115,7 @@ class ReviseShotPayload(BaseModel):
     current_description: str
     current_prompt: str
     override_notes: str
+    character: str = ""
 
 
 @router.post("/ai/revise-shot")
@@ -102,12 +148,20 @@ suggested_camera_mood,
 suggested_color_palette
 """
 
+    character_context = get_character_context(payload.character)
+
     user = f"""
+Character Context:
+{character_context}
+
 Current Description:
 {payload.current_description}
 
 Current Prompt:
 {payload.current_prompt}
+
+Selected Character:
+{payload.character}
 
 Revision Request:
 {payload.override_notes}

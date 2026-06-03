@@ -165,6 +165,8 @@ document
               typeof getActiveCharacter === "function"
                 ? getActiveCharacter()
                 : "",
+            character:
+              document.getElementById("shot-character")?.selectedOptions?.[0]?.textContent || "",
             shot_type:
               document.getElementById("shot-type")?.value || "",
             camera_mood:
@@ -263,7 +265,9 @@ document
             document.getElementById("shot-desc").value,
           current_prompt:
             document.getElementById("shot-prompt-input").value,
-          override_notes: override
+          override_notes: override,
+          character:
+            document.getElementById("shot-character")?.selectedOptions?.[0]?.textContent || ""
         })
       }
     );
@@ -363,3 +367,115 @@ function wireManualOverride(selectId, textareaId, placeholder) {
 wireManualOverride("shot-type", "shot-type-override", "Enter manual shot type...");
 wireManualOverride("shot-camera", "shot-camera-override", "Enter manual camera mood...");
 wireManualOverride("shot-palette", "shot-palette-override", "Enter manual color palette...");
+
+
+// ===============================
+// PHASE 8C — CHARACTER PICKER
+// ===============================
+
+window.LEVRAM_CHARACTERS = window.LEVRAM_CHARACTERS || [];
+window.LEVRAM_SELECTED_CHARACTER_PROMPT = "";
+
+function levramCharacterText(c) {
+  if (!c) return "";
+
+  const parts = [];
+
+  const name = c.name || c.character_name || c.title;
+  if (name) parts.push(String(name));
+
+  [
+    "description",
+    "appearance",
+    "physical_description",
+    "body",
+    "face",
+    "hair",
+    "costume",
+    "suit",
+    "clothing",
+    "powers",
+    "traits",
+    "personality",
+    "visual_prompt",
+    "prompt",
+    "character_prompt"
+  ].forEach((key) => {
+    if (typeof c[key] === "string" && c[key].trim()) {
+      parts.push(c[key].trim());
+    }
+  });
+
+  return parts.join(", ").replace(/\s+/g, " ").trim();
+}
+
+async function loadLevramCharacters() {
+  const select = document.getElementById("shot-character");
+  if (!select) return;
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/characters");
+    const data = await res.json();
+
+    const characters = Array.isArray(data)
+      ? data
+      : Array.isArray(data.characters)
+        ? data.characters
+        : [];
+
+    window.LEVRAM_CHARACTERS = characters;
+    select.innerHTML = '<option value="">None</option>';
+
+    characters.forEach((char, index) => {
+      const name = char.name || char.character_name || char.title || `Character ${index + 1}`;
+      const opt = document.createElement("option");
+      opt.value = String(index);
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+
+    select.addEventListener("change", () => {
+      const selected = characters[Number(select.value)];
+      window.LEVRAM_SELECTED_CHARACTER_PROMPT = selected ? levramCharacterText(selected) : "";
+
+      console.log("PHASE 8C CHARACTER SELECTED:", selected || "None");
+      console.log("PHASE 8C CHARACTER PROMPT:", window.LEVRAM_SELECTED_CHARACTER_PROMPT);
+    });
+
+    console.log("PHASE 8C CHARACTERS LOADED:", characters.length);
+  } catch (err) {
+    console.error("PHASE 8C CHARACTER LOAD FAILED:", err);
+  }
+}
+
+function levramInjectCharacterIntoText(text) {
+  const charPrompt = window.LEVRAM_SELECTED_CHARACTER_PROMPT;
+
+  if (!charPrompt || typeof text !== "string" || !text.trim()) return text;
+  if (text.includes(charPrompt)) return text;
+
+  return `${charPrompt},\n\n${text}`;
+}
+
+function levramInjectCharacterIntoPayload(payload) {
+  if (!payload || typeof payload !== "object") return payload;
+  if (!window.LEVRAM_SELECTED_CHARACTER_PROMPT) return payload;
+
+  [
+    "prompt",
+    "shot_prompt",
+    "current_prompt",
+    "description",
+    "shot_description",
+    "current_description"
+  ].forEach((key) => {
+    if (typeof payload[key] === "string") {
+      payload[key] = levramInjectCharacterIntoText(payload[key]);
+    }
+  });
+
+  payload.character_context = window.LEVRAM_SELECTED_CHARACTER_PROMPT;
+  return payload;
+}
+
+document.addEventListener("DOMContentLoaded", loadLevramCharacters);

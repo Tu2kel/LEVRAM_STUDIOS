@@ -27,9 +27,11 @@ function loadSceneIntoEditor(scene) {
         .getElementById("btn-save-shot")
         .addEventListener("click", async () => {
           try {
-            const character =
-              document.getElementById("shot-char-override")?.value.trim() ||
-              getActiveCharacter();
+            const primaryCharacter =
+              document.getElementById("shot-character")?.selectedOptions?.[0]?.textContent || "";
+
+            const secondaryCharacter =
+              document.getElementById("shot-character-secondary")?.selectedOptions?.[0]?.textContent || "";
             const dialogue = document
               .getElementById("script-input")
               .value.trim();
@@ -53,7 +55,8 @@ function loadSceneIntoEditor(scene) {
                 .value.trim(),
               negative_prompt:
                 "blurry, low quality, watermark, text, bad anatomy, extra fingers, duplicate limbs, cropped, distorted face, deformed hands",
-              character: character,
+              character: primaryCharacter,
+              secondary_character: secondaryCharacter,
               duration: document.getElementById("shot-duration").value,
               voice_character: getActiveCharacter(),
               voice_preset: getActiveFxPreset(),
@@ -167,6 +170,8 @@ document
                 : "",
             character:
               document.getElementById("shot-character")?.selectedOptions?.[0]?.textContent || "",
+            secondary_character:
+              document.getElementById("shot-character-secondary")?.selectedOptions?.[0]?.textContent || "",
             shot_type:
               document.getElementById("shot-type")?.value || "",
             camera_mood:
@@ -267,7 +272,9 @@ document
             document.getElementById("shot-prompt-input").value,
           override_notes: override,
           character:
-            document.getElementById("shot-character")?.selectedOptions?.[0]?.textContent || ""
+            document.getElementById("shot-character")?.selectedOptions?.[0]?.textContent || "",
+          secondary_character:
+            document.getElementById("shot-character-secondary")?.selectedOptions?.[0]?.textContent || ""
         })
       }
     );
@@ -411,6 +418,7 @@ function levramCharacterText(c) {
 
 async function loadLevramCharacters() {
   const select = document.getElementById("shot-character");
+  const secondarySelect = document.getElementById("shot-character-secondary");
   if (!select) return;
 
   try {
@@ -425,6 +433,9 @@ async function loadLevramCharacters() {
 
     window.LEVRAM_CHARACTERS = characters;
     select.innerHTML = '<option value="">None</option>';
+    if (secondarySelect) {
+      secondarySelect.innerHTML = '<option value="">None</option>';
+    }
 
     characters.forEach((char, index) => {
       const name = char.name || char.character_name || char.title || `Character ${index + 1}`;
@@ -432,15 +443,37 @@ async function loadLevramCharacters() {
       opt.value = String(index);
       opt.textContent = name;
       select.appendChild(opt);
+
+      if (secondarySelect) {
+        const opt2 = document.createElement("option");
+        opt2.value = String(index);
+        opt2.textContent = name;
+        secondarySelect.appendChild(opt2);
+      }
     });
 
-    select.addEventListener("change", () => {
-      const selected = characters[Number(select.value)];
-      window.LEVRAM_SELECTED_CHARACTER_PROMPT = selected ? levramCharacterText(selected) : "";
+    function updateSelectedCharacterPrompts() {
+      const primary = characters[Number(select.value)];
+      const secondary = secondarySelect
+        ? characters[Number(secondarySelect.value)]
+        : null;
 
-      console.log("PHASE 8C CHARACTER SELECTED:", selected || "None");
-      console.log("PHASE 8C CHARACTER PROMPT:", window.LEVRAM_SELECTED_CHARACTER_PROMPT);
-    });
+      const primaryPrompt = primary ? levramCharacterText(primary) : "";
+      const secondaryPrompt = secondary ? levramCharacterText(secondary) : "";
+
+      window.LEVRAM_SELECTED_CHARACTER_PROMPT =
+        [primaryPrompt, secondaryPrompt].filter(Boolean).join("\n\nSECONDARY CHARACTER:\n");
+
+      console.log("PHASE 8D PRIMARY CHARACTER:", primary || "None");
+      console.log("PHASE 8D SECONDARY CHARACTER:", secondary || "None");
+      console.log("PHASE 8D CHARACTER PROMPT:", window.LEVRAM_SELECTED_CHARACTER_PROMPT);
+    }
+
+    select.addEventListener("change", updateSelectedCharacterPrompts);
+
+    if (secondarySelect) {
+      secondarySelect.addEventListener("change", updateSelectedCharacterPrompts);
+    }
 
     console.log("PHASE 8C CHARACTERS LOADED:", characters.length);
   } catch (err) {

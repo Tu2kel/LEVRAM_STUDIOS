@@ -17,6 +17,7 @@ class BuildShotPayload(BaseModel):
     visual_character: str = ""
     voice_character: str = ""
     character: str = ""
+    secondary_character: str = ""
     shot_type: str = ""
     camera_mood: str = ""
     color_palette: str = ""
@@ -75,7 +76,16 @@ JSON keys:
 shot_description, shot_prompt, negative_prompt, title, suggested_shot_type, suggested_camera_mood, suggested_color_palette
 """
 
-    character_context = get_character_context(payload.character)
+    primary_character_context = get_character_context(payload.character)
+    secondary_character_context = get_character_context(payload.secondary_character)
+
+    character_context = f"""
+PRIMARY CHARACTER:
+{primary_character_context}
+
+SECONDARY CHARACTER:
+{secondary_character_context}
+""".strip()
 
     user = f"""
 Character Context:
@@ -84,7 +94,8 @@ Character Context:
 Idea: {payload.idea}
 Visual Character: {payload.visual_character}
 Voice Character: {payload.voice_character}
-Selected Character: {payload.character}
+Primary Character: {payload.character}
+Secondary Character: {payload.secondary_character}
 Shot Type: {payload.shot_type}
 Camera Mood: {payload.camera_mood}
 Color Palette: {payload.color_palette}
@@ -116,6 +127,7 @@ class ReviseShotPayload(BaseModel):
     current_prompt: str
     override_notes: str
     character: str = ""
+    secondary_character: str = ""
 
 
 @router.post("/ai/revise-shot")
@@ -148,7 +160,16 @@ suggested_camera_mood,
 suggested_color_palette
 """
 
-    character_context = get_character_context(payload.character)
+    primary_character_context = get_character_context(payload.character)
+    secondary_character_context = get_character_context(payload.secondary_character)
+
+    character_context = f"""
+PRIMARY CHARACTER:
+{primary_character_context}
+
+SECONDARY CHARACTER:
+{secondary_character_context}
+""".strip()
 
     user = f"""
 Character Context:
@@ -160,8 +181,11 @@ Current Description:
 Current Prompt:
 {payload.current_prompt}
 
-Selected Character:
+Primary Character:
 {payload.character}
+
+Secondary Character:
+{payload.secondary_character}
 
 Revision Request:
 {payload.override_notes}

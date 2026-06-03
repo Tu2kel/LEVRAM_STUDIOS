@@ -1,3 +1,4 @@
+from backend.services.comfy_service import generate_comfy_keyframe
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
@@ -79,3 +80,38 @@ def delete_character(character_id: str):
 
     save_data(data)
     return {"success": True, "characters": data["characters"]}
+
+@router.post("/character-lab/generate")
+async def generate_character_preview(payload: dict):
+    prompt = payload.get("prompt") or ""
+
+    item = {
+        "id": "character-preview",
+        "shotId": "character-preview",
+        "shot": {
+            "character": payload.get("character", {}).get("name", "Character Preview"),
+            "shotDesc": prompt,
+            "shotPrompt": prompt,
+            "renderStyle": "cinematic photorealistic",
+            "scene": "Character Lab",
+            "shot_number": "CHARACTER-PREVIEW"
+        }
+    }
+
+    render_result = generate_comfy_keyframe(item)
+
+    image_url = (
+        render_result.get("outputUrl")
+        or render_result.get("renderOutputUrl")
+        or render_result.get("image_url")
+        or render_result.get("url")
+    )
+
+    return {
+        "success": True,
+        "message": "Character preview generated",
+        "prompt": prompt,
+        "image_url": image_url,
+        "data": render_result
+    }
+

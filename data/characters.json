@@ -1,3 +1,30 @@
 {
-  "characters": []
+  "characters": [
+    {
+      "id": "8d44394e-8212-49ae-8faf-d3151aed2107",
+      "name": "Imperio Kel",
+      "gender": "Male",
+      "age": "40",
+      "appearance": "Black male, athletic build, tan skin, short black hair, trimmed beard, intense eyes",
+      "wardrobe": "Black tactical coat with metallic gold trim",
+      "voice": "Deep, calm, authoritative",
+      "personality": "Disciplined, strategic leader",
+      "notes": "Cinematic superhero protagonist",
+      "createdAt": "2026-06-02 18:58:07",
+      "updatedAt": "2026-06-02 18:58:07"
+    },
+    {
+      "id": "bd94bca8-d149-4a6f-b0ea-a992228a6334",
+      "name": "Slipstream",
+      "gender": "Male",
+      "age": "23",
+      "appearance": "Black male, lean athletic sprinter build, tan skin, short black fade haircut, sharp jawline, intense dark brown eyes, youthful but battle-tested, faint crimson energy veins around his eyes when using speed.",
+      "wardrobe": "Black tactical coat with metallic gold trim, dark compression suit underneath, gold lightning-style accents on arms and legs, reinforced combat boots, crimson energy trails when accelerating.",
+      "voice": "Confident, quick-witted, charismatic, smooth baritone, speaks fast when excited but becomes calm and focused under pressure.",
+      "personality": "Fearless, loyal, competitive, protective, optimistic on the surface, uses humor to hide pain, impulsive when emotional, refuses to abandon people.",
+      "notes": "Fastest young hero in the LEVRAM universe. Connected to an extradimensional velocity field that grants super speed, accelerated perception, rapid healing, and limited time distortion. Hero-era identity before a darker future transformation into RedEye.",
+      "createdAt": "2026-06-02 23:11:32",
+      "updatedAt": "2026-06-02 23:11:32"
+    }
+  ]
 }

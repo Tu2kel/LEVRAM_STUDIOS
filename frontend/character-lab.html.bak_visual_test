@@ -29,24 +29,11 @@
           <textarea id="character-voice" placeholder="Voice"></textarea>
           <textarea id="character-personality" placeholder="Personality"></textarea>
           <textarea id="character-notes" placeholder="Notes"></textarea>
-          
-<div class="character-action-row">
-  <button id="save-character-btn" type="button" onclick="saveCharacter()">Save Character</button>
-  <button id="clear-character-btn" type="button" onclick="clearCharacterForm()">Clear Form</button>
-</div>
-
+          <button id="save-character-btn" type="button" onclick="saveCharacter()">Save Character</button>
         </div>
 
         <div class="character-list-wrap">
-          <div class="character-preview-box">
-            <div class="character-list-title">Character Visual Test</div>
-            <button id="generate-character-preview-btn" type="button" onclick="generateCharacterPreview()">Generate Character Preview</button>
-            <textarea id="character-preview-prompt" placeholder="Generated character image prompt will appear here..."></textarea>
-            <div id="character-preview-status" class="character-preview-status"></div>
-            <img id="character-preview-img" class="character-preview-img" alt="Character preview" style="display:none;" />
-          </div>
-
-          <div class="character-list-title saved-title">Saved Characters</div>
+          <div class="character-list-title">Saved Characters</div>
           <div id="character-list" class="character-list"></div>
         </div>
       </div>

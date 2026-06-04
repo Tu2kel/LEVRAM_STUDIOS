@@ -452,7 +452,7 @@ async function loadLevramCharacters() {
       }
     });
 
-    function updateSelectedCharacterPrompts() {
+    async function updateSelectedCharacterPrompts() {
       const primary = characters[Number(select.value)];
       const secondary = secondarySelect
         ? characters[Number(secondarySelect.value)]
@@ -467,6 +467,35 @@ async function loadLevramCharacters() {
       console.log("PHASE 8D PRIMARY CHARACTER:", primary || "None");
       console.log("PHASE 8D SECONDARY CHARACTER:", secondary || "None");
       console.log("PHASE 8D CHARACTER PROMPT:", window.LEVRAM_SELECTED_CHARACTER_PROMPT);
+
+      if (primary?.default_voice_profile) {
+        window.LEVRAM_ACTIVE_VOICE_PROFILE = primary.default_voice_profile;
+
+        try {
+          const voiceRes = await fetch("http://127.0.0.1:8000/voices");
+          const voiceData = await voiceRes.json();
+          const voices = voiceData.voices || [];
+
+          window.LEVRAM_ACTIVE_VOICE_RECORD =
+            voices.find(v => v.name === primary.default_voice_profile) || null;
+        } catch (err) {
+          console.error("PHASE 8F VOICE PROFILE RESOLVE FAILED:", err);
+          window.LEVRAM_ACTIVE_VOICE_RECORD = null;
+        }
+
+        console.log(
+          "PHASE 8F ACTIVE VOICE PROFILE:",
+          window.LEVRAM_ACTIVE_VOICE_PROFILE
+        );
+
+        console.log(
+          "PHASE 8F ACTIVE VOICE RECORD:",
+          window.LEVRAM_ACTIVE_VOICE_RECORD
+        );
+      } else {
+        window.LEVRAM_ACTIVE_VOICE_PROFILE = "";
+        window.LEVRAM_ACTIVE_VOICE_RECORD = null;
+      }
     }
 
     select.addEventListener("change", updateSelectedCharacterPrompts);
@@ -511,4 +540,8 @@ function levramInjectCharacterIntoPayload(payload) {
   return payload;
 }
 
-document.addEventListener("DOMContentLoaded", loadLevramCharacters);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", loadLevramCharacters);
+} else {
+  loadLevramCharacters();
+}

@@ -18,6 +18,7 @@ class CharacterPayload(BaseModel):
     appearance: str = ""
     wardrobe: str = ""
     voice: str = ""
+    default_voice_profile: str = ""
     personality: str = ""
     notes: str = ""
 
@@ -50,6 +51,7 @@ def create_character(payload: CharacterPayload):
         "appearance": payload.appearance,
         "wardrobe": payload.wardrobe,
         "voice": payload.voice,
+        "default_voice_profile": payload.default_voice_profile,
         "personality": payload.personality,
         "notes": payload.notes,
         "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

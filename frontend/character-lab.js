@@ -8,6 +8,7 @@ function getCharacterFormData() {
     appearance: document.getElementById("character-appearance")?.value || "",
     wardrobe: document.getElementById("character-wardrobe")?.value || "",
     voice: document.getElementById("character-voice")?.value || "",
+    default_voice_profile: document.getElementById("character-default-voice")?.value || "",
     personality: document.getElementById("character-personality")?.value || "",
     notes: document.getElementById("character-notes")?.value || "",
   };
@@ -191,6 +192,7 @@ function loadCharacterDraftLocal() {
       "character-appearance": d.appearance,
       "character-wardrobe": d.wardrobe,
       "character-voice": d.voice,
+      "character-default-voice": d.default_voice_profile,
       "character-personality": d.personality,
       "character-notes": d.notes
     };
@@ -214,6 +216,7 @@ function wireCharacterDraftPersistence() {
     "character-appearance",
     "character-wardrobe",
     "character-voice",
+    "character-default-voice",
     "character-personality",
     "character-notes"
   ].forEach(id => {
@@ -233,6 +236,7 @@ window.clearCharacterForm = function clearCharacterForm() {
     "character-appearance",
     "character-wardrobe",
     "character-voice",
+    "character-default-voice",
     "character-personality",
     "character-notes"
   ].forEach(id => {
@@ -256,3 +260,28 @@ window.clearCharacterForm = function clearCharacterForm() {
 
   console.log("Character form cleared.");
 };
+
+
+async function loadVoiceProfilesForCharacters() {
+  const select = document.getElementById("character-default-voice");
+  if (!select) return;
+
+  try {
+    const res = await fetch(`${BASE}/voices`);
+    const data = await res.json();
+    const voices = data.voices || [];
+
+    select.innerHTML = '<option value="">No Default Voice</option>';
+
+    voices.forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v.name || "";
+      opt.textContent = v.name || "Unnamed Voice";
+      select.appendChild(opt);
+    });
+  } catch (err) {
+    console.error("CHARACTER VOICE PROFILE LOAD ERROR:", err);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", loadVoiceProfilesForCharacters);

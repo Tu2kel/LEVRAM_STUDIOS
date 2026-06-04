@@ -25,6 +25,20 @@
       "notes": "Fastest young hero in the LEVRAM universe. Connected to an extradimensional velocity field that grants super speed, accelerated perception, rapid healing, and limited time distortion. Hero-era identity before a darker future transformation into RedEye.",
       "createdAt": "2026-06-02 23:11:32",
       "updatedAt": "2026-06-02 23:11:32"
+    },
+    {
+      "id": "7ac59fe2-17e8-4845-be7d-999385e54702",
+      "name": "SlipStream",
+      "gender": "Male",
+      "age": "40",
+      "appearance": " lean athletic sprinter build, tan skin, short black fade haircut, sharp jawline, intense dark brown eyes, youthful but battle-tested, faint crimson energy veins around his eyes when using speed.",
+      "wardrobe": " metallic gold trim, dark compression suit underneath, gold lightning-style accents on arms and legs, reinforced combat boots, crimson energy trails when accelerating.",
+      "voice": " Fast, focused, controlled pressure-wave tone\n",
+      "default_voice_profile": "Slipstream_V1",
+      "personality": "Dark, confident - Villainous Hero",
+      "notes": "",
+      "createdAt": "2026-06-03 20:50:31",
+      "updatedAt": "2026-06-03 20:50:31"
     }
   ]
 }

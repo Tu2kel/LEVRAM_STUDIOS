@@ -1,0 +1,14 @@
+{
+  "voices": [
+    {
+      "id": "7cd71f33-2477-4ebd-acb6-0fa451e11139",
+      "name": "Slipstream_V1",
+      "character": "SlipStream",
+      "rawUrl": "http://localhost:8000/output/tts/SlipStream_a96c2a7e-0c55-4d2d-b2d6-638bc2876229.mp3",
+      "fxUrl": "",
+      "preset": "villain",
+      "createdAt": "2026-06-03 19:25:39",
+      "updatedAt": "2026-06-03 19:25:39"
+    }
+  ]
+}

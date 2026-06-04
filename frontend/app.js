@@ -68,7 +68,14 @@ function getActiveFxPreset() {
 
 function getActiveCharacter() {
   const active = document.querySelector(".char-btn.active");
-  return active ? active.textContent.trim() : "Default";
+  const label = active ? active.textContent.trim() : "Default";
+
+  if (label === "+ Custom") {
+    const custom = document.getElementById("custom-voice-character")?.value.trim();
+    return custom || "Custom";
+  }
+
+  return label;
 }
 
 function fmtTime(sec) {
@@ -90,9 +97,26 @@ document.querySelectorAll(".char-btn").forEach((btn) => {
     document
       .querySelectorAll(".char-btn")
       .forEach((b) => b.classList.remove("active"));
+
     btn.classList.add("active");
-    metaChar.textContent = btn.textContent.trim();
+
+    const customInput = document.getElementById("custom-voice-character");
+    const isCustom = btn.textContent.trim() === "+ Custom";
+
+    if (customInput) {
+      customInput.style.display = isCustom ? "block" : "none";
+      if (isCustom) customInput.focus();
+    }
+
+    metaChar.textContent = getActiveCharacter();
   });
+});
+
+document.getElementById("custom-voice-character")?.addEventListener("input", () => {
+  const active = document.querySelector(".char-btn.active");
+  if (active && active.textContent.trim() === "+ Custom") {
+    metaChar.textContent = getActiveCharacter();
+  }
 });
 
 // ─── Nav buttons ─────────────────────────────────────────

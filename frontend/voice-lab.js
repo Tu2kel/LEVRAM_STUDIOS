@@ -130,3 +130,128 @@
           metaFxStatus.className = "meta-val red";
         }
       });
+
+// ===============================
+// PHASE 8E — VOICE LIBRARY
+// ===============================
+
+async function loadVoiceLibrary() {
+  const list = document.getElementById("voice-library-list");
+  if (!list) return;
+
+  try {
+    const res = await fetch(`${BASE}/voices`);
+    const data = await res.json();
+    const voices = data.voices || [];
+
+    if (!voices.length) {
+      list.innerHTML = `<div class="character-empty">No saved voices yet.</div>`;
+      return;
+    }
+
+    list.innerHTML = voices.map(v => `
+      <div class="saved-voice-row">
+        <div class="saved-voice-main">
+          <div class="saved-voice-name">⚜ ${v.name || "Unnamed Voice"}</div>
+          <div class="saved-voice-meta">${v.character || "No character"} • ${v.preset || "No FX"}</div>
+        </div>
+
+        <div class="saved-voice-actions">
+          ${v.fxUrl ? `<a class="saved-voice-link" href="${v.fxUrl}" target="_blank">Open FX</a>` : ""}
+          ${v.rawUrl ? `<a class="saved-voice-link" href="${v.rawUrl}" target="_blank">Open Raw</a>` : ""}
+          <button
+            type="button"
+            class="saved-voice-delete"
+            onclick="deleteVoiceProfile('${v.id}')"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    `).join("");
+  } catch (err) {
+    console.error("LOAD VOICE LIBRARY ERROR:", err);
+    list.innerHTML = `<div class="character-empty">Could not load saved voices.</div>`;
+  }
+}
+
+async function saveVoiceProfile() {
+  const name = document.getElementById("voice-name")?.value.trim() || "";
+  const character = typeof getActiveCharacter === "function"
+    ? getActiveCharacter()
+    : "";
+
+  if (!name) {
+    setStatus("Enter a voice name first.", true);
+    return;
+  }
+
+  if (!rawUrl && !fxUrl) {
+    setStatus("Generate voice before saving.", true);
+    return;
+  }
+
+  const payload = {
+    name,
+    character,
+    rawUrl: rawUrl || "",
+    fxUrl: fxUrl || "",
+    preset: typeof getActiveFxPreset === "function"
+      ? getActiveFxPreset()
+      : ""
+  };
+
+  try {
+    const res = await fetch(`${BASE}/voices`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || data.error || "Save voice failed");
+    }
+
+    setStatus(`Voice saved: ${name}`);
+    await loadVoiceLibrary();
+  } catch (err) {
+    console.error("SAVE VOICE ERROR:", err);
+    setStatus(err.message || "Save voice failed.", true);
+  }
+}
+
+async function deleteVoiceProfile(id) {
+  if (!id) return;
+
+  try {
+    const res = await fetch(`${BASE}/voices/${id}`, {
+      method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || data.error || "Delete voice failed");
+    }
+
+    setStatus("Voice deleted.");
+    await loadVoiceLibrary();
+  } catch (err) {
+    console.error("DELETE VOICE ERROR:", err);
+    setStatus(err.message || "Delete voice failed.", true);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const saveBtn = document.getElementById("btn-save-voice");
+  if (saveBtn) saveBtn.addEventListener("click", saveVoiceProfile);
+  loadVoiceLibrary();
+});
+
+window.loadVoiceLibrary = loadVoiceLibrary;
+window.saveVoiceProfile = saveVoiceProfile;
+window.deleteVoiceProfile = deleteVoiceProfile;

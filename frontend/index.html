@@ -579,7 +579,13 @@
               <input id="character-age" placeholder="Age" />
               <textarea id="character-appearance" placeholder="Appearance"></textarea>
               <textarea id="character-wardrobe" placeholder="Wardrobe"></textarea>
-              <textarea id="character-voice" placeholder="Voice"></textarea>
+              <textarea id="character-voice" placeholder="Voice Description"></textarea>
+
+          <div class="field-label" style="margin-top: 8px;">Default Voice Profile</div>
+          <select id="character-default-voice">
+            <option value="">No Default Voice</option>
+          </select>
+          <div class="field-hint">Used when this character is assigned to generated dialogue.</div>
               <textarea id="character-personality" placeholder="Personality"></textarea>
               <textarea id="character-notes" placeholder="Notes"></textarea>
               <button id="save-character-btn" type="button" onclick="saveCharacter()">Save Character</button>

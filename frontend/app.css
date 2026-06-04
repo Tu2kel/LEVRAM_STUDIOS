@@ -1627,3 +1627,29 @@ body {
 .main-grid {
   grid-template-rows: auto auto auto !important;
 }
+
+/* PHASE 8F — Character Lab voice profile dropdown */
+#character-default-voice {
+  width: 100%;
+  background: #050505;
+  color: #f9f295;
+  border: 1px solid rgba(201, 168, 76, 0.55);
+  border-radius: 8px;
+  padding: 11px 14px;
+  font-family: Rajdhani, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  outline: none;
+  box-shadow: inset 0 0 18px rgba(201, 168, 76, 0.08);
+}
+
+#character-default-voice:focus {
+  border-color: #f9f295;
+  box-shadow: 0 0 14px rgba(201, 168, 76, 0.32);
+}
+
+#character-default-voice option {
+  background: #050505;
+  color: #f9f295;
+}

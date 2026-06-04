@@ -66,6 +66,10 @@ function getActiveFxPreset() {
   return document.querySelector("select.fx-preset").value;
 }
 
+function getAssignedVoiceProfile() {
+  return window.LEVRAM_ACTIVE_VOICE_PROFILE || "";
+}
+
 function getActiveCharacter() {
   const active = document.querySelector(".char-btn.active");
   const label = active ? active.textContent.trim() : "Default";

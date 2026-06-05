@@ -3,7 +3,16 @@
         .getElementById("btn-generate")
         .addEventListener("click", async () => {
           const text = document.getElementById("script-input").value.trim();
-          const character = getActiveCharacter();
+          // PHASE 8F.3 — consume active voice record from Shot Builder character selection
+          let character;
+          const _avr = window.LEVRAM_ACTIVE_VOICE_RECORD;
+          if (_avr) {
+            console.log("PHASE 8F.3 ACTIVE VOICE CONSUMED", _avr);
+            character = _avr.character || _avr.name || getActiveCharacter();
+          } else {
+            console.log("PHASE 8F.3 FALLBACK MANUAL VOICE");
+            character = getActiveCharacter();
+          }
 
           if (!text) {
             setStatus("Enter dialogue first.", true);

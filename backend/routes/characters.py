@@ -67,6 +67,39 @@ def create_character(payload: CharacterPayload):
     return {"success": True, "character": character, "characters": data["characters"]}
 
 
+# PHASE 8F.4 — update existing character without duplicating
+@router.put("/characters/{character_id}")
+def update_character(character_id: str, payload: CharacterPayload):
+    data = load_data()
+    characters = data.get("characters", []) if isinstance(data, dict) else []
+
+    idx = next((i for i, c in enumerate(characters) if c.get("id") == character_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    if not payload.name.strip():
+        raise HTTPException(status_code=400, detail="Character name is required")
+
+    existing = characters[idx]
+    existing.update({
+        "name": payload.name.strip(),
+        "gender": payload.gender,
+        "age": payload.age,
+        "appearance": payload.appearance,
+        "wardrobe": payload.wardrobe,
+        "voice": payload.voice,
+        "default_voice_profile": payload.default_voice_profile,
+        "personality": payload.personality,
+        "notes": payload.notes,
+        "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+    data["characters"][idx] = existing
+    save_data(data)
+
+    return {"success": True, "character": existing, "characters": data["characters"]}
+
+
 @router.delete("/characters/{character_id}")
 def delete_character(character_id: str):
     data = load_data()

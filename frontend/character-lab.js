@@ -1,5 +1,8 @@
 const BASE = "http://127.0.0.1:8000";
 
+// PHASE 8F.4 — track which character is being edited (null = new)
+let editingCharacterId = null;
+
 function getCharacterFormData() {
   return {
     name: document.getElementById("character-name")?.value || "",
@@ -90,14 +93,22 @@ async function generateCharacterPreview() {
 
 window.saveCharacter = async function saveCharacter() {
   const character = getCharacterFormData();
+  // PHASE 8F.4 — always default empty string, never undefined
+  character.default_voice_profile = character.default_voice_profile || "";
+
   const status = document.getElementById("character-lab-status");
   const saveBtn = document.getElementById("save-character-btn");
 
   if (saveBtn) saveBtn.textContent = "SENDING...";
 
+  // PHASE 8F.4 — use PUT when editing existing, POST for new
+  const isEdit = Boolean(editingCharacterId);
+  const url = isEdit ? `${BASE}/characters/${editingCharacterId}` : `${BASE}/characters`;
+  const method = isEdit ? "PUT" : "POST";
+
   try {
-    const res = await fetch(`${BASE}/characters`, {
-      method: "POST",
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(character)
     });
@@ -113,6 +124,9 @@ window.saveCharacter = async function saveCharacter() {
       }
       return;
     }
+
+    // PHASE 8F.4 — reset edit state after successful save
+    editingCharacterId = null;
 
     if (saveBtn) {
       saveBtn.classList.add("character-save-confirmed");
@@ -144,13 +158,27 @@ window.saveCharacter = async function saveCharacter() {
 };
 
 async function loadCharacters() {
-  const list = document.getElementById("character-list");
+  // PHASE 8F.4 — works in both index.html ("character-list-panel") and standalone character-lab.html ("character-list")
+  const list = document.getElementById("character-list-panel") || document.getElementById("character-list");
   if (!list) return;
 
   try {
     const res = await fetch(`${BASE}/characters`);
     const data = await res.json();
     const characters = data.characters || [];
+
+    // PHASE 8F.4 — cache for edit lookups
+    window.LEVRAM_CHARACTERS_CACHE = characters;
+
+    // PHASE 8F.4 — flag case-insensitive name duplicates in console
+    const nameCounts = {};
+    characters.forEach(c => {
+      const key = (c.name || "").toLowerCase().trim();
+      nameCounts[key] = (nameCounts[key] || 0) + 1;
+    });
+    Object.entries(nameCounts).forEach(([key, count]) => {
+      if (count > 1) console.warn(`PHASE 8F.4 DUPLICATE CHARACTER NAME: "${key}" appears ${count} times`);
+    });
 
     if (!characters.length) {
       list.innerHTML = `<div class="character-empty">No saved characters yet.</div>`;
@@ -162,7 +190,11 @@ async function loadCharacters() {
         <div class="character-card-name">⚜ ${c.name || "Unnamed Character"}</div>
         <div class="character-card-meta">${c.gender || "Unknown"} • ${c.age || "Age N/A"}</div>
         <div class="character-card-text">${c.appearance || ""}</div>
-        <div class="character-card-text">${c.wardrobe || ""}</div>
+        ${c.default_voice_profile ? `<div class="character-card-text" style="color:var(--gold);font-size:10px;">Voice: ${c.default_voice_profile}</div>` : ""}
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <button type="button" class="saved-voice-link" onclick="loadCharacterIntoForm('${c.id || ""}')">Edit</button>
+          <button type="button" class="saved-voice-delete" onclick="deleteCharacter('${c.id || ""}')">Delete</button>
+        </div>
       </div>
     `).join("");
   } catch (err) {
@@ -170,6 +202,60 @@ async function loadCharacters() {
     list.innerHTML = `<div class="character-empty">Could not load saved characters.</div>`;
   }
 }
+
+// PHASE 8F.4 — load a saved character into the edit form
+window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
+  const cache = window.LEVRAM_CHARACTERS_CACHE || [];
+  const c = cache.find(ch => ch.id === id);
+  if (!c) {
+    console.warn("PHASE 8F.4 loadCharacterIntoForm: id not found in cache:", id);
+    return;
+  }
+
+  editingCharacterId = c.id;
+
+  const fields = {
+    "character-name": c.name || "",
+    "character-gender": c.gender || "",
+    "character-age": c.age || "",
+    "character-appearance": c.appearance || "",
+    "character-wardrobe": c.wardrobe || "",
+    "character-voice": c.voice || "",
+    "character-personality": c.personality || "",
+    "character-notes": c.notes || ""
+  };
+
+  Object.entries(fields).forEach(([elId, value]) => {
+    const el = document.getElementById(elId);
+    if (el) el.value = value;
+  });
+
+  // Pre-select voice dropdown; safe fallback if profile no longer exists
+  loadVoiceProfilesForCharacters(c.default_voice_profile || "");
+
+  const saveBtn = document.getElementById("save-character-btn");
+  if (saveBtn) saveBtn.textContent = "Update Character";
+
+  console.log("PHASE 8F.4 EDITING CHARACTER:", c.name, "id:", c.id);
+};
+
+// PHASE 8F.4 — delete a character by id
+window.deleteCharacter = async function deleteCharacter(id) {
+  if (!id) return;
+  try {
+    const res = await fetch(`${BASE}/characters/${id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Delete failed");
+    if (editingCharacterId === id) {
+      editingCharacterId = null;
+      const saveBtn = document.getElementById("save-character-btn");
+      if (saveBtn) saveBtn.textContent = "Save Character";
+    }
+    await loadCharacters();
+  } catch (err) {
+    console.error("DELETE CHARACTER ERROR:", err);
+  }
+};
 
 document.addEventListener("DOMContentLoaded", loadCharacters);
 window.generateCharacterPreview = generateCharacterPreview;
@@ -262,7 +348,8 @@ window.clearCharacterForm = function clearCharacterForm() {
 };
 
 
-async function loadVoiceProfilesForCharacters() {
+// PHASE 8F.4 — selectedValue pre-selects the dropdown; safe fallback if no longer exists
+async function loadVoiceProfilesForCharacters(selectedValue = "") {
   const select = document.getElementById("character-default-voice");
   if (!select) return;
 
@@ -279,6 +366,17 @@ async function loadVoiceProfilesForCharacters() {
       opt.textContent = v.name || "Unnamed Voice";
       select.appendChild(opt);
     });
+
+    if (selectedValue) {
+      const match = [...select.options].find(o => o.value === selectedValue);
+      if (match) {
+        select.value = selectedValue;
+      } else {
+        // Profile saved on character no longer exists in /voices — safe fallback
+        console.warn("PHASE 8F.4 VOICE PROFILE NOT FOUND IN LIBRARY:", selectedValue, "— defaulting to empty");
+        select.value = "";
+      }
+    }
   } catch (err) {
     console.error("CHARACTER VOICE PROFILE LOAD ERROR:", err);
   }

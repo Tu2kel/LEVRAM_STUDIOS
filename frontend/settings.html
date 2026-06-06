@@ -118,6 +118,30 @@
         <div><div class="st-key">Video Assembly: ffmpeg</div><div class="st-hint">Lane 1 — static image + voice → MP4 clip</div></div>
         <span id="pill-ffmpeg" class="st-pill warn">…</span>
       </div>
+      <div class="st-row">
+        <div><div class="st-key">Story Engine: GPT-4o-mini</div><div class="st-hint">Episode concepts, beat sheets, dialogue, villain POV</div></div>
+        <span id="pill-story" class="st-pill warn">…</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Image Upscaler: RealESRGAN</div><div class="st-hint">Free binary — fallback to PIL Lanczos if not installed</div></div>
+        <span class="st-pill ok">PIL Fallback Active</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Music Mix: ffmpeg</div><div class="st-hint">Score track mixing into episodes</div></div>
+        <span class="st-pill ok">Active</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Social Export: ffmpeg</div><div class="st-hint">YouTube, Shorts, Reels, TikTok, Twitter, Facebook</div></div>
+        <span class="st-pill ok">Active</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Suno API (Music Gen)</div><div class="st-hint">Requires SUNO_API_KEY</div></div>
+        <span class="st-pill err">No Key</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Udio API (Music Gen)</div><div class="st-hint">Requires UDIO_API_KEY</div></div>
+        <span class="st-pill err">No Key</span>
+      </div>
     </div>
   </div>
 
@@ -177,6 +201,7 @@ async function checkStatus() {
     pill("pill-el",       data.elevenlabs,       data.elevenlabs ? "Active" : "No Key");
     pill("pill-wan",      data.comfy_connected,  data.comfy_connected ? "Active" : "ComfyUI Offline");
     pill("pill-ffmpeg",   true,                 "Active");
+    pill("pill-story",    data.openai,           data.openai ? "Active" : "No Key");
 
     // Service rows
     const rows = [

@@ -163,6 +163,7 @@ async function igGenerateImage() {
     const videoRes  = document.getElementById("ig-video-result");
 
     if (videoRes) videoRes.style.display = "none";
+    igCurrentImageUrl = data.imageUrl;
     if (resultBox) resultBox.style.display = "block";
     if (resultImg) resultImg.src = imgUrl;
     if (dlLink)    { dlLink.href = imgUrl; dlLink.download = data.imageUrl?.split("/").pop() || "levram_image.png"; }
@@ -313,6 +314,61 @@ document.addEventListener("keydown", e => {
 
 window.igOpenLightbox   = igOpenLightbox;
 window.igCloseLightbox  = igCloseLightbox;
+
+// ─── Upscale current image ────────────────────────────────
+let igCurrentImageUrl = null;  // tracks last generated image URL path
+
+async function igUpscale() {
+  if (!igCurrentImageUrl) {
+    const statusEl = document.getElementById("ig-status");
+    if (statusEl) statusEl.textContent = "Generate an image first.";
+    return;
+  }
+  const btn      = document.getElementById("ig-upscale-btn");
+  const statusEl = document.getElementById("ig-status");
+  const resultImg= document.getElementById("ig-result-img");
+  if (btn) { btn.disabled = true; btn.textContent = "Upscaling…"; }
+  if (statusEl) statusEl.textContent = "Upscaling via RealESRGAN / PIL…";
+
+  try {
+    const res = await fetch(`${IG_BASE}/upscale/image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image_url: igCurrentImageUrl, scale: 4 }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "Upscale failed");
+
+    const upUrl = IG_BASE + data.imageUrl;
+    if (resultImg) resultImg.src = upUrl;
+    const dlLink = document.getElementById("ig-download");
+    if (dlLink) { dlLink.href = upUrl; dlLink.download = data.imageUrl.split("/").pop(); }
+    igCurrentImageUrl = data.imageUrl;
+    if (statusEl) statusEl.textContent = `Upscaled ×${data.scale} via ${data.engine}`;
+  } catch (err) {
+    if (statusEl) statusEl.textContent = err.message;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Upscale ×4"; }
+  }
+}
+window.igUpscale = igUpscale;
+
+// ─── Voice Lab inject (from Story Engine) ────────────────
+(function checkVoiceInject() {
+  const raw = localStorage.getItem("levram-voice-inject");
+  if (!raw) return;
+  try {
+    const { text, character } = JSON.parse(raw);
+    const scriptEl = document.getElementById("script-input");
+    const charSel  = document.getElementById("voice-char-select");
+    if (scriptEl) scriptEl.value = text;
+    if (charSel && character) {
+      const opt = [...charSel.options].find(o => o.value === character);
+      if (opt) charSel.value = character;
+    }
+    localStorage.removeItem("levram-voice-inject");
+  } catch {}
+})();
 
 // ─── Init ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {

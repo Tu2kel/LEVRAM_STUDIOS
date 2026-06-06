@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEVRAM — Music & Score Studio</title>
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    body        { background:#0a0a0a; color:#c9a84c; font-family:Rajdhani,sans-serif; margin:0; }
+    .ms-page    { padding:22px; min-height:100vh; }
+    .ms-header  { display:flex; align-items:center; gap:18px; padding:14px 16px; border:1px solid rgba(201,168,76,.22); background:rgba(0,0,0,.75); margin-bottom:14px; }
+    .ms-title   { color:#C9A84C; font-size:16px; letter-spacing:4px; text-transform:uppercase; }
+    .ms-sub     { color:#8d7a55; font-size:11px; margin-top:4px; }
+    .ms-back    { border:1px solid rgba(201,168,76,.35); background:#080604; color:#C9A84C; padding:8px 12px; font-size:11px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; }
+    .ms-grid    { display:grid; grid-template-columns:360px 1fr; gap:16px; align-items:start; }
+    .ms-panel   { border:1px solid rgba(201,168,76,.15); background:rgba(0,0,0,.5); padding:16px; border-radius:4px; margin-bottom:14px; }
+    .ms-panel-title { font-size:12px; letter-spacing:3px; text-transform:uppercase; color:#f9f295; margin-bottom:14px; border-bottom:1px solid rgba(201,168,76,.12); padding-bottom:8px; }
+    .ms-label   { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#666; margin-bottom:5px; }
+    .ms-input   { width:100%; background:#1a1a1a; border:1px solid #2a2a2a; color:#fff; padding:7px 10px; border-radius:3px; font-family:Rajdhani,sans-serif; font-size:13px; box-sizing:border-box; }
+    .ms-select  { width:100%; background:#1a1a1a; border:1px solid #2a2a2a; color:#fff; padding:7px 10px; border-radius:3px; font-family:Rajdhani,sans-serif; font-size:13px; }
+    .ms-btn     { border:1px solid rgba(201,168,76,.45); background:#080604; color:#C9A84C; padding:8px 14px; font-size:11px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; width:100%; margin-top:8px; border-radius:2px; }
+    .ms-btn:hover { background:rgba(201,168,76,.12); color:#f9f295; }
+    .ms-btn:disabled { opacity:.35; cursor:not-allowed; }
+    .ms-status  { font-size:11px; color:#666; min-height:18px; margin-top:6px; }
+    .ms-divider { border:none; border-top:1px solid rgba(201,168,76,.1); margin:12px 0; }
+    .track-card { background:rgba(0,0,0,.4); border:1px solid rgba(201,168,76,.12); border-radius:4px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+    .track-name { font-size:12px; color:#e8d7a0; font-weight:600; }
+    .track-meta { font-size:10px; color:#555; }
+    .track-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .track-btn  { border:1px solid rgba(201,168,76,.25); background:transparent; color:#C9A84C; font-size:9px; letter-spacing:2px; text-transform:uppercase; padding:3px 10px; cursor:pointer; border-radius:2px; }
+    .track-btn:hover { background:rgba(201,168,76,.1); }
+    .track-btn.del { border-color:rgba(200,0,0,.3); color:#ef5350; }
+    .track-btn.del:hover { background:rgba(200,0,0,.1); }
+    .social-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:8px; }
+    .social-card { border:1px solid rgba(201,168,76,.12); background:rgba(0,0,0,.3); border-radius:4px; padding:10px; text-align:center; cursor:pointer; transition:border-color 0.15s; }
+    .social-card:hover { border-color:rgba(201,168,76,.4); }
+    .social-card.selected { border-color:#C9A84C; background:rgba(201,168,76,.06); }
+    .social-name { font-size:11px; letter-spacing:1px; text-transform:uppercase; color:#C9A84C; margin-bottom:3px; }
+    .social-size { font-size:10px; color:#555; }
+    .suno-stub  { border:1px dashed rgba(201,168,76,.2); background:rgba(0,0,0,.3); border-radius:4px; padding:12px; text-align:center; }
+    .suno-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#555; margin-bottom:4px; }
+    .suno-note  { font-size:11px; color:#444; }
+  </style>
+</head>
+<body>
+<div class="ms-page">
+
+  <div class="ms-header">
+    <button class="ms-back" onclick="window.location.href='index.html'">← LEVRAM</button>
+    <div>
+      <div class="ms-title">Music & Score Studio</div>
+      <div class="ms-sub">Upload tracks · Mix into episodes · Export social formats</div>
+    </div>
+    <button class="ms-back" onclick="window.open('export.html','_blank')" style="margin-left:auto;">Export Studio ↗</button>
+  </div>
+
+  <div class="ms-grid">
+
+    <!-- LEFT -->
+    <div>
+
+      <!-- Upload Track -->
+      <div class="ms-panel">
+        <div class="ms-panel-title">Upload Score Track</div>
+        <div class="ms-label">Track Name</div>
+        <input type="text" id="track-name" class="ms-input" placeholder="e.g. The Runner — Main Theme" style="margin-bottom:8px;" />
+        <div class="ms-label">Mood / Genre</div>
+        <select id="track-mood" class="ms-select" style="margin-bottom:8px;">
+          <option value="">Unspecified</option>
+          <option>Dark Orchestral</option>
+          <option>Tragic Cinematic</option>
+          <option>Cosmic Ambient</option>
+          <option>Action Tension</option>
+          <option>Lo-Fi Urban</option>
+          <option>Villain Theme</option>
+          <option>Hero Collapse</option>
+          <option>Electronic Dystopian</option>
+        </select>
+        <div class="ms-label">Project</div>
+        <select id="track-project" class="ms-select" style="margin-bottom:8px;">
+          <option value="">Any / Global</option>
+          <option>Kelz Saga</option>
+          <option>Hulk Saga</option>
+          <option>The Runner</option>
+          <option>The Other Side</option>
+          <option>Levram Banner</option>
+        </select>
+        <div class="ms-label">Audio File (mp3, wav, ogg)</div>
+        <input type="file" id="track-file" accept="audio/*" class="ms-input" style="margin-bottom:4px;" />
+        <button class="ms-btn" onclick="uploadTrack()">Upload Track</button>
+        <div id="upload-status" class="ms-status"></div>
+      </div>
+
+      <!-- Paid Stubs -->
+      <div class="ms-panel">
+        <div class="ms-panel-title">AI Score Generation (Paid)</div>
+        <div class="suno-stub">
+          <div class="suno-label">Suno API</div>
+          <div class="suno-note">Generate custom AI music from a mood description. Requires SUNO_API_KEY in .env.</div>
+          <div style="margin-top:8px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#333;">Not yet enabled</div>
+        </div>
+        <div class="suno-stub" style="margin-top:8px;">
+          <div class="suno-label">Udio API</div>
+          <div class="suno-note">Alternative AI music generation. Requires UDIO_API_KEY in .env.</div>
+          <div style="margin-top:8px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#333;">Not yet enabled</div>
+        </div>
+      </div>
+
+      <!-- Mix into Episode -->
+      <div class="ms-panel">
+        <div class="ms-panel-title">Mix Score into Episode</div>
+        <div class="ms-label">Select Track</div>
+        <select id="mix-track" class="ms-select" style="margin-bottom:8px;">
+          <option value="">Loading tracks…</option>
+        </select>
+        <div class="ms-label">Select Episode Video</div>
+        <select id="mix-video" class="ms-select" style="margin-bottom:8px;">
+          <option value="">Loading videos…</option>
+        </select>
+        <div class="ms-label">Music Volume (under dialogue)</div>
+        <input type="range" id="mix-volume" min="5" max="100" value="25" oninput="document.getElementById('mix-vol-val').textContent=this.value+'%'" style="width:100%;" />
+        <span id="mix-vol-val" style="font-size:11px;color:#666;">25%</span>
+        <div class="ms-label" style="margin-top:8px;">Fade Out (seconds)</div>
+        <input type="number" id="mix-fade" class="ms-input" value="4" min="1" max="20" style="height:auto;padding:5px;" />
+        <button class="ms-btn" onclick="mixMusic()">Mix Score into Episode</button>
+        <div id="mix-status" class="ms-status"></div>
+        <video id="mix-result" controls style="display:none;width:100%;margin-top:10px;border-radius:4px;background:#000;max-height:180px;"></video>
+      </div>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div>
+
+      <!-- Track Library -->
+      <div class="ms-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div class="ms-panel-title" style="margin-bottom:0;">Score Library</div>
+          <button onclick="loadLibrary()" style="background:transparent;border:1px solid rgba(201,168,76,.2);color:#C9A84C;font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:2px;">Refresh</button>
+        </div>
+        <div id="track-library" style="display:flex;flex-direction:column;gap:8px;">
+          <div style="color:#333;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Loading…</div>
+        </div>
+      </div>
+
+      <!-- Social Export -->
+      <div class="ms-panel">
+        <div class="ms-panel-title">Social Format Export</div>
+
+        <div class="ms-label" style="margin-bottom:8px;">Select Format</div>
+        <div class="social-grid" id="social-format-grid">
+          <!-- populated by JS -->
+        </div>
+
+        <hr class="ms-divider" />
+
+        <div class="ms-label">Source Video</div>
+        <select id="social-video" class="ms-select" style="margin-bottom:8px;">
+          <option value="">Loading videos…</option>
+        </select>
+
+        <div class="ms-label">Title (for metadata sidecar)</div>
+        <input type="text" id="social-title" class="ms-input" placeholder="Episode title" style="margin-bottom:8px;" />
+
+        <div class="ms-label">Tags (comma separated)</div>
+        <input type="text" id="social-tags" class="ms-input" placeholder="levram, superhero, dark, animated" style="margin-bottom:4px;" />
+
+        <button class="ms-btn" onclick="exportSocial()">Export for Selected Format</button>
+        <div id="social-status" class="ms-status"></div>
+        <div id="social-result" style="margin-top:10px;display:none;">
+          <video id="social-video-player" controls style="width:100%;border-radius:4px;background:#000;max-height:200px;"></video>
+          <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;" id="social-dl-links"></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = "http://127.0.0.1:8000";
+let selectedFormat = "youtube";
+let allTracks      = [];
+let allVideos      = [];
+
+const FORMATS = {
+  youtube:        { label:"YouTube",       size:"1920×1080" },
+  youtube_shorts: { label:"YT Shorts",     size:"1080×1920" },
+  instagram_reel: { label:"Instagram Reel",size:"1080×1920" },
+  tiktok:         { label:"TikTok",        size:"1080×1920" },
+  twitter:        { label:"Twitter/X",     size:"1280×720"  },
+  facebook:       { label:"Facebook",      size:"1280×720"  },
+};
+
+// ─── Init ─────────────────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", () => {
+  renderSocialGrid();
+  loadLibrary();
+  loadVideos();
+});
+
+// ─── Social format grid ───────────────────────────────────────
+function renderSocialGrid() {
+  const grid = document.getElementById("social-format-grid");
+  grid.innerHTML = Object.entries(FORMATS).map(([key, f]) => `
+    <div class="social-card ${key === selectedFormat ? 'selected' : ''}" onclick="selectFormat('${key}', this)">
+      <div class="social-name">${f.label}</div>
+      <div class="social-size">${f.size}</div>
+    </div>
+  `).join("");
+}
+
+function selectFormat(key, el) {
+  selectedFormat = key;
+  document.querySelectorAll(".social-card").forEach(c => c.classList.remove("selected"));
+  el.classList.add("selected");
+}
+
+// ─── Load track library ───────────────────────────────────────
+async function loadLibrary() {
+  try {
+    const res  = await fetch(`${BASE}/music/library`);
+    const data = await res.json();
+    allTracks  = data.tracks || [];
+
+    const lib = document.getElementById("track-library");
+    if (!allTracks.length) {
+      lib.innerHTML = `<div style="color:#333;font-size:11px;letter-spacing:2px;text-transform:uppercase;">No tracks yet — upload a score file.</div>`;
+    } else {
+      lib.innerHTML = allTracks.map(t => `
+        <div class="track-card">
+          <div class="track-name">${t.name}</div>
+          <div class="track-meta">${t.mood || "No mood"} · ${t.project || "Global"} · ${t.size_mb} MB · ${t.createdAt}</div>
+          <audio src="${BASE + t.url}" controls style="width:100%;height:30px;"></audio>
+          <div class="track-actions">
+            <button class="track-btn" onclick="selectTrackForMix('${t.url}')">Use for Mix</button>
+            <a class="track-btn" href="${BASE + t.url}" download="${t.filename}">Download</a>
+            <button class="track-btn del" onclick="deleteTrack('${t.id}')">Delete</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // Update mix dropdown
+    const sel = document.getElementById("mix-track");
+    sel.innerHTML = '<option value="">Select track…</option>' +
+      allTracks.map(t => `<option value="${t.url}">${t.name}</option>`).join("");
+  } catch(e) {
+    console.error("TRACK LIBRARY ERROR:", e);
+  }
+}
+
+function selectTrackForMix(url) {
+  const sel = document.getElementById("mix-track");
+  if (sel) {
+    sel.value = url;
+    if (!sel.value) {
+      const opt = new Option(url.split("/").pop(), url);
+      sel.appendChild(opt);
+      sel.value = url;
+    }
+  }
+}
+
+// ─── Load videos ──────────────────────────────────────────────
+async function loadVideos() {
+  try {
+    const res  = await fetch(`${BASE}/video/library`);
+    const data = await res.json();
+    allVideos  = data.videos || [];
+
+    const opts = '<option value="">Select video…</option>' +
+      allVideos.map(v => `<option value="${v.url}">${v.name}</option>`).join("");
+
+    document.getElementById("mix-video").innerHTML   = opts;
+    document.getElementById("social-video").innerHTML = opts;
+  } catch(e) {
+    console.error("VIDEO LOAD ERROR:", e);
+  }
+}
+
+// ─── Upload track ─────────────────────────────────────────────
+async function uploadTrack() {
+  const file = document.getElementById("track-file").files[0];
+  const name = document.getElementById("track-name").value.trim();
+  const statusEl = document.getElementById("upload-status");
+
+  if (!file) { statusEl.textContent = "Select an audio file first."; return; }
+  if (!name) { statusEl.textContent = "Enter a track name."; return; }
+
+  statusEl.textContent = "Uploading…";
+  const fd = new FormData();
+  fd.append("name",    name);
+  fd.append("mood",    document.getElementById("track-mood").value);
+  fd.append("project", document.getElementById("track-project").value);
+  fd.append("file",    file);
+
+  try {
+    const res  = await fetch(`${BASE}/music/upload`, { method:"POST", body:fd });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail);
+    statusEl.textContent = `✓ Uploaded: ${data.track.name}`;
+    document.getElementById("track-name").value = "";
+    document.getElementById("track-file").value = "";
+    await loadLibrary();
+  } catch(e) {
+    statusEl.textContent = "Error: " + e.message;
+  }
+}
+
+// ─── Delete track ──────────────────────────────────────────────
+async function deleteTrack(id) {
+  await fetch(`${BASE}/music/${id}`, { method:"DELETE" });
+  loadLibrary();
+}
+
+// ─── Mix music into episode ───────────────────────────────────
+async function mixMusic() {
+  const videoUrl  = document.getElementById("mix-video").value;
+  const musicUrl  = document.getElementById("mix-track").value;
+  const volume    = parseFloat(document.getElementById("mix-volume").value) / 100;
+  const fade      = parseInt(document.getElementById("mix-fade").value || "4");
+  const statusEl  = document.getElementById("mix-status");
+  const player    = document.getElementById("mix-result");
+
+  if (!videoUrl) { statusEl.textContent = "Select a video."; return; }
+  if (!musicUrl) { statusEl.textContent = "Select a music track."; return; }
+
+  statusEl.textContent = "Mixing… (ffmpeg running)";
+
+  try {
+    const res  = await fetch(`${BASE}/music/mix`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ video_url:videoUrl, music_url:musicUrl, music_volume:volume, fade_out_sec:fade }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail);
+    statusEl.textContent = `✓ Mixed. Engine: ${data.engine}`;
+    player.src = BASE + data.mixedUrl;
+    player.style.display = "block";
+    await loadVideos();
+  } catch(e) {
+    statusEl.textContent = "Error: " + e.message;
+  }
+}
+
+// ─── Social export ────────────────────────────────────────────
+async function exportSocial() {
+  const videoUrl = document.getElementById("social-video").value;
+  const title    = document.getElementById("social-title").value.trim();
+  const tags     = document.getElementById("social-tags").value.split(",").map(t => t.trim()).filter(Boolean);
+  const statusEl = document.getElementById("social-status");
+  const result   = document.getElementById("social-result");
+  const player   = document.getElementById("social-video-player");
+  const dlLinks  = document.getElementById("social-dl-links");
+
+  if (!videoUrl) { statusEl.textContent = "Select a source video."; return; }
+
+  statusEl.textContent = `Converting to ${FORMATS[selectedFormat]?.label}…`;
+
+  try {
+    const res  = await fetch(`${BASE}/music/social-export`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ video_url:videoUrl, format:selectedFormat, title, tags }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail);
+
+    statusEl.textContent = `✓ ${data.note} — ${data.size}`;
+    player.src = BASE + data.videoUrl;
+    result.style.display = "block";
+    dlLinks.innerHTML = `
+      <a href="${BASE + data.videoUrl}" download style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;border:1px solid rgba(201,168,76,.3);padding:4px 10px;border-radius:2px;text-decoration:none;">Download Video</a>
+      <a href="${BASE + data.metaUrl}"  download style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#666;border:1px solid #2a2a2a;padding:4px 10px;border-radius:2px;text-decoration:none;">Download Metadata</a>
+    `;
+  } catch(e) {
+    statusEl.textContent = "Error: " + e.message;
+  }
+}
+
+window.uploadTrack  = uploadTrack;
+window.deleteTrack  = deleteTrack;
+window.mixMusic     = mixMusic;
+window.exportSocial = exportSocial;
+window.loadLibrary  = loadLibrary;
+window.selectFormat = selectFormat;
+window.selectTrackForMix = selectTrackForMix;
+</script>
+</body>
+</html>

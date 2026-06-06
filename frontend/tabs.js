@@ -36,6 +36,14 @@
       btn.addEventListener("click", () => {
         const tab = btn.dataset.tab;
 
+        if (tab === "story") {
+          window.open("story-engine.html", "_blank");
+          return;
+        }
+        if (tab === "music") {
+          window.open("music.html", "_blank");
+          return;
+        }
         if (tab === "timeline") {
           window.open("timeline.html", "_blank");
           return;

@@ -15,6 +15,9 @@ from backend.routes.voice_clone import router as voice_clone_router
 from backend.routes.image_gen import router as image_gen_router
 from backend.routes.video import router as video_router
 from backend.routes.settings import router as settings_router
+from backend.routes.story import router as story_router
+from backend.routes.music import router as music_router
+from backend.routes.upscale import router as upscale_router
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -43,3 +46,6 @@ app.include_router(voice_clone_router)
 app.include_router(image_gen_router)
 app.include_router(video_router)
 app.include_router(settings_router)
+app.include_router(story_router)
+app.include_router(music_router)
+app.include_router(upscale_router)

@@ -341,14 +341,82 @@
 
       </div><!-- /#tab-idea-vault -->
 
-      <!-- TAB: Image Gen placeholder -->
-      <div id="tab-image-gen" class="tab-panel" style="grid-column: 1/-1; grid-row: 2; display: none; align-items: center; justify-content: center;">
-        <div style="text-align:center;padding:60px 20px;">
-          <div style="font-size:52px;margin-bottom:16px;opacity:0.3;">🖼</div>
-          <p style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--text-dim);font-family:Rajdhani,sans-serif;">Phase 9</p>
-          <p style="font-size:24px;letter-spacing:6px;text-transform:uppercase;color:var(--gold);font-family:Rajdhani,sans-serif;font-weight:700;margin-top:8px;">Image Gen</p>
-          <p style="font-size:12px;color:var(--text-muted);margin-top:12px;max-width:340px;line-height:1.6;">ComfyUI integration coming in Phase 9. Generate keyframes and character reference images directly from shot prompts.</p>
+      <!-- TAB: Image Gen (Phase 9) -->
+      <div id="tab-image-gen" class="tab-panel" style="grid-column: 1/-1; grid-row: 2; display: none; flex-direction: row; gap: 12px;">
+
+        <!-- LEFT — Generation controls -->
+        <div class="left-panel" style="flex: 0 0 360px; overflow-y: auto;">
+          <div class="panel-header">
+            <div class="panel-header-icon gold">
+              <svg viewBox="0 0 16 16" fill="black"><rect x="1" y="1" width="14" height="14" rx="1"/><circle cx="5" cy="5" r="1.5"/><path d="M1 11l4-4 3 3 2-2 5 5"/></svg>
+            </div>
+            <span class="panel-title">Image Gen</span>
+            <span class="panel-badge">Phase 9</span>
+          </div>
+          <div class="voice-lab">
+            <div class="field-group">
+              <div class="field-label">Prompt</div>
+              <textarea id="ig-prompt" class="script-input" style="height:100px;" placeholder="Describe the image — character, environment, mood, lighting..."></textarea>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Character</div>
+              <select id="ig-character" class="voice-char-select">
+                <option value="">None / Standalone</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Style</div>
+              <select id="ig-style">
+                <option value="cinematic photorealistic">Cinematic Photorealistic</option>
+                <option value="dark fantasy digital art">Dark Fantasy</option>
+                <option value="comic book illustration">Comic Book</option>
+                <option value="anime illustration">Anime</option>
+                <option value="oil painting concept art">Concept Art</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Aspect Ratio</div>
+              <select id="ig-aspect">
+                <option value="widescreen">Widescreen 16:9 — 768×512</option>
+                <option value="cinematic">Cinematic 2.35:1 — 896×384</option>
+                <option value="portrait">Portrait 9:16 — 512×768</option>
+                <option value="square">Square 1:1 — 512×512</option>
+              </select>
+            </div>
+            <button id="ig-generate-btn" class="gen-btn" style="margin-top:8px;">Generate Image</button>
+            <p id="ig-status" class="status"></p>
+          </div>
         </div>
+
+        <!-- RIGHT — Preview + Gallery -->
+        <div class="right-panel" style="flex: 1; overflow-y: auto;">
+          <div class="panel-header">
+            <div class="panel-header-icon blue">
+              <svg viewBox="0 0 16 16" fill="white"><path d="M1 3h14v10H1z"/><circle cx="5" cy="6" r="1"/><path d="M1 12l4-4 3 3 2-2 6 6"/></svg>
+            </div>
+            <span class="panel-title">Output</span>
+          </div>
+          <div style="padding:12px;display:flex;flex-direction:column;gap:12px;">
+
+            <!-- Current result -->
+            <div id="ig-result" style="display:none;">
+              <img id="ig-result-img" style="width:100%;border:1px solid var(--border);border-radius:2px;" alt="Generated image" />
+              <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+                <a id="ig-download" download style="font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download</a>
+              </div>
+            </div>
+
+            <!-- Gallery -->
+            <div>
+              <div class="field-label" style="margin-bottom:8px;">Recent Generations</div>
+              <div id="ig-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;">
+                <div style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">Loading...</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       </div><!-- /#tab-image-gen -->
 
       <!-- ROW 3 — Workspace Tab Bar -->
@@ -678,6 +746,7 @@
     <script src="preview-drawer.js"></script>
     <script src="tabs.js"></script>
     <script src="idea-vault.js"></script>
+    <script src="image-gen.js"></script>
 
     <!-- Workspace switcher -->
     <script>

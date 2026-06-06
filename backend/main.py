@@ -12,6 +12,7 @@ from backend.routes.ideas import router as ideas_router
 from backend.routes.ai import router as ai_router
 from backend.routes.voices import router as voices_router
 from backend.routes.voice_clone import router as voice_clone_router
+from backend.routes.image_gen import router as image_gen_router
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -37,3 +38,4 @@ app.include_router(ai_router)
 app.include_router(characters_router)
 app.include_router(voices_router)
 app.include_router(voice_clone_router)
+app.include_router(image_gen_router)

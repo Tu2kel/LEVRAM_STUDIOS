@@ -1771,3 +1771,9 @@ body {
   border-radius: 2px;
   padding: 1px 6px;
 }
+
+/* ─── Image Gen gallery thumbnails ──────────────────────── */
+#ig-gallery > div:hover img {
+  border-color: rgba(201, 168, 76, 0.5) !important;
+  box-shadow: 0 0 10px rgba(201, 168, 76, 0.2);
+}

@@ -122,16 +122,6 @@ document.getElementById("voice-char-select")?.addEventListener("change", () => {
   metaChar.textContent = getActiveCharacter();
 });
 
-// ─── Nav buttons ─────────────────────────────────────────
-document.querySelectorAll(".nav-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document
-      .querySelectorAll(".nav-btn")
-      .forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-  });
-});
-
 // ─── Load saved scenes from backend ───────────────────────
 async function loadScenes() {
   try {

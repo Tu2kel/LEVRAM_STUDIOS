@@ -16,12 +16,12 @@
         <span class="logo-sub">Generator v2</span>
       </div>
       <nav class="top-nav">
-        <button class="nav-btn active">Voice Lab</button>
-        <button class="nav-btn">Idea Vault</button>
-        <button class="nav-btn">Shot Builder</button>
-        <button class="nav-btn">Image Gen</button>
-        <button class="nav-btn">Timeline</button>
-        <button class="nav-btn">Export</button>
+        <button class="nav-btn active" data-tab="voice-lab">Voice Lab</button>
+        <button class="nav-btn" data-tab="idea-vault">Idea Vault</button>
+        <button class="nav-btn" data-tab="shot-builder">Shot Builder</button>
+        <button class="nav-btn" data-tab="image-gen">Image Gen</button>
+        <button class="nav-btn" data-tab="timeline">Timeline ↗</button>
+        <button class="nav-btn" data-tab="export">Export ↗</button>
         <button id="theme-toggle" class="nav-btn">Ivory Mode</button>
       </nav>
       <div class="status-pill">
@@ -38,8 +38,11 @@
         style="grid-column: 1/-1; grid-row: 1"
       ></div>
 
-      <!-- ROW 2 LEFT — Voice Lab -->
-      <div class="left-panel" style="grid-row: 2">
+      <!-- TAB: Voice Lab + Shot Builder (shared main panel) -->
+      <div id="tab-main" class="tab-panel" style="grid-column: 1/-1; grid-row: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+
+      <!-- LEFT — Voice Lab -->
+      <div class="left-panel">
         <div class="panel-header">
           <div class="panel-header-icon red">
             <svg viewBox="0 0 16 16">
@@ -132,8 +135,8 @@
         </div>
       </div>
 
-      <!-- ROW 2 RIGHT — Shot Builder -->
-      <div class="right-panel" style="grid-row: 2">
+      <!-- RIGHT — Shot Builder -->
+      <div class="right-panel">
         <div class="panel-header">
           <div class="panel-header-icon blue">
             <svg viewBox="0 0 16 16" fill="white">
@@ -289,15 +292,72 @@
             Save Shot Card
           </button>
         </div>
-      </div>
+      </div><!-- /.right-panel -->
+
+      </div><!-- /#tab-main -->
+
+      <!-- TAB: Idea Vault -->
+      <div id="tab-idea-vault" class="tab-panel" style="grid-column: 1/-1; grid-row: 2; display: none; flex-direction: row; gap: 12px;">
+
+        <!-- Capture column -->
+        <div class="left-panel" style="flex: 0 0 380px; overflow-y: auto;">
+          <div class="panel-header">
+            <div class="panel-header-icon gold">
+              <svg viewBox="0 0 16 16" fill="black"><path d="M8 1.5l1.5 4H15l-3.5 2.5 1.5 4.5L8 10l-4.5 2.5 1.5-4.5L1.5 5.5h5.5L8 1.5z"/></svg>
+            </div>
+            <span class="panel-title">Idea Vault</span>
+            <span class="panel-badge">Capture</span>
+          </div>
+          <div class="voice-lab">
+            <div class="field-group">
+              <div class="field-label">Title</div>
+              <input id="iv-title" class="script-input" style="height:auto;padding:8px;" placeholder="Name this idea..." />
+            </div>
+            <div class="field-group">
+              <div class="field-label">The Idea</div>
+              <textarea id="iv-text" class="script-input" style="height:140px;" placeholder="Skit concept, dialogue, scene idea, or anything worth remembering..."></textarea>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Tags</div>
+              <input id="iv-tags" class="script-input" style="height:auto;padding:8px;" placeholder="action, comedy, villain (comma separated)" />
+            </div>
+            <button id="iv-save-btn" class="gen-btn">Save Idea</button>
+            <p id="iv-status" class="status"></p>
+          </div>
+        </div>
+
+        <!-- Saved ideas column -->
+        <div class="right-panel" style="flex: 1; overflow-y: auto;">
+          <div class="panel-header">
+            <div class="panel-header-icon blue">
+              <svg viewBox="0 0 16 16" fill="white"><path d="M2 3h12v1H2zm0 3h12v1H2zm0 3h8v1H2z"/></svg>
+            </div>
+            <span class="panel-title">Saved Ideas</span>
+          </div>
+          <div id="iv-list" style="padding:12px;display:flex;flex-direction:column;gap:8px;">
+            <p style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">No ideas saved yet.</p>
+          </div>
+        </div>
+
+      </div><!-- /#tab-idea-vault -->
+
+      <!-- TAB: Image Gen placeholder -->
+      <div id="tab-image-gen" class="tab-panel" style="grid-column: 1/-1; grid-row: 2; display: none; align-items: center; justify-content: center;">
+        <div style="text-align:center;padding:60px 20px;">
+          <div style="font-size:52px;margin-bottom:16px;opacity:0.3;">🖼</div>
+          <p style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--text-dim);font-family:Rajdhani,sans-serif;">Phase 9</p>
+          <p style="font-size:24px;letter-spacing:6px;text-transform:uppercase;color:var(--gold);font-family:Rajdhani,sans-serif;font-weight:700;margin-top:8px;">Image Gen</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:12px;max-width:340px;line-height:1.6;">ComfyUI integration coming in Phase 9. Generate keyframes and character reference images directly from shot prompts.</p>
+        </div>
+      </div><!-- /#tab-image-gen -->
 
       <!-- ROW 3 — Workspace Tab Bar -->
       <div class="workspace-tabs-bar" style="grid-column: 1/-1; grid-row: 3">
         <button class="workspace-tab-btn active" data-ws="preview">
           ▶ &nbsp;Preview
         </button>
-        <button class="workspace-tab-btn" data-ws="timeline">
-          ☰ &nbsp;Timeline
+        <button class="workspace-tab-btn" type="button" onclick="window.open('timeline.html','_blank')">
+          ☰ &nbsp;Timeline ↗
         </button>
         <button
           class="workspace-tab-btn"
@@ -616,6 +676,8 @@
     <script src="character-lab.js"></script>
     <script src="timeline.js"></script>
     <script src="preview-drawer.js"></script>
+    <script src="tabs.js"></script>
+    <script src="idea-vault.js"></script>
 
     <!-- Workspace switcher -->
     <script>

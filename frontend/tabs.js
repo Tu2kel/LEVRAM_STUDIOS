@@ -56,6 +56,18 @@
           window.open("settings.html", "_blank");
           return;
         }
+        if (tab === "voice-clone") {
+          window.open("voice-clone.html", "_blank");
+          return;
+        }
+        if (tab === "assets") {
+          window.open("assets.html", "_blank");
+          return;
+        }
+        if (tab === "projects") {
+          window.open("projects.html", "_blank");
+          return;
+        }
 
         setActiveNav(btn);
         showTab(tab);

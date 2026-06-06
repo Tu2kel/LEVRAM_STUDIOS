@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEVRAM — Project Manager</title>
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    body { background: #0a0a0a; color: #c9a84c; font-family: Rajdhani, sans-serif; margin: 0; }
+    .pm-page { padding: 22px; max-width: 960px; margin: 0 auto; }
+
+    .pm-header { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border: 1px solid rgba(201,168,76,.22); background: rgba(0,0,0,.85); margin-bottom: 20px; }
+    .pm-title  { color: #C9A84C; font-size: 16px; letter-spacing: 4px; text-transform: uppercase; }
+    .pm-sub    { color: #8d7a55; font-size: 10px; margin-top: 3px; }
+    .pm-back   { border: 1px solid rgba(201,168,76,.35); background: #080604; color: #C9A84C; padding: 7px 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+
+    /* Create form */
+    .pm-create { border: 1px solid rgba(201,168,76,.15); background: rgba(0,0,0,.5); padding: 18px; border-radius: 4px; margin-bottom: 20px; }
+    .pm-create-title { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; }
+    .pm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media(max-width:640px){ .pm-row { grid-template-columns: 1fr; } }
+    label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #8d7a55; display: block; margin-bottom: 4px; margin-top: 10px; }
+    input[type=text], input[type=color], select, textarea {
+      background: rgba(0,0,0,.6); border: 1px solid rgba(201,168,76,.2); color: #c9a84c;
+      font-family: Rajdhani, sans-serif; font-size: 13px; padding: 7px 10px;
+      width: 100%; box-sizing: border-box; border-radius: 2px; outline: none;
+    }
+    input::placeholder { color: rgba(201,168,76,.3); }
+    input[type=color] { padding: 2px; height: 34px; cursor: pointer; }
+    textarea { resize: vertical; min-height: 56px; }
+
+    .pm-btn {
+      background: transparent; border: 1px solid rgba(201,168,76,.4); color: #C9A84C;
+      font-family: Rajdhani, sans-serif; font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+      padding: 9px 20px; cursor: pointer; border-radius: 2px; margin-top: 14px;
+      transition: background .15s;
+    }
+    .pm-btn:hover { background: rgba(201,168,76,.08); border-color: rgba(201,168,76,.7); }
+    .pm-btn.gold { background: rgba(201,168,76,.12); border-color: rgba(201,168,76,.6); color: #f9f295; }
+
+    .pm-status { font-size: 11px; letter-spacing: 1px; color: rgba(201,168,76,.6); margin-top: 8px; min-height: 16px; }
+    .pm-status.ok  { color: #4caf50; }
+    .pm-status.err { color: #ef5350; }
+
+    /* Project grid */
+    .pm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+
+    .pm-card {
+      border: 1px solid rgba(201,168,76,.12); background: rgba(0,0,0,.5); border-radius: 4px;
+      padding: 16px; position: relative; overflow: hidden; transition: border-color .15s;
+    }
+    .pm-card:hover { border-color: rgba(201,168,76,.4); }
+    .pm-card.active {
+      border-color: #c9a84c;
+      box-shadow: 0 0 16px rgba(201,168,76,.15), inset 0 0 30px rgba(201,168,76,.04);
+    }
+    .pm-card-color-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .pm-card-name { font-size: 16px; letter-spacing: 2px; color: #f9f295; margin-top: 8px; }
+    .pm-card-genre { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #8d7a55; margin-top: 2px; }
+    .pm-card-logline { font-size: 12px; color: #6d5f44; margin-top: 8px; line-height: 1.5; font-style: italic; }
+
+    .pm-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+    .pm-status-pill {
+      font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 8px;
+      border-radius: 10px; font-weight: 700;
+    }
+    .pill-dev      { background: rgba(255,152,0,.1); color: #ffb74d; border: 1px solid rgba(255,152,0,.25); }
+    .pill-prod     { background: rgba(33,150,243,.1); color: #64b5f6; border: 1px solid rgba(33,150,243,.25); }
+    .pill-complete { background: rgba(76,175,80,.1);  color: #a5d6a7; border: 1px solid rgba(76,175,80,.25); }
+    .pill-archived { background: rgba(100,100,100,.1); color: #777;   border: 1px solid rgba(100,100,100,.2); }
+    .pill-active   { background: rgba(201,168,76,.15); color: #f9f295; border: 1px solid rgba(201,168,76,.4); }
+
+    .pm-card-actions { display: flex; gap: 6px; }
+    .pm-card-actions button {
+      background: transparent; border: 1px solid rgba(201,168,76,.18); color: #8d7a55;
+      font-family: Rajdhani, sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 4px 8px; cursor: pointer; border-radius: 2px;
+    }
+    .pm-card-actions button:hover { border-color: rgba(201,168,76,.5); color: #c9a84c; }
+    .pm-card-actions button.activate { border-color: rgba(201,168,76,.35); color: #c9a84c; }
+    .pm-card-actions button.del  { border-color: rgba(200,0,0,.2); color: #ef5350; }
+    .pm-card-actions button.del:hover { border-color: rgba(200,0,0,.6); }
+
+    .pm-active-badge {
+      font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 8px;
+      border-radius: 10px; background: rgba(201,168,76,.15); color: #f9f295;
+      border: 1px solid rgba(201,168,76,.4); display: inline-block;
+    }
+
+    /* Edit drawer */
+    .pm-edit-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    .pm-edit-backdrop.open { display: flex; }
+    .pm-edit-modal { background: #111; border: 1px solid rgba(201,168,76,.3); border-radius: 4px; padding: 22px; width: 440px; max-width: 95vw; }
+    .pm-edit-title { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 16px; }
+    .pm-edit-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .pm-edit-actions button { flex: 1; padding: 9px; font-family: Rajdhani, sans-serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; border-radius: 2px; }
+    .pm-edit-actions .cancel { background: transparent; border: 1px solid rgba(201,168,76,.2); color: #8d7a55; }
+    .pm-edit-actions .save   { background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.5); color: #f9f295; }
+
+    .pm-section-title { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; margin-top: 28px; border-bottom: 1px solid rgba(201,168,76,.1); padding-bottom: 8px; }
+    .pm-section-title:first-of-type { margin-top: 0; }
+  </style>
+</head>
+<body>
+<div class="pm-page">
+
+  <div class="pm-header">
+    <button class="pm-back" onclick="window.location.href='index.html'">← LEVRAM</button>
+    <div>
+      <div class="pm-title">Project Manager</div>
+      <div class="pm-sub">Create and switch between production projects. The active project sets context across the studio.</div>
+    </div>
+  </div>
+
+  <!-- Create new project -->
+  <div class="pm-create">
+    <div class="pm-create-title">New Project</div>
+    <div class="pm-row">
+      <div>
+        <label>Project Name *</label>
+        <input type="text" id="new-name" placeholder="e.g. SHADOW PROTOCOL" />
+      </div>
+      <div>
+        <label>Genre</label>
+        <input type="text" id="new-genre" placeholder="Sci-Fi · Thriller · Drama…" />
+      </div>
+    </div>
+    <label>Logline</label>
+    <textarea id="new-logline" rows="2" placeholder="One sentence describing the project…"></textarea>
+    <div class="pm-row">
+      <div>
+        <label>Status</label>
+        <select id="new-status">
+          <option value="development">Development</option>
+          <option value="production">Production</option>
+          <option value="complete">Complete</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+      <div>
+        <label>Project Color</label>
+        <input type="color" id="new-color" value="#c9a84c" />
+      </div>
+    </div>
+    <button class="pm-btn gold" onclick="createProject()">Create Project →</button>
+    <div class="pm-status" id="pm-create-status"></div>
+  </div>
+
+  <!-- Project list -->
+  <div class="pm-section-title">Your Projects</div>
+  <div class="pm-grid" id="pm-grid">
+    <div style="color:#444;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Loading…</div>
+  </div>
+
+</div>
+
+<!-- Edit modal -->
+<div class="pm-edit-backdrop" id="pm-edit-modal">
+  <div class="pm-edit-modal">
+    <div class="pm-edit-title">Edit Project</div>
+    <input type="hidden" id="edit-pid" />
+    <label>Name</label>
+    <input type="text" id="edit-name" />
+    <label>Genre</label>
+    <input type="text" id="edit-genre" />
+    <label>Logline</label>
+    <textarea id="edit-logline" rows="2"></textarea>
+    <label>Status</label>
+    <select id="edit-status">
+      <option value="development">Development</option>
+      <option value="production">Production</option>
+      <option value="complete">Complete</option>
+      <option value="archived">Archived</option>
+    </select>
+    <label>Color</label>
+    <input type="color" id="edit-color" />
+    <div class="pm-edit-actions">
+      <button class="cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="save"   onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = "http://127.0.0.1:8000";
+
+const STATUS_PILL = {
+  development: "pill-dev",
+  production:  "pill-prod",
+  complete:    "pill-complete",
+  archived:    "pill-archived",
+};
+const STATUS_LABEL = {
+  development: "Dev",
+  production:  "Production",
+  complete:    "Complete",
+  archived:    "Archived",
+};
+
+// ── Load projects ────────────────────────────────────────────
+async function loadProjects() {
+  const grid = document.getElementById("pm-grid");
+  try {
+    const res  = await fetch(`${BASE}/projects`);
+    const data = await res.json();
+    const projects = data.projects || [];
+
+    if (!projects.length) {
+      grid.innerHTML = `<div style="color:#444;font-size:11px;letter-spacing:2px;text-transform:uppercase;">No projects yet — create your first above.</div>`;
+      return;
+    }
+
+    grid.innerHTML = projects.map(p => `
+      <div class="pm-card ${p.active ? "active" : ""}" id="card-${p.id}">
+        <div class="pm-card-color-bar" style="background:${p.color || "#c9a84c"}"></div>
+        <div class="pm-card-name">${p.name}</div>
+        ${p.genre ? `<div class="pm-card-genre">${p.genre}</div>` : ""}
+        ${p.logline ? `<div class="pm-card-logline">${p.logline}</div>` : ""}
+        <div class="pm-card-footer">
+          <div>
+            <span class="pm-status-pill ${STATUS_PILL[p.status] || ""}">${STATUS_LABEL[p.status] || p.status}</span>
+            ${p.active ? `<span class="pm-active-badge" style="margin-left:6px;">Active</span>` : ""}
+          </div>
+          <div class="pm-card-actions">
+            ${!p.active ? `<button class="activate" onclick="activateProject('${p.id}')">Set Active</button>` : ""}
+            <button onclick="openEditModal(${JSON.stringify(p).replace(/"/g, '&quot;')})">Edit</button>
+            <button class="del" onclick="deleteProject('${p.id}','${p.name}')">✕</button>
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    // Sync active project to localStorage for other pages
+    const active = projects.find(p => p.active);
+    if (active) {
+      localStorage.setItem("levram-active-project", JSON.stringify(active));
+    }
+
+  } catch (err) {
+    grid.innerHTML = `<div style="color:#ef5350;font-size:11px;">Backend offline — start the server first.</div>`;
+  }
+}
+
+// ── Create project ───────────────────────────────────────────
+async function createProject() {
+  const name    = document.getElementById("new-name").value.trim();
+  const genre   = document.getElementById("new-genre").value.trim();
+  const logline = document.getElementById("new-logline").value.trim();
+  const status  = document.getElementById("new-status").value;
+  const color   = document.getElementById("new-color").value;
+  const stat    = document.getElementById("pm-create-status");
+
+  if (!name) { stat.textContent = "Project name is required."; stat.className = "pm-status err"; return; }
+
+  stat.textContent = "Creating…"; stat.className = "pm-status";
+
+  try {
+    const res = await fetch(`${BASE}/projects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, genre, logline, status, color }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Create failed");
+
+    stat.textContent = `Created: ${data.project.name}`; stat.className = "pm-status ok";
+    document.getElementById("new-name").value    = "";
+    document.getElementById("new-genre").value   = "";
+    document.getElementById("new-logline").value = "";
+    await loadProjects();
+  } catch (err) {
+    stat.textContent = err.message; stat.className = "pm-status err";
+  }
+}
+
+// ── Activate project ─────────────────────────────────────────
+async function activateProject(pid) {
+  try {
+    const res = await fetch(`${BASE}/projects/${pid}/activate`, { method: "POST" });
+    if (!res.ok) throw new Error("Activate failed");
+    await loadProjects();
+  } catch (err) {
+    alert("Could not activate project: " + err.message);
+  }
+}
+
+// ── Edit modal ───────────────────────────────────────────────
+function openEditModal(p) {
+  document.getElementById("edit-pid").value     = p.id;
+  document.getElementById("edit-name").value    = p.name;
+  document.getElementById("edit-genre").value   = p.genre || "";
+  document.getElementById("edit-logline").value = p.logline || "";
+  document.getElementById("edit-status").value  = p.status || "development";
+  document.getElementById("edit-color").value   = p.color || "#c9a84c";
+  document.getElementById("pm-edit-modal").classList.add("open");
+}
+
+function closeEditModal() {
+  document.getElementById("pm-edit-modal").classList.remove("open");
+}
+
+async function saveEdit() {
+  const pid     = document.getElementById("edit-pid").value;
+  const name    = document.getElementById("edit-name").value.trim();
+  const genre   = document.getElementById("edit-genre").value.trim();
+  const logline = document.getElementById("edit-logline").value.trim();
+  const status  = document.getElementById("edit-status").value;
+  const color   = document.getElementById("edit-color").value;
+
+  try {
+    const res = await fetch(`${BASE}/projects/${pid}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, genre, logline, status, color }),
+    });
+    if (!res.ok) throw new Error("Save failed");
+    closeEditModal();
+    await loadProjects();
+  } catch (err) {
+    alert("Save failed: " + err.message);
+  }
+}
+
+// ── Delete project ───────────────────────────────────────────
+async function deleteProject(pid, name) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  try {
+    await fetch(`${BASE}/projects/${pid}`, { method: "DELETE" });
+    await loadProjects();
+  } catch (err) {
+    alert("Delete failed: " + err.message);
+  }
+}
+
+// Close edit modal on backdrop click
+document.getElementById("pm-edit-modal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeEditModal();
+});
+
+window.addEventListener("DOMContentLoaded", loadProjects);
+</script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEVRAM — Asset Browser</title>
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    body { background: #0a0a0a; color: #c9a84c; font-family: Rajdhani, sans-serif; margin: 0; }
+    .as-page { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* Header */
+    .as-header { display: flex; align-items: center; gap: 14px; padding: 12px 22px; border-bottom: 1px solid rgba(201,168,76,.22); background: rgba(0,0,0,.85); flex-shrink: 0; }
+    .as-title  { color: #C9A84C; font-size: 15px; letter-spacing: 4px; text-transform: uppercase; }
+    .as-sub    { color: #8d7a55; font-size: 10px; margin-top: 2px; }
+    .as-back   { border: 1px solid rgba(201,168,76,.35); background: #080604; color: #C9A84C; padding: 6px 10px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+
+    /* Toolbar */
+    .as-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 22px; background: #111; border-bottom: 1px solid rgba(201,168,76,.1); flex-shrink: 0; flex-wrap: wrap; }
+    .as-toolbar input[type=text] {
+      background: rgba(0,0,0,.6); border: 1px solid rgba(201,168,76,.2); color: #c9a84c;
+      font-family: Rajdhani, sans-serif; font-size: 12px; padding: 6px 10px;
+      border-radius: 2px; outline: none; width: 200px;
+    }
+    .as-filter-btn {
+      border: 1px solid rgba(201,168,76,.2); background: transparent; color: #8d7a55;
+      font-family: Rajdhani, sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+      padding: 5px 12px; cursor: pointer; border-radius: 2px;
+    }
+    .as-filter-btn.active { border-color: rgba(201,168,76,.7); color: #f9f295; background: rgba(201,168,76,.08); }
+    .as-filter-btn:hover  { border-color: rgba(201,168,76,.5); color: #c9a84c; }
+    .as-count { font-size: 10px; color: #555; letter-spacing: 2px; text-transform: uppercase; margin-left: auto; }
+
+    /* Grid */
+    .as-grid-wrap { flex: 1; overflow-y: auto; padding: 16px 22px 40px; }
+    .as-grid-wrap::-webkit-scrollbar { width: 4px; }
+    .as-grid-wrap::-webkit-scrollbar-thumb { background: rgba(201,168,76,.2); border-radius: 2px; }
+
+    .as-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+
+    .as-card {
+      background: rgba(0,0,0,.5); border: 1px solid rgba(201,168,76,.12); border-radius: 4px;
+      overflow: hidden; cursor: pointer; transition: border-color .15s;
+      position: relative;
+    }
+    .as-card:hover { border-color: rgba(201,168,76,.5); }
+    .as-card.selected { border-color: #c9a84c; box-shadow: 0 0 10px rgba(201,168,76,.2); }
+
+    .as-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #111; display: block; }
+    .as-thumb-video { width: 100%; aspect-ratio: 16/9; background: #000; display: block; }
+    .as-thumb-audio { width: 100%; padding: 20px 10px 10px; background: linear-gradient(180deg,#1a1400,#0a0a0a); display: flex; flex-direction: column; align-items: center; }
+    .as-thumb-audio .audio-icon { font-size: 28px; color: rgba(201,168,76,.5); }
+    .as-thumb-audio audio { width: 100%; margin-top: 8px; }
+
+    .as-card-meta { padding: 8px 10px; }
+    .as-card-name { font-size: 11px; color: #c9a84c; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .as-card-info { font-size: 10px; color: #555; margin-top: 2px; }
+    .as-card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .as-tag { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; padding: 1px 6px; border-radius: 10px; background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.2); color: #c9a84c; }
+
+    .as-card-actions { display: flex; gap: 6px; padding: 0 10px 8px; }
+    .as-card-actions button {
+      flex: 1; background: transparent; border: 1px solid rgba(201,168,76,.15); color: #8d7a55;
+      font-family: Rajdhani, sans-serif; font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+      padding: 4px 6px; cursor: pointer; border-radius: 2px;
+    }
+    .as-card-actions button:hover { border-color: rgba(201,168,76,.5); color: #c9a84c; }
+    .as-card-actions button.del  { border-color: rgba(200,0,0,.2); color: #ef5350; }
+    .as-card-actions button.del:hover { border-color: rgba(200,0,0,.6); }
+
+    .as-type-badge {
+      position: absolute; top: 6px; left: 6px;
+      font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 7px;
+      border-radius: 10px; font-weight: 700;
+    }
+    .badge-image { background: rgba(33,150,243,.15); color: #64b5f6; border: 1px solid rgba(33,150,243,.3); }
+    .badge-video { background: rgba(156,39,176,.15); color: #ce93d8; border: 1px solid rgba(156,39,176,.3); }
+    .badge-audio { background: rgba(76,175,80,.15); color: #a5d6a7; border: 1px solid rgba(76,175,80,.3); }
+    .badge-music { background: rgba(255,152,0,.15); color: #ffcc80; border: 1px solid rgba(255,152,0,.3); }
+
+    .as-empty { color: #444; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; grid-column: 1/-1; text-align: center; padding: 48px 0; }
+
+    /* Tag editor modal */
+    .as-modal-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    .as-modal-backdrop.open { display: flex; }
+    .as-modal { background: #111; border: 1px solid rgba(201,168,76,.3); border-radius: 4px; padding: 22px; width: 360px; max-width: 90vw; }
+    .as-modal-title { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; }
+    .as-modal input[type=text] {
+      background: rgba(0,0,0,.6); border: 1px solid rgba(201,168,76,.2); color: #c9a84c;
+      font-family: Rajdhani, sans-serif; font-size: 13px; padding: 8px 10px;
+      width: 100%; box-sizing: border-box; border-radius: 2px; outline: none;
+    }
+    .as-modal-note { font-size: 10px; color: #555; margin-top: 6px; }
+    .as-modal-actions { display: flex; gap: 8px; margin-top: 14px; }
+    .as-modal-actions button {
+      flex: 1; background: transparent; border: 1px solid rgba(201,168,76,.3); color: #c9a84c;
+      font-family: Rajdhani, sans-serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      padding: 8px; cursor: pointer; border-radius: 2px;
+    }
+    .as-modal-actions button.save { background: rgba(201,168,76,.1); border-color: rgba(201,168,76,.6); color: #f9f295; }
+  </style>
+</head>
+<body>
+<div class="as-page">
+
+  <div class="as-header">
+    <button class="as-back" onclick="window.location.href='index.html'">← LEVRAM</button>
+    <div>
+      <div class="as-title">Asset Browser</div>
+      <div class="as-sub">All images, videos, audio, and music from your projects.</div>
+    </div>
+    <button class="as-back" style="margin-left:auto;" onclick="loadAssets()">Refresh</button>
+  </div>
+
+  <div class="as-toolbar">
+    <input type="text" id="as-search" placeholder="Search filename…" oninput="filterAssets()" />
+    <button class="as-filter-btn active" data-type="all"    onclick="setFilter(this,'all')">All</button>
+    <button class="as-filter-btn"        data-type="image"  onclick="setFilter(this,'image')">Images</button>
+    <button class="as-filter-btn"        data-type="video"  onclick="setFilter(this,'video')">Videos</button>
+    <button class="as-filter-btn"        data-type="audio"  onclick="setFilter(this,'audio')">Audio</button>
+    <button class="as-filter-btn"        data-type="music"  onclick="setFilter(this,'music')">Music</button>
+    <span class="as-count" id="as-count">—</span>
+  </div>
+
+  <div class="as-grid-wrap">
+    <div class="as-grid" id="as-grid">
+      <div class="as-empty">Loading assets…</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Tag editor modal -->
+<div class="as-modal-backdrop" id="as-modal">
+  <div class="as-modal">
+    <div class="as-modal-title">Edit Tags</div>
+    <input type="text" id="as-tag-input" placeholder="tag1, tag2, cinematics, villain…" />
+    <div class="as-modal-note">Comma-separated. Used for filtering in the browser.</div>
+    <div class="as-modal-actions">
+      <button onclick="closeTagModal()">Cancel</button>
+      <button class="save" onclick="saveTags()">Save Tags</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = "http://127.0.0.1:8000";
+let allAssets   = [];
+let activeType  = "all";
+let tagTarget   = null;
+
+// ── Load all assets ──────────────────────────────────────────
+async function loadAssets() {
+  const grid = document.getElementById("as-grid");
+  grid.innerHTML = `<div class="as-empty">Loading…</div>`;
+  try {
+    const res  = await fetch(`${BASE}/assets?type=${activeType}`);
+    const data = await res.json();
+    allAssets  = data.assets || [];
+    renderGrid(allAssets);
+  } catch (err) {
+    grid.innerHTML = `<div class="as-empty" style="color:#ef5350;">Backend offline — start the server first.</div>`;
+  }
+}
+
+// ── Filter by type ───────────────────────────────────────────
+function setFilter(btn, type) {
+  document.querySelectorAll(".as-filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  activeType = type;
+  loadAssets();
+}
+
+// ── Client-side search filter ────────────────────────────────
+function filterAssets() {
+  const q = document.getElementById("as-search").value.toLowerCase();
+  const filtered = allAssets.filter(a => a.filename.toLowerCase().includes(q));
+  renderGrid(filtered);
+}
+
+// ── Render grid ──────────────────────────────────────────────
+function renderGrid(assets) {
+  const grid    = document.getElementById("as-grid");
+  const countEl = document.getElementById("as-count");
+  if (countEl) countEl.textContent = `${assets.length} asset${assets.length !== 1 ? "s" : ""}`;
+
+  if (!assets.length) {
+    grid.innerHTML = `<div class="as-empty">No assets found.</div>`;
+    return;
+  }
+
+  grid.innerHTML = assets.map(a => `
+    <div class="as-card" data-id="${a.id}" data-type="${a.type}" data-url="${a.url}">
+      <span class="as-type-badge badge-${a.type}">${a.type}</span>
+      ${thumbHtml(a)}
+      <div class="as-card-meta">
+        <div class="as-card-name" title="${a.filename}">${a.filename}</div>
+        <div class="as-card-info">${a.size_mb} MB</div>
+        <div class="as-card-tags">${(a.tags || []).map(t => `<span class="as-tag">${t}</span>`).join("")}</div>
+      </div>
+      <div class="as-card-actions">
+        <button onclick="openTagModal('${a.id}', '${(a.tags||[]).join(",")}')">Tag</button>
+        <a href="${BASE + a.url}" download="${a.filename}" style="flex:1;text-align:center;text-decoration:none;">
+          <button style="width:100%">DL</button>
+        </a>
+        <button class="del" onclick="deleteAsset('${a.type}','${a.filename}')">✕</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function thumbHtml(a) {
+  const url = BASE + a.url;
+  if (a.type === "image") {
+    return `<img class="as-thumb" src="${url}" loading="lazy" onerror="this.style.opacity='0.2'" />`;
+  }
+  if (a.type === "video") {
+    return `<video class="as-thumb-video" src="${url}" preload="metadata" muted></video>`;
+  }
+  if (a.type === "audio" || a.type === "music") {
+    return `<div class="as-thumb-audio">
+      <div class="audio-icon">♪</div>
+      <audio src="${url}" controls preload="none"></audio>
+    </div>`;
+  }
+  return `<div style="width:100%;aspect-ratio:16/9;background:#111;display:flex;align-items:center;justify-content:center;color:#333;font-size:22px;">?</div>`;
+}
+
+// ── Tag modal ────────────────────────────────────────────────
+function openTagModal(id, existingTags) {
+  tagTarget = id;
+  document.getElementById("as-tag-input").value = existingTags || "";
+  document.getElementById("as-modal").classList.add("open");
+}
+
+function closeTagModal() {
+  tagTarget = null;
+  document.getElementById("as-modal").classList.remove("open");
+}
+
+async function saveTags() {
+  if (!tagTarget) return;
+  const raw  = document.getElementById("as-tag-input").value;
+  const tags = raw.split(",").map(t => t.trim()).filter(Boolean);
+
+  try {
+    const res = await fetch(`${BASE}/assets/tag`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ asset_id: tagTarget, tags }),
+    });
+    if (!res.ok) throw new Error("Tag save failed");
+    closeTagModal();
+    await loadAssets();
+  } catch (err) {
+    alert("Failed to save tags: " + err.message);
+  }
+}
+
+// ── Delete asset ─────────────────────────────────────────────
+async function deleteAsset(type, filename) {
+  if (!confirm(`Delete ${filename}? This cannot be undone.`)) return;
+  try {
+    const res = await fetch(`${BASE}/assets/${type}/${encodeURIComponent(filename)}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Delete failed");
+    await loadAssets();
+  } catch (err) {
+    alert("Delete failed: " + err.message);
+  }
+}
+
+// Close modal on backdrop click
+document.getElementById("as-modal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeTagModal();
+});
+
+window.addEventListener("DOMContentLoaded", loadAssets);
+</script>
+</body>
+</html>

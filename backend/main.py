@@ -18,6 +18,8 @@ from backend.routes.settings import router as settings_router
 from backend.routes.story import router as story_router
 from backend.routes.music import router as music_router
 from backend.routes.upscale import router as upscale_router
+from backend.routes.assets import router as assets_router
+from backend.routes.projects import router as projects_router
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -49,3 +51,5 @@ app.include_router(settings_router)
 app.include_router(story_router)
 app.include_router(music_router)
 app.include_router(upscale_router)
+app.include_router(assets_router)
+app.include_router(projects_router)

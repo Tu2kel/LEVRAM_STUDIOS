@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEVRAM — Voice Clone Lab</title>
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    body { background: #0a0a0a; color: #c9a84c; font-family: Rajdhani, sans-serif; margin: 0; }
+    .vc-page { padding: 22px; max-width: 960px; margin: 0 auto; }
+    .vc-header { display: flex; align-items: center; gap: 18px; padding: 14px 18px; border: 1px solid rgba(201,168,76,.22); background: rgba(0,0,0,.75); margin-bottom: 20px; }
+    .vc-title { color: #C9A84C; font-size: 16px; letter-spacing: 4px; text-transform: uppercase; }
+    .vc-sub { color: #8d7a55; font-size: 11px; margin-top: 4px; }
+    .vc-back { border: 1px solid rgba(201,168,76,.35); background: #080604; color: #C9A84C; padding: 8px 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+
+    .vc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .vc-grid { grid-template-columns: 1fr; } }
+
+    .vc-card { border: 1px solid rgba(201,168,76,.15); background: rgba(0,0,0,.5); padding: 18px; border-radius: 4px; }
+    .vc-card-title { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; border-bottom: 1px solid rgba(201,168,76,.12); padding-bottom: 8px; }
+    .vc-card-sub { font-size: 10px; color: #666; margin-top: -10px; margin-bottom: 14px; }
+
+    label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #8d7a55; display: block; margin-bottom: 5px; margin-top: 12px; }
+    label:first-child { margin-top: 0; }
+    input[type=text], input[type=file], select, textarea {
+      background: rgba(0,0,0,.6); border: 1px solid rgba(201,168,76,.2); color: #c9a84c;
+      font-family: Rajdhani, sans-serif; font-size: 13px; padding: 8px 10px;
+      width: 100%; box-sizing: border-box; border-radius: 2px; outline: none;
+    }
+    input::placeholder { color: rgba(201,168,76,.3); }
+    input[type=file] { cursor: pointer; }
+    input[type=range] { width: 100%; accent-color: #c9a84c; }
+
+    .vc-btn {
+      background: transparent; border: 1px solid rgba(201,168,76,.4);
+      color: #C9A84C; font-family: Rajdhani, sans-serif; font-size: 12px;
+      letter-spacing: 2px; text-transform: uppercase; padding: 9px 18px;
+      cursor: pointer; border-radius: 2px; margin-top: 14px; width: 100%;
+      transition: background .15s, border-color .15s;
+    }
+    .vc-btn:hover { background: rgba(201,168,76,.1); border-color: rgba(201,168,76,.7); }
+    .vc-btn.gold { background: rgba(201,168,76,.12); border-color: rgba(201,168,76,.6); color: #f9f295; }
+    .vc-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .vc-status { font-size: 11px; letter-spacing: 1px; color: rgba(201,168,76,.7); margin-top: 10px; min-height: 18px; }
+    .vc-status.err { color: #ef5350; }
+    .vc-status.ok  { color: #4caf50; }
+
+    /* Voice list */
+    .voice-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .voice-item { background: rgba(0,0,0,.4); border: 1px solid rgba(201,168,76,.12); border-radius: 3px; padding: 10px 12px; }
+    .voice-item-name { font-size: 13px; color: #f9f295; letter-spacing: 1px; }
+    .voice-item-id   { font-size: 10px; color: #555; margin-top: 2px; word-break: break-all; }
+    .voice-item-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .voice-item-actions button {
+      background: transparent; border: 1px solid rgba(201,168,76,.2); color: #c9a84c;
+      font-family: Rajdhani, sans-serif; font-size: 10px; letter-spacing: 2px;
+      text-transform: uppercase; padding: 4px 10px; cursor: pointer; border-radius: 2px;
+    }
+    .voice-item-actions button:hover { border-color: rgba(201,168,76,.6); }
+    .voice-item-actions button.del { border-color: rgba(200,0,0,.3); color: #ef5350; }
+    .voice-item-actions button.del:hover { border-color: rgba(200,0,0,.7); }
+
+    /* RVC model list */
+    .model-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .model-item { background: rgba(0,0,0,.4); border: 1px solid rgba(201,168,76,.12); border-radius: 3px; padding: 10px 12px; }
+    .model-item-name { font-size: 13px; color: #c9a84c; letter-spacing: 1px; }
+    .model-item-path { font-size: 10px; color: #555; margin-top: 2px; }
+
+    /* Full-width section */
+    .vc-full { border: 1px solid rgba(201,168,76,.15); background: rgba(0,0,0,.5); padding: 18px; border-radius: 4px; margin-top: 16px; }
+    .vc-full-title { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; border-bottom: 1px solid rgba(201,168,76,.12); padding-bottom: 8px; }
+
+    /* Pill */
+    .pill { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 10px; border-radius: 20px; display: inline-block; }
+    .pill.ok  { background: rgba(40,180,60,.12); color: #4caf50; border: 1px solid rgba(40,180,60,.3); }
+    .pill.stub{ background: rgba(255,160,0,.08); color: #ffa000; border: 1px solid rgba(255,160,0,.2); }
+
+    /* Audio test player */
+    .vc-test-audio { margin-top: 10px; width: 100%; }
+    audio { width: 100%; }
+
+    .el-section-note { font-size: 11px; color: #555; line-height: 1.6; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<div class="vc-page">
+
+  <div class="vc-header">
+    <button class="vc-back" onclick="window.location.href='index.html'">← LEVRAM</button>
+    <div>
+      <div class="vc-title">Voice Clone Lab</div>
+      <div class="vc-sub">Clone voices with ElevenLabs · Upload RVC models · Assign to characters</div>
+    </div>
+  </div>
+
+  <div class="vc-grid">
+
+    <!-- ─── ElevenLabs Clone ─────────────────────────────── -->
+    <div class="vc-card">
+      <div class="vc-card-title">ElevenLabs Voice Clone <span id="el-pill" class="pill stub">Checking…</span></div>
+      <div class="vc-card-sub">Upload a 30s–3min clean audio sample. Works best with clear, consistent speech.</div>
+
+      <label>Character Name</label>
+      <input type="text" id="el-char-name" placeholder="e.g. Ezra Voss" />
+
+      <label>Audio Sample (MP3, WAV, M4A — 30s to 3min)</label>
+      <input type="file" id="el-audio-file" accept="audio/*" />
+
+      <button class="vc-btn gold" onclick="cloneElevenLabs()">Clone Voice →</button>
+      <div id="el-status" class="vc-status"></div>
+
+      <label style="margin-top:18px;">Test Voice</label>
+      <input type="text" id="el-test-text" value="This is a test of the cloned character voice. Activate your resonance." />
+      <button class="vc-btn" id="el-test-btn" onclick="testVoice()" disabled>Play Test Line</button>
+      <div class="vc-test-audio" id="el-test-audio-wrap" style="display:none;">
+        <audio id="el-test-audio" controls></audio>
+      </div>
+    </div>
+
+    <!-- ─── RVC Upload ─────────────────────────────────────── -->
+    <div class="vc-card">
+      <div class="vc-card-title">RVC Voice Model <span class="pill stub">Local / Free</span></div>
+      <div class="vc-card-sub">Upload a pre-trained RVC .pth model (+ optional .index) to use for voice conversion.</div>
+
+      <label>Model Name (used as character identifier)</label>
+      <input type="text" id="rvc-model-name" placeholder="e.g. atlas_v2" />
+
+      <label>.pth Model File (required)</label>
+      <input type="file" id="rvc-pth-file" accept=".pth" />
+
+      <label>.index File (optional — improves quality)</label>
+      <input type="file" id="rvc-idx-file" accept=".index" />
+
+      <button class="vc-btn" onclick="uploadRvcModel()">Upload RVC Model →</button>
+      <div id="rvc-status" class="vc-status"></div>
+
+      <div class="el-section-note">
+        RVC models run locally. Set <code>RVC_MODEL_PATH</code> in your .env to activate real-time conversion in the Voice Lab.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── Cloned Voices Library ──────────────────────────── -->
+  <div class="vc-full">
+    <div class="vc-full-title">Cloned Voice Library (ElevenLabs)</div>
+    <button class="vc-btn" style="width:auto;margin-top:0;padding:6px 16px;" onclick="loadVoices()">Refresh List</button>
+    <div id="el-voice-list" class="voice-list">
+      <div style="color:#555;font-size:11px;letter-spacing:2px;">Loading…</div>
+    </div>
+    <div id="el-voices-status" class="vc-status"></div>
+  </div>
+
+  <!-- ─── RVC Models Library ────────────────────────────── -->
+  <div class="vc-full">
+    <div class="vc-full-title">RVC Models On Disk</div>
+    <button class="vc-btn" style="width:auto;margin-top:0;padding:6px 16px;" onclick="loadRvcModels()">Refresh List</button>
+    <div id="rvc-model-list" class="model-list">
+      <div style="color:#555;font-size:11px;letter-spacing:2px;">Loading…</div>
+    </div>
+  </div>
+
+  <!-- ─── How to Use ─────────────────────────────────────── -->
+  <div class="vc-full">
+    <div class="vc-full-title">How to Use Cloned Voices</div>
+    <div style="font-size:12px;color:#8d7a55;line-height:1.9;">
+      <strong style="color:#c9a84c;">ElevenLabs Clone Flow:</strong><br>
+      1. Upload an audio sample above → voice is registered in your ElevenLabs account.<br>
+      2. The cloned voice ID is automatically available in the Voice Lab character select.<br>
+      3. Generate TTS for any script line using the cloned voice.<br><br>
+      <strong style="color:#c9a84c;">RVC Flow:</strong><br>
+      1. Upload your .pth model above → it saves to <code>data/rvc_models/</code>.<br>
+      2. In the Voice Lab, generate a raw TTS line, then hit "Voice FX" with RVC enabled.<br>
+      3. The conversion runs locally using your uploaded model.<br><br>
+      <strong style="color:#c9a84c;">Assign to Character:</strong><br>
+      Go to Character Lab → select your character → set "ElevenLabs Voice ID" field to the ID shown in the library below.
+    </div>
+  </div>
+
+</div>
+
+<script>
+const BASE = "http://127.0.0.1:8000";
+let selectedVoiceId = null;
+
+// ── Check ElevenLabs status ──────────────────────────────────
+async function checkElStatus() {
+  const pill = document.getElementById("el-pill");
+  try {
+    const res  = await fetch(`${BASE}/settings/status`);
+    const data = await res.json();
+    if (pill) {
+      pill.textContent = data.elevenlabs ? "Active" : "No Key";
+      pill.className   = "pill " + (data.elevenlabs ? "ok" : "stub");
+    }
+  } catch {
+    if (pill) { pill.textContent = "Backend Offline"; pill.className = "pill stub"; }
+  }
+}
+
+// ── Clone via ElevenLabs ─────────────────────────────────────
+async function cloneElevenLabs() {
+  const name   = document.getElementById("el-char-name").value.trim();
+  const file   = document.getElementById("el-audio-file").files[0];
+  const status = document.getElementById("el-status");
+  if (!name) { status.textContent = "Enter a character name first."; status.className = "vc-status err"; return; }
+  if (!file) { status.textContent = "Select an audio file first."; status.className = "vc-status err"; return; }
+
+  status.textContent = "Uploading and cloning…"; status.className = "vc-status";
+
+  const fd = new FormData();
+  fd.append("character_name", name);
+  fd.append("file", file);
+
+  try {
+    const res  = await fetch(`${BASE}/voice-clone/elevenlabs`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Clone failed");
+
+    status.textContent = `Cloned! Voice ID: ${data.voice_id}`;
+    status.className = "vc-status ok";
+    selectedVoiceId = data.voice_id;
+    document.getElementById("el-test-btn").disabled = false;
+    await loadVoices();
+  } catch (err) {
+    status.textContent = err.message; status.className = "vc-status err";
+  }
+}
+
+// ── Test a cloned voice ──────────────────────────────────────
+async function testVoice(voiceId) {
+  const vid   = voiceId || selectedVoiceId;
+  const text  = document.getElementById("el-test-text").value.trim() || "This is a test.";
+  const btn   = document.getElementById("el-test-btn");
+  const wrap  = document.getElementById("el-test-audio-wrap");
+  const audio = document.getElementById("el-test-audio");
+  if (!vid) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = "Generating…"; }
+
+  const fd = new FormData();
+  fd.append("voice_id", vid);
+  fd.append("text", text);
+
+  try {
+    const res  = await fetch(`${BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Test failed");
+
+    if (wrap) wrap.style.display = "block";
+    if (audio) { audio.src = BASE + data.audio_url; audio.play(); }
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Play Test Line"; }
+  }
+}
+
+// ── Load voice list ──────────────────────────────────────────
+async function loadVoices() {
+  const list   = document.getElementById("el-voice-list");
+  const status = document.getElementById("el-voices-status");
+  try {
+    const res  = await fetch(`${BASE}/voice-clone/elevenlabs/voices`);
+    const data = await res.json();
+    const voices = data.voices || [];
+
+    if (!voices.length) {
+      list.innerHTML = `<div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;">No cloned voices yet.</div>`;
+      if (status) status.textContent = "";
+      return;
+    }
+
+    list.innerHTML = voices.map(v => `
+      <div class="voice-item">
+        <div class="voice-item-name">${v.name || v.voice_id || "Unnamed"}</div>
+        <div class="voice-item-id">ID: ${v.voice_id}</div>
+        <div class="voice-item-actions">
+          <button onclick="selectedVoiceId='${v.voice_id}'; document.getElementById('el-test-btn').disabled=false; testVoice('${v.voice_id}')">
+            ▶ Test
+          </button>
+          <button onclick="copyId('${v.voice_id}')">Copy ID</button>
+          <button class="del" onclick="deleteVoice('${v.voice_id}')">Delete</button>
+        </div>
+      </div>
+    `).join("");
+
+    if (status) status.textContent = `${voices.length} cloned voice${voices.length !== 1 ? "s" : ""} in your account.`;
+  } catch (err) {
+    list.innerHTML = `<div style="color:#ef5350;font-size:11px;">Could not load voices — is the backend running?</div>`;
+  }
+}
+
+// ── Delete a cloned voice ────────────────────────────────────
+async function deleteVoice(voiceId) {
+  if (!confirm(`Delete voice ${voiceId}? This cannot be undone.`)) return;
+  try {
+    const res = await fetch(`${BASE}/voice-clone/elevenlabs/${voiceId}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Delete failed");
+    await loadVoices();
+  } catch (err) {
+    console.error(err);
+    alert("Delete failed: " + err.message);
+  }
+}
+
+function copyId(id) {
+  navigator.clipboard.writeText(id).then(() => {
+    const status = document.getElementById("el-voices-status");
+    if (status) { status.textContent = `Copied: ${id}`; status.className = "vc-status ok"; }
+  });
+}
+
+// ── Upload RVC model ─────────────────────────────────────────
+async function uploadRvcModel() {
+  const name    = document.getElementById("rvc-model-name").value.trim();
+  const pthFile = document.getElementById("rvc-pth-file").files[0];
+  const idxFile = document.getElementById("rvc-idx-file").files[0];
+  const status  = document.getElementById("rvc-status");
+
+  if (!name)    { status.textContent = "Enter a model name."; status.className = "vc-status err"; return; }
+  if (!pthFile) { status.textContent = "Select a .pth file."; status.className = "vc-status err"; return; }
+
+  status.textContent = "Uploading model…"; status.className = "vc-status";
+
+  const fd = new FormData();
+  fd.append("model_name", name);
+  fd.append("model_file", pthFile);
+  if (idxFile) fd.append("index_file", idxFile);
+
+  try {
+    const res  = await fetch(`${BASE}/voice-clone/rvc/upload`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Upload failed");
+
+    status.textContent = `Uploaded: ${data.model_name} → ${data.model_path}`;
+    status.className = "vc-status ok";
+    document.getElementById("rvc-model-name").value = "";
+    await loadRvcModels();
+  } catch (err) {
+    status.textContent = err.message; status.className = "vc-status err";
+  }
+}
+
+// ── Load RVC models list ─────────────────────────────────────
+async function loadRvcModels() {
+  const list = document.getElementById("rvc-model-list");
+  try {
+    const res  = await fetch(`${BASE}/voice-clone/rvc/models`);
+    const data = await res.json();
+    const models = data.models || [];
+
+    if (!models.length) {
+      list.innerHTML = `<div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;">No RVC models uploaded yet.</div>`;
+      return;
+    }
+
+    list.innerHTML = models.map(m => `
+      <div class="model-item">
+        <div class="model-item-name">${m.name || m.model_name || "Unnamed"}</div>
+        <div class="model-item-path">${m.path || m.model_path || ""}</div>
+      </div>
+    `).join("");
+  } catch (err) {
+    list.innerHTML = `<div style="color:#ef5350;font-size:11px;">Could not load models — is the backend running?</div>`;
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", () => {
+  checkElStatus();
+  loadVoices();
+  loadRvcModels();
+});
+</script>
+</body>
+</html>

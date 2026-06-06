@@ -24,12 +24,15 @@
         <button class="nav-btn" data-tab="music">Music ↗</button>
         <button class="nav-btn" data-tab="timeline">Timeline ↗</button>
         <button class="nav-btn" data-tab="export">Export ↗</button>
+        <button class="nav-btn" data-tab="voice-clone">Voice Clone ↗</button>
+        <button class="nav-btn" data-tab="assets">Assets ↗</button>
+        <button class="nav-btn" data-tab="projects">Projects ↗</button>
         <button class="nav-btn" data-tab="settings">Settings ↗</button>
         <button id="theme-toggle" class="nav-btn">Ivory Mode</button>
       </nav>
-      <div class="status-pill">
-        <span class="status-dot"></span>
-        Backend Connected
+      <div class="status-pill" id="backend-status-pill">
+        <span class="status-dot" id="backend-status-dot"></span>
+        <span id="backend-status-text">Connecting…</span>
       </div>
     </header>
 
@@ -921,6 +924,34 @@
 
         window.showWorkspace = show;
         window.hideWorkspace = hideAll;
+      })();
+    </script>
+
+    <!-- Live backend status pill -->
+    <script>
+      (function liveStatusPill() {
+        const BASE = "http://127.0.0.1:8000";
+        const dot  = document.getElementById("backend-status-dot");
+        const txt  = document.getElementById("backend-status-text");
+        const pill = document.getElementById("backend-status-pill");
+
+        async function ping() {
+          try {
+            const res = await fetch(`${BASE}/settings/status`, { signal: AbortSignal.timeout(3000) });
+            if (res.ok) {
+              if (dot)  { dot.style.background = "#4caf50"; dot.style.boxShadow = "0 0 6px #4caf50"; }
+              if (txt)  txt.textContent = "Backend Live";
+              if (pill) pill.style.borderColor = "rgba(76,175,80,.35)";
+            } else throw new Error();
+          } catch {
+            if (dot)  { dot.style.background = "#ef5350"; dot.style.boxShadow = "0 0 6px #ef5350"; }
+            if (txt)  txt.textContent = "Backend Offline";
+            if (pill) pill.style.borderColor = "rgba(200,0,0,.35)";
+          }
+        }
+
+        ping();
+        setInterval(ping, 15000);
       })();
     </script>
   </body>

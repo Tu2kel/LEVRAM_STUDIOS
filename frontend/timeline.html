@@ -77,35 +77,85 @@
       flex-shrink: 0;
     }
 
-    /* ── Tracks bar ── */
+    /* ── Timeline ruler + tracks ── */
+    .tl-tracks-section {
+      background: #141414;
+      border-bottom: 1px solid rgba(201, 168, 76, 0.12);
+      flex-shrink: 0;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .tl-tracks-section::-webkit-scrollbar { height: 4px; }
+    .tl-tracks-section::-webkit-scrollbar-thumb { background: rgba(201,168,76,.2); border-radius: 2px; }
+
+    .tl-ruler-row {
+      display: flex;
+      align-items: flex-end;
+      padding: 6px 10px 0 72px;
+      position: relative;
+      min-width: 600px;
+    }
+    .tl-ruler-tick {
+      position: absolute;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .tl-ruler-tick-line {
+      width: 1px;
+      background: rgba(201,168,76,.2);
+      height: 8px;
+    }
+    .tl-ruler-tick-label {
+      font-size: 9px;
+      letter-spacing: 1px;
+      color: rgba(201,168,76,.4);
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
     .tl-tracks-bar {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      padding: 10px 28px;
-      background: #141414;
-      border-bottom: 1px solid rgba(201, 168, 76, 0.12);
-      flex-shrink: 0;
+      padding: 4px 10px 8px;
+      min-width: 600px;
     }
-    .tl-track { display: flex; align-items: center; gap: 12px; height: 26px; }
+    .tl-track { display: flex; align-items: center; gap: 10px; height: 28px; }
     .tl-track-label {
       font-family: Rajdhani, sans-serif;
-      font-size: 10px;
+      font-size: 9px;
       letter-spacing: 2px;
       text-transform: uppercase;
-      color: rgba(201, 168, 76, 0.45);
-      width: 52px;
+      color: rgba(201, 168, 76, 0.35);
+      width: 54px;
       flex-shrink: 0;
+      text-align: right;
     }
     .tl-track-body {
       flex: 1;
       height: 100%;
       position: relative;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(201, 168, 76, 0.08);
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(201, 168, 76, 0.07);
       border-radius: 2px;
       overflow: hidden;
     }
+    .tl-clip {
+      position: absolute;
+      top: 2px; bottom: 2px;
+      border-radius: 2px;
+      display: flex; align-items: center;
+      padding: 0 5px;
+      font-size: 9px; letter-spacing: 1px;
+      white-space: nowrap; overflow: hidden;
+      transition: opacity .1s;
+    }
+    .tl-clip:hover { filter: brightness(1.2); }
+    .clip-video { background: rgba(156,39,176,.35); border: 1px solid rgba(156,39,176,.5); color: #ce93d8; }
+    .clip-audio { background: rgba(76,175,80,.3);  border: 1px solid rgba(76,175,80,.5);  color: #a5d6a7; }
+    .clip-music { background: rgba(255,152,0,.2);  border: 1px solid rgba(255,152,0,.4);  color: #ffcc80; }
 
     /* ── Shot list scroll area ── */
     .tl-shots-list {
@@ -162,10 +212,22 @@
 
     <div class="tl-status-bar" id="tl-status">Loading shots...</div>
 
-    <div class="tl-tracks-bar">
-      <div class="tl-track">
-        <span class="tl-track-label">Shots</span>
-        <div class="tl-track-body" id="track-shot-body"></div>
+    <!-- Time ruler + multi-track view -->
+    <div class="tl-tracks-section" id="tl-tracks-section">
+      <div class="tl-ruler-row" id="tl-ruler"></div>
+      <div class="tl-tracks-bar" id="tl-tracks-bar">
+        <div class="tl-track">
+          <span class="tl-track-label">Video</span>
+          <div class="tl-track-body" id="track-video"></div>
+        </div>
+        <div class="tl-track">
+          <span class="tl-track-label">Voice</span>
+          <div class="tl-track-body" id="track-audio"></div>
+        </div>
+        <div class="tl-track">
+          <span class="tl-track-label">Music</span>
+          <div class="tl-track-body" id="track-music"></div>
+        </div>
       </div>
     </div>
 
@@ -178,7 +240,6 @@
     let shots = [];
     let draggedShotId = null;
 
-    const trackBody = document.getElementById("track-shot-body");
     const shotsList  = document.getElementById("timeline-shots");
     const statusEl   = document.getElementById("tl-status");
 
@@ -240,19 +301,67 @@
       renderTimeline();
     }
 
+    function getTotalDuration() {
+      return shots.reduce((sum, s) => sum + (parseFloat(s.duration) || 5), 0);
+    }
+
+    function renderRuler(totalSec) {
+      const ruler = document.getElementById("tl-ruler");
+      if (!ruler) return;
+      const trackBody = document.getElementById("track-video");
+      const trackW    = trackBody ? trackBody.offsetWidth : 500;
+      const pxPerSec  = trackW / (totalSec || 1);
+      const step = totalSec <= 30 ? 5 : totalSec <= 120 ? 10 : totalSec <= 300 ? 30 : 60;
+      let html = "";
+      for (let t = 0; t <= totalSec; t += step) {
+        const pct = (t / totalSec) * 100;
+        const label = t >= 60 ? `${Math.floor(t/60)}m${t%60>0?t%60+'s':""}` : `${t}s`;
+        html += `<div class="tl-ruler-tick" style="left:calc(${pct}% + 54px)">
+          <div class="tl-ruler-tick-line"></div>
+          <div class="tl-ruler-tick-label">${label}</div>
+        </div>`;
+      }
+      ruler.style.height = "22px";
+      ruler.innerHTML = html;
+    }
+
+    function renderTracks() {
+      const totalSec  = getTotalDuration();
+      const videoEl   = document.getElementById("track-video");
+      const audioEl   = document.getElementById("track-audio");
+      const musicEl   = document.getElementById("track-music");
+      if (!videoEl) return;
+
+      videoEl.innerHTML = "";
+      audioEl.innerHTML = "";
+      if (musicEl) musicEl.innerHTML = `<div class="tl-clip clip-music" style="left:0%;width:100%;opacity:.35">Score Track</div>`;
+
+      let cumSec = 0;
+      shots.forEach((s, i) => {
+        const dur = parseFloat(s.duration) || 5;
+        const leftPct  = (cumSec / totalSec) * 100;
+        const widthPct = (dur    / totalSec) * 100;
+        const label    = `${s.shot_number || ("SC-"+String(i+1).padStart(3,"0"))} (${dur}s)`;
+
+        videoEl.innerHTML += `<div class="tl-clip clip-video" style="left:${leftPct.toFixed(2)}%;width:${(widthPct - 0.3).toFixed(2)}%;" title="${s.shotDesc||label}">${label}</div>`;
+        if (s.fxUrl || s.rawUrl) {
+          audioEl.innerHTML += `<div class="tl-clip clip-audio" style="left:${leftPct.toFixed(2)}%;width:${(widthPct - 0.3).toFixed(2)}%;" title="${s.character||"voice"}">${s.character||"VO"}</div>`;
+        }
+        cumSec += dur;
+      });
+
+      renderRuler(totalSec);
+    }
+
     function renderTimeline() {
       if (!shots.length) {
-        trackBody.innerHTML = "";
+        document.getElementById("track-video").innerHTML = "";
+        document.getElementById("track-audio").innerHTML = "";
         shotsList.innerHTML = `<p style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">No shots saved yet.</p>`;
         return;
       }
 
-      // Mini track visualization
-      const recent = shots.slice(0, 6);
-      const segW = Math.floor(90 / recent.length);
-      trackBody.innerHTML = recent.map((s, i) =>
-        `<div class="track-clip shot" style="left:${2 + i * segW}%;width:${segW - 1}%;position:absolute;top:2px;bottom:2px;">${s.shot_number || s.id || "?"}</div>`
-      ).join("");
+      renderTracks();
 
       // Shot cards
       shotsList.innerHTML = shots.map((s, index) => `
@@ -269,6 +378,11 @@
             <span class="tl-char-tag">${s.character || "Unknown"}</span>
             <span class="tl-preset-tag">${s.preset || s.voice_preset || "No FX"}</span>
             <span class="tl-date">${s.createdAt || ""}</span>
+            <label style="font-size:9px;color:rgba(201,168,76,.4);letter-spacing:1px;margin:0 4px 0 8px;">DUR</label>
+            <input type="number" min="1" max="120" step="1" value="${parseFloat(s.duration)||5}"
+              style="width:46px;background:rgba(0,0,0,.5);border:1px solid rgba(201,168,76,.2);color:#c9a84c;font-size:10px;padding:2px 4px;border-radius:2px;font-family:Rajdhani,sans-serif;"
+              onchange="updateDuration('${s.id}', this.value)" title="Duration in seconds" />
+            <span style="font-size:9px;color:rgba(201,168,76,.3);margin-left:2px;">s</span>
             <button class="tl-del-btn" title="Move Up"   onclick="moveShot('${s.id}', -1)">↑</button>
             <button class="tl-del-btn" title="Move Down" onclick="moveShot('${s.id}', 1)">↓</button>
             <button class="tl-del-btn" title="Delete"    onclick="deleteShot('${s.id}')">✕</button>
@@ -300,7 +414,9 @@
           createdAt:    s.saved_at || "",
         }));
         renderTimeline();
-        setStatus(`${shots.length} shot${shots.length !== 1 ? "s" : ""} loaded.`);
+        const total = getTotalDuration();
+        const totalStr = total >= 60 ? `${Math.floor(total/60)}m ${Math.round(total%60)}s` : `${Math.round(total)}s`;
+        setStatus(`${shots.length} shot${shots.length !== 1 ? "s" : ""} loaded · Estimated runtime: ${totalStr}`);
       } catch (e) {
         console.error(e);
         setStatus("Could not load shots.", true);
@@ -320,6 +436,16 @@
       } catch (e) {
         setStatus("Failed to delete shot.", true);
       }
+    }
+
+    function updateDuration(id, val) {
+      const shot = shots.find(s => s.id === id);
+      if (!shot) return;
+      shot.duration = parseFloat(val) || 5;
+      const total = getTotalDuration();
+      const totalStr = total >= 60 ? `${Math.floor(total/60)}m ${Math.round(total%60)}s` : `${Math.round(total)}s`;
+      setStatus(`${shots.length} shot${shots.length !== 1 ? "s" : ""} · Total runtime: ${totalStr}`);
+      renderTracks();
     }
 
     async function saveTimelineOrder() {

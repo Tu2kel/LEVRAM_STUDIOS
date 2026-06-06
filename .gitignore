@@ -11,7 +11,12 @@ __pycache__/
 
 # Generated media
 output/
+
+# Runtime data (changes every session — not tracked)
+data/characters.json
+data/voices.json
 data/scenes/
+data/rvc_models/
 
 # Temporary backups
 *.bak

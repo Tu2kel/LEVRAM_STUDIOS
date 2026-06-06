@@ -5,25 +5,25 @@
   <title>LEVRAM — Voice Clone Lab</title>
   <link rel="stylesheet" href="app.css" />
   <style>
-    body { background: #0a0a0a; color: #c9a84c; font-family: Rajdhani, sans-serif; margin: 0; }
+    body { background: #09080f; color: #c9a84c; font-family: Rajdhani, sans-serif; margin: 0; }
     .vc-page { padding: 22px; max-width: 960px; margin: 0 auto; }
     .vc-header { display: flex; align-items: center; gap: 18px; padding: 14px 18px; border: 1px solid rgba(201,168,76,.22); background: rgba(0,0,0,.75); margin-bottom: 20px; }
-    .vc-title { color: #C9A84C; font-size: 16px; letter-spacing: 4px; text-transform: uppercase; }
-    .vc-sub { color: #8d7a55; font-size: 11px; margin-top: 4px; }
-    .vc-back { border: 1px solid rgba(201,168,76,.35); background: #080604; color: #C9A84C; padding: 8px 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+    .vc-title { color: #C9A84C; font-size: 21px; letter-spacing: 4px; text-transform: uppercase; }
+    .vc-sub { color: #8d7a55; font-size: 16px; margin-top: 4px; }
+    .vc-back { border: 1px solid rgba(201,168,76,.35); background: #0a0918; color: #C9A84C; padding: 8px 12px; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
 
     .vc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     @media (max-width: 700px) { .vc-grid { grid-template-columns: 1fr; } }
 
     .vc-card { border: 1px solid rgba(201,168,76,.15); background: rgba(0,0,0,.5); padding: 18px; border-radius: 4px; }
-    .vc-card-title { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; border-bottom: 1px solid rgba(201,168,76,.12); padding-bottom: 8px; }
-    .vc-card-sub { font-size: 10px; color: #666; margin-top: -10px; margin-bottom: 14px; }
+    .vc-card-title { font-size: 18px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; border-bottom: 1px solid rgba(201,168,76,.12); padding-bottom: 8px; }
+    .vc-card-sub { font-size: 15px; color: #666; margin-top: -10px; margin-bottom: 14px; }
 
-    label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #8d7a55; display: block; margin-bottom: 5px; margin-top: 12px; }
+    label { font-size: 16px; letter-spacing: 2px; text-transform: uppercase; color: #8d7a55; display: block; margin-bottom: 5px; margin-top: 12px; }
     label:first-child { margin-top: 0; }
     input[type=text], input[type=file], select, textarea {
       background: rgba(0,0,0,.6); border: 1px solid rgba(201,168,76,.2); color: #c9a84c;
-      font-family: Rajdhani, sans-serif; font-size: 13px; padding: 8px 10px;
+      font-family: Rajdhani, sans-serif; font-size: 18px; padding: 8px 10px;
       width: 100%; box-sizing: border-box; border-radius: 2px; outline: none;
     }
     input::placeholder { color: rgba(201,168,76,.3); }
@@ -32,7 +32,7 @@
 
     .vc-btn {
       background: transparent; border: 1px solid rgba(201,168,76,.4);
-      color: #C9A84C; font-family: Rajdhani, sans-serif; font-size: 12px;
+      color: #C9A84C; font-family: Rajdhani, sans-serif; font-size: 17px;
       letter-spacing: 2px; text-transform: uppercase; padding: 9px 18px;
       cursor: pointer; border-radius: 2px; margin-top: 14px; width: 100%;
       transition: background .15s, border-color .15s;
@@ -41,19 +41,19 @@
     .vc-btn.gold { background: rgba(201,168,76,.12); border-color: rgba(201,168,76,.6); color: #f9f295; }
     .vc-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-    .vc-status { font-size: 11px; letter-spacing: 1px; color: rgba(201,168,76,.7); margin-top: 10px; min-height: 18px; }
+    .vc-status { font-size: 16px; letter-spacing: 1px; color: rgba(201,168,76,.7); margin-top: 10px; min-height: 18px; }
     .vc-status.err { color: #ef5350; }
     .vc-status.ok  { color: #4caf50; }
 
     /* Voice list */
     .voice-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
     .voice-item { background: rgba(0,0,0,.4); border: 1px solid rgba(201,168,76,.12); border-radius: 3px; padding: 10px 12px; }
-    .voice-item-name { font-size: 13px; color: #f9f295; letter-spacing: 1px; }
-    .voice-item-id   { font-size: 10px; color: #555; margin-top: 2px; word-break: break-all; }
+    .voice-item-name { font-size: 18px; color: #f9f295; letter-spacing: 1px; }
+    .voice-item-id   { font-size: 15px; color: #555; margin-top: 2px; word-break: break-all; }
     .voice-item-actions { display: flex; gap: 8px; margin-top: 8px; }
     .voice-item-actions button {
       background: transparent; border: 1px solid rgba(201,168,76,.2); color: #c9a84c;
-      font-family: Rajdhani, sans-serif; font-size: 10px; letter-spacing: 2px;
+      font-family: Rajdhani, sans-serif; font-size: 15px; letter-spacing: 2px;
       text-transform: uppercase; padding: 4px 10px; cursor: pointer; border-radius: 2px;
     }
     .voice-item-actions button:hover { border-color: rgba(201,168,76,.6); }
@@ -63,15 +63,15 @@
     /* RVC model list */
     .model-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
     .model-item { background: rgba(0,0,0,.4); border: 1px solid rgba(201,168,76,.12); border-radius: 3px; padding: 10px 12px; }
-    .model-item-name { font-size: 13px; color: #c9a84c; letter-spacing: 1px; }
-    .model-item-path { font-size: 10px; color: #555; margin-top: 2px; }
+    .model-item-name { font-size: 18px; color: #c9a84c; letter-spacing: 1px; }
+    .model-item-path { font-size: 15px; color: #555; margin-top: 2px; }
 
     /* Full-width section */
     .vc-full { border: 1px solid rgba(201,168,76,.15); background: rgba(0,0,0,.5); padding: 18px; border-radius: 4px; margin-top: 16px; }
-    .vc-full-title { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; border-bottom: 1px solid rgba(201,168,76,.12); padding-bottom: 8px; }
+    .vc-full-title { font-size: 18px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; border-bottom: 1px solid rgba(201,168,76,.12); padding-bottom: 8px; }
 
     /* Pill */
-    .pill { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 10px; border-radius: 20px; display: inline-block; }
+    .pill { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 10px; border-radius: 20px; display: inline-block; }
     .pill.ok  { background: rgba(40,180,60,.12); color: #4caf50; border: 1px solid rgba(40,180,60,.3); }
     .pill.stub{ background: rgba(255,160,0,.08); color: #ffa000; border: 1px solid rgba(255,160,0,.2); }
 
@@ -79,7 +79,7 @@
     .vc-test-audio { margin-top: 10px; width: 100%; }
     audio { width: 100%; }
 
-    .el-section-note { font-size: 11px; color: #555; line-height: 1.6; margin-top: 8px; }
+    .el-section-note { font-size: 16px; color: #555; line-height: 1.6; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -146,7 +146,7 @@
     <div class="vc-full-title">Cloned Voice Library (ElevenLabs)</div>
     <button class="vc-btn" style="width:auto;margin-top:0;padding:6px 16px;" onclick="loadVoices()">Refresh List</button>
     <div id="el-voice-list" class="voice-list">
-      <div style="color:#555;font-size:11px;letter-spacing:2px;">Loading…</div>
+      <div style="color:#555;font-size: 16px;letter-spacing:2px;">Loading…</div>
     </div>
     <div id="el-voices-status" class="vc-status"></div>
   </div>
@@ -156,14 +156,14 @@
     <div class="vc-full-title">RVC Models On Disk</div>
     <button class="vc-btn" style="width:auto;margin-top:0;padding:6px 16px;" onclick="loadRvcModels()">Refresh List</button>
     <div id="rvc-model-list" class="model-list">
-      <div style="color:#555;font-size:11px;letter-spacing:2px;">Loading…</div>
+      <div style="color:#555;font-size: 16px;letter-spacing:2px;">Loading…</div>
     </div>
   </div>
 
   <!-- ─── How to Use ─────────────────────────────────────── -->
   <div class="vc-full">
     <div class="vc-full-title">How to Use Cloned Voices</div>
-    <div style="font-size:12px;color:#8d7a55;line-height:1.9;">
+    <div style="font-size: 17px;color:#8d7a55;line-height:1.9;">
       <strong style="color:#c9a84c;">ElevenLabs Clone Flow:</strong><br>
       1. Upload an audio sample above → voice is registered in your ElevenLabs account.<br>
       2. The cloned voice ID is automatically available in the Voice Lab character select.<br>
@@ -266,7 +266,7 @@ async function loadVoices() {
     const voices = data.voices || [];
 
     if (!voices.length) {
-      list.innerHTML = `<div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;">No cloned voices yet.</div>`;
+      list.innerHTML = `<div style="color:#555;font-size: 16px;letter-spacing:2px;text-transform:uppercase;">No cloned voices yet.</div>`;
       if (status) status.textContent = "";
       return;
     }
@@ -287,7 +287,7 @@ async function loadVoices() {
 
     if (status) status.textContent = `${voices.length} cloned voice${voices.length !== 1 ? "s" : ""} in your account.`;
   } catch (err) {
-    list.innerHTML = `<div style="color:#ef5350;font-size:11px;">Could not load voices — is the backend running?</div>`;
+    list.innerHTML = `<div style="color:#ef5350;font-size: 16px;">Could not load voices — is the backend running?</div>`;
   }
 }
 
@@ -352,7 +352,7 @@ async function loadRvcModels() {
     const models = data.models || [];
 
     if (!models.length) {
-      list.innerHTML = `<div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;">No RVC models uploaded yet.</div>`;
+      list.innerHTML = `<div style="color:#555;font-size: 16px;letter-spacing:2px;text-transform:uppercase;">No RVC models uploaded yet.</div>`;
       return;
     }
 
@@ -363,7 +363,7 @@ async function loadRvcModels() {
       </div>
     `).join("");
   } catch (err) {
-    list.innerHTML = `<div style="color:#ef5350;font-size:11px;">Could not load models — is the backend running?</div>`;
+    list.innerHTML = `<div style="color:#ef5350;font-size: 16px;">Could not load models — is the backend running?</div>`;
   }
 }
 

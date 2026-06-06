@@ -5,23 +5,23 @@
   <title>LEVRAM — Project Manager</title>
   <link rel="stylesheet" href="app.css" />
   <style>
-    body { background: #0a0a0a; color: #c9a84c; font-family: Rajdhani, sans-serif; margin: 0; }
+    body { background: #09080f; color: #c9a84c; font-family: Rajdhani, sans-serif; margin: 0; }
     .pm-page { padding: 22px; max-width: 960px; margin: 0 auto; }
 
     .pm-header { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border: 1px solid rgba(201,168,76,.22); background: rgba(0,0,0,.85); margin-bottom: 20px; }
-    .pm-title  { color: #C9A84C; font-size: 16px; letter-spacing: 4px; text-transform: uppercase; }
-    .pm-sub    { color: #8d7a55; font-size: 10px; margin-top: 3px; }
-    .pm-back   { border: 1px solid rgba(201,168,76,.35); background: #080604; color: #C9A84C; padding: 7px 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+    .pm-title  { color: #C9A84C; font-size: 21px; letter-spacing: 4px; text-transform: uppercase; }
+    .pm-sub    { color: #8d7a55; font-size: 15px; margin-top: 3px; }
+    .pm-back   { border: 1px solid rgba(201,168,76,.35); background: #0a0918; color: #C9A84C; padding: 7px 12px; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
 
     /* Create form */
     .pm-create { border: 1px solid rgba(201,168,76,.15); background: rgba(0,0,0,.5); padding: 18px; border-radius: 4px; margin-bottom: 20px; }
-    .pm-create-title { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; }
+    .pm-create-title { font-size: 17px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; }
     .pm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media(max-width:640px){ .pm-row { grid-template-columns: 1fr; } }
-    label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #8d7a55; display: block; margin-bottom: 4px; margin-top: 10px; }
+    label { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: #8d7a55; display: block; margin-bottom: 4px; margin-top: 10px; }
     input[type=text], input[type=color], select, textarea {
       background: rgba(0,0,0,.6); border: 1px solid rgba(201,168,76,.2); color: #c9a84c;
-      font-family: Rajdhani, sans-serif; font-size: 13px; padding: 7px 10px;
+      font-family: Rajdhani, sans-serif; font-size: 18px; padding: 7px 10px;
       width: 100%; box-sizing: border-box; border-radius: 2px; outline: none;
     }
     input::placeholder { color: rgba(201,168,76,.3); }
@@ -30,14 +30,14 @@
 
     .pm-btn {
       background: transparent; border: 1px solid rgba(201,168,76,.4); color: #C9A84C;
-      font-family: Rajdhani, sans-serif; font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+      font-family: Rajdhani, sans-serif; font-size: 17px; letter-spacing: 2px; text-transform: uppercase;
       padding: 9px 20px; cursor: pointer; border-radius: 2px; margin-top: 14px;
       transition: background .15s;
     }
     .pm-btn:hover { background: rgba(201,168,76,.08); border-color: rgba(201,168,76,.7); }
     .pm-btn.gold { background: rgba(201,168,76,.12); border-color: rgba(201,168,76,.6); color: #f9f295; }
 
-    .pm-status { font-size: 11px; letter-spacing: 1px; color: rgba(201,168,76,.6); margin-top: 8px; min-height: 16px; }
+    .pm-status { font-size: 16px; letter-spacing: 1px; color: rgba(201,168,76,.6); margin-top: 8px; min-height: 16px; }
     .pm-status.ok  { color: #4caf50; }
     .pm-status.err { color: #ef5350; }
 
@@ -54,13 +54,13 @@
       box-shadow: 0 0 16px rgba(201,168,76,.15), inset 0 0 30px rgba(201,168,76,.04);
     }
     .pm-card-color-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-    .pm-card-name { font-size: 16px; letter-spacing: 2px; color: #f9f295; margin-top: 8px; }
-    .pm-card-genre { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #8d7a55; margin-top: 2px; }
-    .pm-card-logline { font-size: 12px; color: #6d5f44; margin-top: 8px; line-height: 1.5; font-style: italic; }
+    .pm-card-name { font-size: 21px; letter-spacing: 2px; color: #f9f295; margin-top: 8px; }
+    .pm-card-genre { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: #8d7a55; margin-top: 2px; }
+    .pm-card-logline { font-size: 17px; color: #6d5f44; margin-top: 8px; line-height: 1.5; font-style: italic; }
 
     .pm-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
     .pm-status-pill {
-      font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 8px;
+      font-size: 14px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 8px;
       border-radius: 10px; font-weight: 700;
     }
     .pill-dev      { background: rgba(255,152,0,.1); color: #ffb74d; border: 1px solid rgba(255,152,0,.25); }
@@ -72,7 +72,7 @@
     .pm-card-actions { display: flex; gap: 6px; }
     .pm-card-actions button {
       background: transparent; border: 1px solid rgba(201,168,76,.18); color: #8d7a55;
-      font-family: Rajdhani, sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+      font-family: Rajdhani, sans-serif; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase;
       padding: 4px 8px; cursor: pointer; border-radius: 2px;
     }
     .pm-card-actions button:hover { border-color: rgba(201,168,76,.5); color: #c9a84c; }
@@ -81,7 +81,7 @@
     .pm-card-actions button.del:hover { border-color: rgba(200,0,0,.6); }
 
     .pm-active-badge {
-      font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 8px;
+      font-size: 14px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 8px;
       border-radius: 10px; background: rgba(201,168,76,.15); color: #f9f295;
       border: 1px solid rgba(201,168,76,.4); display: inline-block;
     }
@@ -92,14 +92,14 @@
       z-index: 100; align-items: center; justify-content: center;
     }
     .pm-edit-backdrop.open { display: flex; }
-    .pm-edit-modal { background: #111; border: 1px solid rgba(201,168,76,.3); border-radius: 4px; padding: 22px; width: 440px; max-width: 95vw; }
-    .pm-edit-title { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 16px; }
+    .pm-edit-modal { background: #111228; border: 1px solid rgba(201,168,76,.3); border-radius: 4px; padding: 22px; width: 440px; max-width: 95vw; }
+    .pm-edit-title { font-size: 18px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 16px; }
     .pm-edit-actions { display: flex; gap: 8px; margin-top: 16px; }
-    .pm-edit-actions button { flex: 1; padding: 9px; font-family: Rajdhani, sans-serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; border-radius: 2px; }
+    .pm-edit-actions button { flex: 1; padding: 9px; font-family: Rajdhani, sans-serif; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; border-radius: 2px; }
     .pm-edit-actions .cancel { background: transparent; border: 1px solid rgba(201,168,76,.2); color: #8d7a55; }
     .pm-edit-actions .save   { background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.5); color: #f9f295; }
 
-    .pm-section-title { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; margin-top: 28px; border-bottom: 1px solid rgba(201,168,76,.1); padding-bottom: 8px; }
+    .pm-section-title { font-size: 17px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; margin-top: 28px; border-bottom: 1px solid rgba(201,168,76,.1); padding-bottom: 8px; }
     .pm-section-title:first-of-type { margin-top: 0; }
   </style>
 </head>
@@ -151,7 +151,7 @@
   <!-- Project list -->
   <div class="pm-section-title">Your Projects</div>
   <div class="pm-grid" id="pm-grid">
-    <div style="color:#444;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Loading…</div>
+    <div style="color:#444;font-size: 16px;letter-spacing:2px;text-transform:uppercase;">Loading…</div>
   </div>
 
 </div>
@@ -208,7 +208,7 @@ async function loadProjects() {
     const projects = data.projects || [];
 
     if (!projects.length) {
-      grid.innerHTML = `<div style="color:#444;font-size:11px;letter-spacing:2px;text-transform:uppercase;">No projects yet — create your first above.</div>`;
+      grid.innerHTML = `<div style="color:#444;font-size: 16px;letter-spacing:2px;text-transform:uppercase;">No projects yet — create your first above.</div>`;
       return;
     }
 
@@ -239,7 +239,7 @@ async function loadProjects() {
     }
 
   } catch (err) {
-    grid.innerHTML = `<div style="color:#ef5350;font-size:11px;">Backend offline — start the server first.</div>`;
+    grid.innerHTML = `<div style="color:#ef5350;font-size: 16px;">Backend offline — start the server first.</div>`;
   }
 }
 

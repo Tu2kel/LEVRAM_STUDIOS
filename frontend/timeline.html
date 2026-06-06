@@ -11,7 +11,7 @@
       flex-direction: column;
       height: 100vh;
       overflow: hidden;
-      background: #111;
+      background: #111228;
     }
     .tl-page { display: flex; flex-direction: column; height: 100%; }
 
@@ -21,13 +21,13 @@
       align-items: center;
       gap: 16px;
       padding: 14px 28px;
-      background: linear-gradient(90deg, #0a0a0a 0%, #141414 100%);
+      background: linear-gradient(90deg, #09080f 0%, #141430 100%);
       border-bottom: 2px solid rgba(201, 168, 76, 0.35);
       flex-shrink: 0;
     }
     .tl-logo {
       font-family: Rajdhani, sans-serif;
-      font-size: 22px;
+      font-size: 27px;
       font-weight: 700;
       letter-spacing: 7px;
       background: linear-gradient(90deg, #8b6914, #c9a84c, #f5d98b, #c9a84c);
@@ -36,7 +36,7 @@
       background-clip: text;
     }
     .tl-subtitle {
-      font-size: 10px;
+      font-size: 15px;
       letter-spacing: 4px;
       text-transform: uppercase;
       color: var(--text-dim);
@@ -48,7 +48,7 @@
       border: 1px solid rgba(201, 168, 76, 0.25);
       color: var(--text-muted);
       font-family: Rajdhani, sans-serif;
-      font-size: 12px;
+      font-size: 17px;
       letter-spacing: 2px;
       text-transform: uppercase;
       padding: 6px 16px;
@@ -68,18 +68,18 @@
     /* ── Status bar ── */
     .tl-status-bar {
       padding: 5px 28px;
-      font-size: 10px;
+      font-size: 15px;
       letter-spacing: 2px;
       text-transform: uppercase;
       color: rgba(201, 168, 76, 0.55);
-      background: #0d0d0d;
+      background: #0d0c1e;
       border-bottom: 1px solid rgba(201, 168, 76, 0.06);
       flex-shrink: 0;
     }
 
     /* ── Timeline ruler + tracks ── */
     .tl-tracks-section {
-      background: #141414;
+      background: #141430;
       border-bottom: 1px solid rgba(201, 168, 76, 0.12);
       flex-shrink: 0;
       overflow-x: auto;
@@ -108,7 +108,7 @@
       height: 8px;
     }
     .tl-ruler-tick-label {
-      font-size: 9px;
+      font-size: 14px;
       letter-spacing: 1px;
       color: rgba(201,168,76,.4);
       transform: translateX(-50%);
@@ -125,7 +125,7 @@
     .tl-track { display: flex; align-items: center; gap: 10px; height: 28px; }
     .tl-track-label {
       font-family: Rajdhani, sans-serif;
-      font-size: 9px;
+      font-size: 14px;
       letter-spacing: 2px;
       text-transform: uppercase;
       color: rgba(201, 168, 76, 0.35);
@@ -148,7 +148,7 @@
       border-radius: 2px;
       display: flex; align-items: center;
       padding: 0 5px;
-      font-size: 9px; letter-spacing: 1px;
+      font-size: 14px; letter-spacing: 1px;
       white-space: nowrap; overflow: hidden;
       transition: opacity .1s;
     }
@@ -165,7 +165,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      background: #0e0e0e;
+      background: #0e0d20;
     }
     .tl-shots-list::-webkit-scrollbar { width: 4px; }
     .tl-shots-list::-webkit-scrollbar-track { background: transparent; }
@@ -188,9 +188,9 @@
       position: absolute;
       top: -10px;
       left: 14px;
-      background: #141414;
+      background: #141430;
       color: var(--gold);
-      font-size: 10px;
+      font-size: 15px;
       letter-spacing: 2px;
       padding: 1px 6px;
     }
@@ -357,7 +357,7 @@
       if (!shots.length) {
         document.getElementById("track-video").innerHTML = "";
         document.getElementById("track-audio").innerHTML = "";
-        shotsList.innerHTML = `<p style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">No shots saved yet.</p>`;
+        shotsList.innerHTML = `<p style="color:var(--text-dim);font-size: 16px;letter-spacing:2px;text-transform:uppercase;">No shots saved yet.</p>`;
         return;
       }
 
@@ -378,11 +378,11 @@
             <span class="tl-char-tag">${s.character || "Unknown"}</span>
             <span class="tl-preset-tag">${s.preset || s.voice_preset || "No FX"}</span>
             <span class="tl-date">${s.createdAt || ""}</span>
-            <label style="font-size:9px;color:rgba(201,168,76,.4);letter-spacing:1px;margin:0 4px 0 8px;">DUR</label>
+            <label style="font-size: 14px;color:rgba(201,168,76,.4);letter-spacing:1px;margin:0 4px 0 8px;">DUR</label>
             <input type="number" min="1" max="120" step="1" value="${parseFloat(s.duration)||5}"
-              style="width:46px;background:rgba(0,0,0,.5);border:1px solid rgba(201,168,76,.2);color:#c9a84c;font-size:10px;padding:2px 4px;border-radius:2px;font-family:Rajdhani,sans-serif;"
+              style="width:46px;background:rgba(0,0,0,.5);border:1px solid rgba(201,168,76,.2);color:#c9a84c;font-size: 15px;padding:2px 4px;border-radius:2px;font-family:Rajdhani,sans-serif;"
               onchange="updateDuration('${s.id}', this.value)" title="Duration in seconds" />
-            <span style="font-size:9px;color:rgba(201,168,76,.3);margin-left:2px;">s</span>
+            <span style="font-size: 14px;color:rgba(201,168,76,.3);margin-left:2px;">s</span>
             <button class="tl-del-btn" title="Move Up"   onclick="moveShot('${s.id}', -1)">↑</button>
             <button class="tl-del-btn" title="Move Down" onclick="moveShot('${s.id}', 1)">↓</button>
             <button class="tl-del-btn" title="Delete"    onclick="deleteShot('${s.id}')">✕</button>

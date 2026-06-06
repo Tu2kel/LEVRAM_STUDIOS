@@ -130,14 +130,14 @@
             style="
               background: linear-gradient(90deg, #1f4fa3, #2e6fd4, #1f4fa3);
               margin-bottom: 8px;
-              font-size: 17px;
+              font-size: 22px;
               letter-spacing: 4px;
             "
           >
             Apply Voice FX
           </button>
           <button id="btn-generate" class="gen-btn">Generate Voice</button>
-          <button id="btn-attach-voice" class="gen-btn" style="display:none;background:linear-gradient(90deg,rgba(201,168,76,0.15),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-size:13px;letter-spacing:3px;margin-top:6px;">
+          <button id="btn-attach-voice" class="gen-btn" style="display:none;background:linear-gradient(90deg,rgba(201,168,76,0.15),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-size: 18px;letter-spacing:3px;margin-top:6px;">
             Attach to Active Shot
           </button>
           <p id="status-text" class="status">Ready</p>
@@ -366,7 +366,7 @@
             <span class="panel-title">Saved Ideas</span>
           </div>
           <div id="iv-list" style="padding:12px;display:flex;flex-direction:column;gap:8px;">
-            <p style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">No ideas saved yet.</p>
+            <p style="color:var(--text-dim);font-size: 16px;letter-spacing:2px;text-transform:uppercase;">No ideas saved yet.</p>
           </div>
         </div>
 
@@ -422,17 +422,17 @@
               <div class="field-group">
                 <div class="field-label">Steps</div>
                 <input type="range" id="ig-wan-steps" min="10" max="50" value="25" oninput="this.nextElementSibling.textContent=this.value" style="width:100%;" />
-                <span style="font-size:11px;color:var(--text-dim);">25</span>
+                <span style="font-size: 16px;color:var(--text-dim);">25</span>
               </div>
               <div class="field-group" style="display:flex;gap:8px;">
                 <div style="flex:1;">
                   <div class="field-label">CFG Scale</div>
                   <input type="range" id="ig-wan-cfg" min="1" max="10" step="0.5" value="6" oninput="this.nextElementSibling.textContent=this.value" style="width:100%;"/>
-                  <span style="font-size:11px;color:var(--text-dim);">6</span>
+                  <span style="font-size: 16px;color:var(--text-dim);">6</span>
                 </div>
                 <div style="flex:1;">
                   <div class="field-label">Seed</div>
-                  <input type="number" id="ig-wan-seed" placeholder="Random" style="width:100%;background:#111;border:1px solid #333;color:#fff;padding:5px;border-radius:2px;font-size:12px;" />
+                  <input type="number" id="ig-wan-seed" placeholder="Random" style="width:100%;background:#111228;border:1px solid #333;color:#fff;padding:5px;border-radius:2px;font-size: 17px;" />
                 </div>
               </div>
             </div>
@@ -490,12 +490,12 @@
             <div id="ig-result" style="display:none;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                 <span class="field-label" style="margin:0;">Latest</span>
-                <button onclick="document.getElementById('ig-result').style.display='none'" style="background:transparent;border:none;color:var(--text-dim);font-size:14px;cursor:pointer;padding:0 4px;" title="Close">✕</button>
+                <button onclick="document.getElementById('ig-result').style.display='none'" style="background:transparent;border:none;color:var(--text-dim);font-size: 19px;cursor:pointer;padding:0 4px;" title="Close">✕</button>
               </div>
               <img id="ig-result-img" style="width:100%;border:1px solid var(--border);border-radius:2px;cursor:zoom-in;" alt="Generated image" onclick="igOpenLightbox(this.src)" />
               <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
-                <button id="ig-upscale-btn" onclick="igUpscale()" style="background:transparent;border:1px solid rgba(60,120,255,0.4);color:#6fa3ff;font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Upscale ×4</button>
-                <a id="ig-download" download style="font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download</a>
+                <button id="ig-upscale-btn" onclick="igUpscale()" style="background:transparent;border:1px solid rgba(60,120,255,0.4);color:#6fa3ff;font-family:Rajdhani,sans-serif;font-size: 16px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Upscale ×4</button>
+                <a id="ig-download" download style="font-family:Rajdhani,sans-serif;font-size: 16px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download</a>
               </div>
             </div>
 
@@ -503,11 +503,11 @@
             <div id="ig-video-result" style="display:none;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                 <span class="field-label" style="margin:0;">Video Output</span>
-                <button onclick="document.getElementById('ig-video-result').style.display='none'" style="background:transparent;border:none;color:var(--text-dim);font-size:14px;cursor:pointer;padding:0 4px;">✕</button>
+                <button onclick="document.getElementById('ig-video-result').style.display='none'" style="background:transparent;border:none;color:var(--text-dim);font-size: 19px;cursor:pointer;padding:0 4px;">✕</button>
               </div>
               <video id="ig-video-player" controls style="width:100%;border:1px solid var(--border);border-radius:2px;background:#000;max-height:300px;"></video>
               <div style="display:flex;justify-content:flex-end;margin-top:6px;">
-                <a id="ig-video-download" download style="font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download Video</a>
+                <a id="ig-video-download" download style="font-family:Rajdhani,sans-serif;font-size: 16px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download Video</a>
               </div>
             </div>
 
@@ -515,7 +515,7 @@
             <div>
               <div class="field-label" style="margin-bottom:8px;">Recent Generations</div>
               <div id="ig-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;">
-                <div style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">Loading...</div>
+                <div style="color:var(--text-dim);font-size: 16px;letter-spacing:2px;text-transform:uppercase;">Loading...</div>
               </div>
             </div>
 
@@ -523,7 +523,7 @@
             <div id="ig-video-gallery-section" style="display:none;">
               <div class="field-label" style="margin-bottom:8px;">Generated Videos</div>
               <div id="ig-video-gallery" style="display:flex;flex-direction:column;gap:8px;">
-                <div style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">No videos yet.</div>
+                <div style="color:var(--text-dim);font-size: 16px;letter-spacing:2px;text-transform:uppercase;">No videos yet.</div>
               </div>
             </div>
 
@@ -534,7 +534,7 @@
 
       <!-- Image Gen lightbox -->
       <div id="ig-lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9000;align-items:center;justify-content:center;" onclick="igCloseLightbox(event)">
-        <button onclick="igCloseLightbox()" style="position:fixed;top:16px;right:20px;background:transparent;border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;padding:6px 14px;cursor:pointer;border-radius:2px;">✕ CLOSE</button>
+        <button onclick="igCloseLightbox()" style="position:fixed;top:16px;right:20px;background:transparent;border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size: 18px;letter-spacing:2px;padding:6px 14px;cursor:pointer;border-radius:2px;">✕ CLOSE</button>
         <img id="ig-lightbox-img" style="max-width:92vw;max-height:90vh;object-fit:contain;border:1px solid rgba(201,168,76,0.2);border-radius:2px;" alt="Full size" />
       </div>
 
@@ -584,7 +584,7 @@
                 border: 1px solid var(--border);
                 color: var(--text-muted);
                 font-family: Rajdhani, sans-serif;
-                font-size: 13px;
+                font-size: 18px;
                 letter-spacing: 2px;
                 text-transform: uppercase;
                 padding: 4px 12px;
@@ -602,7 +602,7 @@
                 border: 1px solid var(--border-strong);
                 color: var(--gold);
                 font-family: Rajdhani, sans-serif;
-                font-size: 13px;
+                font-size: 18px;
                 letter-spacing: 2px;
                 text-transform: uppercase;
                 padding: 4px 12px;
@@ -654,7 +654,7 @@
         <div id="waveform-area" class="waveform-area" style="flex-shrink: 0">
           <span
             style="
-              font-size: 12px;
+              font-size: 17px;
               letter-spacing: 3px;
               text-transform: uppercase;
               color: var(--text-dim);
@@ -674,7 +674,7 @@
         style="grid-column: 1/-1; grid-row: 4; display: none"
       >
         <div class="timeline-header character-lab-header" style="flex-shrink: 0">
-          <span class="panel-title" style="font-size: 15px; letter-spacing: 5px"
+          <span class="panel-title" style="font-size: 20px; letter-spacing: 5px"
             >Shot History / Timeline</span
           >
           <div style="display: flex; gap: 8px; margin-left: 16px">
@@ -722,7 +722,7 @@
         style="grid-column: 1/-1; grid-row: 4; display: none; flex-direction: column; min-height: 0; overflow: hidden"
       >
         <div class="timeline-header" style="flex-shrink: 0">
-          <span class="panel-title" style="font-size: 15px; letter-spacing: 5px">Render Queue</span>
+          <span class="panel-title" style="font-size: 20px; letter-spacing: 5px">Render Queue</span>
           <div style="display: flex; gap: 8px; margin-left: 16px">
             <button id="btn-clear-render-queue" class="ws-ctrl-btn">Clear Queue</button>
           </div>
@@ -750,7 +750,7 @@
         style="grid-column: 1/-1; grid-row: 4; display: none; min-height: 400px; overflow: hidden;"
       >
         <div class="timeline-header" style="flex-shrink: 0">
-          <span class="panel-title" style="font-size: 15px; letter-spacing: 5px">
+          <span class="panel-title" style="font-size: 20px; letter-spacing: 5px">
             Character Lab
           </span>
           <span class="tl-time">Reusable cast profiles</span>
@@ -812,7 +812,7 @@
         border: 1px solid var(--border);
         color: var(--text-muted);
         font-family: Rajdhani, sans-serif;
-        font-size: 12px;
+        font-size: 17px;
         letter-spacing: 2px;
         text-transform: uppercase;
         padding: 3px 10px;
@@ -849,7 +849,7 @@
         left: 14px;
         background: var(--surface);
         color: var(--gold);
-        font-size: 10px;
+        font-size: 15px;
         letter-spacing: 2px;
         padding: 1px 6px;
       }

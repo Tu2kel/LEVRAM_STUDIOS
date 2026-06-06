@@ -50,7 +50,7 @@
 .rq-toolbar span,
 .rq-page-count{
   border:1px solid rgba(201,168,76,.35);
-  background:#080604;
+  background:#0a0918;
   color:#C9A84C;
   padding:8px 12px;
   font-size:11px;
@@ -253,7 +253,7 @@
 
 .rv-btn{
   border:1px solid rgba(201,168,76,.45);
-  background:#080604;
+  background:#0a0918;
   color:#C9A84C;
   padding:9px 12px;
   font-size:11px;
@@ -435,7 +435,7 @@
 
 .rq-export-btn {
   border: 1px solid rgba(201, 168, 76, 0.55);
-  background: #080604;
+  background: #0a0918;
   color: #C9A84C;
   padding: 7px 14px;
   font-size: 11px;

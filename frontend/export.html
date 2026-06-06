@@ -8,29 +8,29 @@
   <style>
     .ex-page      { padding: 22px; min-height: 100vh; }
     .ex-header    { display: flex; align-items: center; gap: 18px; padding: 14px 16px; border: 1px solid rgba(201,168,76,.22); background: rgba(0,0,0,.75); margin-bottom: 14px; }
-    .ex-title     { color: #C9A84C; font-size: 16px; letter-spacing: 4px; text-transform: uppercase; }
-    .ex-sub       { color: #8d7a55; font-size: 11px; margin-top: 4px; }
-    .ex-back      { border: 1px solid rgba(201,168,76,.35); background: #080604; color: #C9A84C; padding: 8px 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+    .ex-title     { color: #C9A84C; font-size: 21px; letter-spacing: 4px; text-transform: uppercase; }
+    .ex-sub       { color: #8d7a55; font-size: 16px; margin-top: 4px; }
+    .ex-back      { border: 1px solid rgba(201,168,76,.35); background: #0a0918; color: #C9A84C; padding: 8px 12px; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
     .ex-grid      { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; }
     .ex-panel     { border: 1px solid rgba(201,168,76,.18); background: rgba(0,0,0,.6); padding: 16px; border-radius: 4px; }
-    .ex-label     { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim, #666); margin-bottom: 6px; }
-    .ex-input     { width: 100%; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 7px 10px; border-radius: 3px; font-size: 13px; box-sizing: border-box; }
-    .ex-btn       { border: 1px solid rgba(201,168,76,.55); background: #080604; color: #C9A84C; padding: 9px 18px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; width: 100%; margin-top: 10px; border-radius: 2px; }
+    .ex-label     { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim, #666); margin-bottom: 6px; }
+    .ex-input     { width: 100%; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 7px 10px; border-radius: 3px; font-size: 18px; box-sizing: border-box; }
+    .ex-btn       { border: 1px solid rgba(201,168,76,.55); background: #0a0918; color: #C9A84C; padding: 9px 18px; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; width: 100%; margin-top: 10px; border-radius: 2px; }
     .ex-btn:hover { background: rgba(201,168,76,.14); color: #f9f295; }
     .ex-btn:disabled { opacity: .4; cursor: not-allowed; }
     .ex-clip-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; max-height: 260px; overflow-y: auto; }
     .ex-clip-row  { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: rgba(0,0,0,.35); border: 1px solid rgba(201,168,76,.1); border-radius: 3px; }
-    .ex-clip-name { flex: 1; font-size: 11px; color: var(--text-muted, #aaa); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ex-clip-name { flex: 1; font-size: 16px; color: var(--text-muted, #aaa); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ex-clip-check{ accent-color: #C9A84C; width: 14px; height: 14px; }
-    .ex-status    { font-size: 12px; color: #C9A84C; margin-top: 10px; min-height: 20px; }
+    .ex-status    { font-size: 17px; color: #C9A84C; margin-top: 10px; min-height: 20px; }
     .vlib-grid    { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 14px; }
     .vlib-card    { background: rgba(0,0,0,.45); border: 1px solid rgba(201,168,76,.15); border-radius: 6px; overflow: hidden; }
     .vlib-card video{ width: 100%; display: block; max-height: 200px; background: #000; }
     .vlib-card-meta { padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; }
-    .vlib-name    { font-size: 10px; color: var(--text-dim, #666); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
-    .vlib-dl      { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #C9A84C; text-decoration: none; border: 1px solid rgba(201,168,76,.3); padding: 3px 9px; border-radius: 2px; }
+    .vlib-name    { font-size: 15px; color: var(--text-dim, #666); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+    .vlib-dl      { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: #C9A84C; text-decoration: none; border: 1px solid rgba(201,168,76,.3); padding: 3px 9px; border-radius: 2px; }
     .vlib-dl:hover{ background: rgba(201,168,76,.1); }
-    .vlib-empty   { color: var(--text-dim, #666); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; padding: 20px 0; }
+    .vlib-empty   { color: var(--text-dim, #666); font-size: 16px; letter-spacing: 2px; text-transform: uppercase; padding: 20px 0; }
   </style>
 </head>
 <body>
@@ -42,7 +42,7 @@
       <div class="ex-title">Export Studio</div>
       <div class="ex-sub">Episode assembly, video library, and download management.</div>
     </div>
-    <span id="ex-lib-count" style="margin-left:auto;border:1px solid rgba(201,168,76,.35);background:#080604;color:#C9A84C;padding:8px 12px;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Loading...</span>
+    <span id="ex-lib-count" style="margin-left:auto;border:1px solid rgba(201,168,76,.35);background:#0a0918;color:#C9A84C;padding:8px 12px;font-size: 16px;letter-spacing:2px;text-transform:uppercase;">Loading...</span>
   </div>
 
   <div class="ex-grid">
@@ -50,7 +50,7 @@
     <!-- LEFT: Episode Assembler -->
     <div>
       <div class="ex-panel">
-        <div class="ex-title" style="font-size:13px;margin-bottom:12px;">Episode Assembler</div>
+        <div class="ex-title" style="font-size: 18px;margin-bottom:12px;">Episode Assembler</div>
 
         <div class="ex-label">Episode Title</div>
         <input id="ep-title" class="ex-input" type="text" placeholder="Episode 1 — The Runner" />
@@ -65,7 +65,7 @@
       </div>
 
       <div class="ex-panel" style="margin-top:14px;">
-        <div class="ex-title" style="font-size:13px;margin-bottom:12px;">Quick Wan2.1 Video</div>
+        <div class="ex-title" style="font-size: 18px;margin-bottom:12px;">Quick Wan2.1 Video</div>
         <div class="ex-label">Prompt</div>
         <textarea id="wan-prompt" class="ex-input" style="height:80px;resize:none;" placeholder="Describe the scene for Wan2.1 T2V..."></textarea>
         <div class="ex-label" style="margin-top:8px;">Aspect Ratio</div>
@@ -78,7 +78,7 @@
           <div style="flex:1;">
             <div class="ex-label">Steps</div>
             <input type="range" id="wan-steps" min="10" max="50" value="25" oninput="document.getElementById('wan-steps-val').textContent=this.value" style="width:100%;" />
-            <span id="wan-steps-val" style="font-size:11px;color:var(--text-dim,#666);">25</span>
+            <span id="wan-steps-val" style="font-size: 16px;color:var(--text-dim,#666);">25</span>
           </div>
           <div style="flex:1;">
             <div class="ex-label">Seed (blank=random)</div>
@@ -94,8 +94,8 @@
     <!-- RIGHT: Video Library -->
     <div class="ex-panel">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div class="ex-title" style="font-size:13px;">Video Library</div>
-        <button onclick="loadVideoLibrary()" style="background:transparent;border:1px solid rgba(201,168,76,.25);color:#C9A84C;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:2px;">Refresh</button>
+        <div class="ex-title" style="font-size: 18px;">Video Library</div>
+        <button onclick="loadVideoLibrary()" style="background:transparent;border:1px solid rgba(201,168,76,.25);color:#C9A84C;font-size: 15px;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:2px;">Refresh</button>
       </div>
       <div id="vlib-grid" class="vlib-grid">
         <div class="vlib-empty">Loading…</div>
@@ -132,7 +132,7 @@ async function loadVideoLibrary() {
         <div class="vlib-card-meta">
           <div>
             <div class="vlib-name" title="${v.name}">${v.name}</div>
-            <div style="font-size:9px;color:#555;margin-top:2px;">${v.created} · ${v.size_mb} MB</div>
+            <div style="font-size: 14px;color:#555;margin-top:2px;">${v.created} · ${v.size_mb} MB</div>
           </div>
           <a class="vlib-dl" href="${BASE + v.url}" download="${v.name}">DL</a>
         </div>
@@ -163,7 +163,7 @@ async function loadQueueClips() {
         <div class="ex-clip-row">
           <input type="checkbox" class="ex-clip-check" id="ep-clip-${item.id}" value="${item.id}" checked />
           <label for="ep-clip-${item.id}" class="ex-clip-name" title="${item.clipUrl}">${label}</label>
-          <span style="font-size:9px;color:#555;">${item.clipUrl.split("/").pop()}</span>
+          <span style="font-size: 14px;color:#555;">${item.clipUrl.split("/").pop()}</span>
         </div>
       `;
     }).join("");
@@ -200,7 +200,7 @@ async function assembleEpisode() {
     const episodeUrl = BASE + data.episodeUrl;
     if (statusEl) statusEl.innerHTML = `
       <span style="color:#4caf50;">✓ Episode ready (${data.clips} clips)</span><br>
-      <a href="${episodeUrl}" download style="color:#C9A84C;font-size:11px;letter-spacing:2px;">Download ${data.episodeUrl.split("/").pop()}</a>
+      <a href="${episodeUrl}" download style="color:#C9A84C;font-size: 16px;letter-spacing:2px;">Download ${data.episodeUrl.split("/").pop()}</a>
     `;
     await loadVideoLibrary();
   } catch (err) {

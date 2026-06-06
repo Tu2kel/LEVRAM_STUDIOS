@@ -5,30 +5,30 @@
   <title>LEVRAM — Asset Browser</title>
   <link rel="stylesheet" href="app.css" />
   <style>
-    body { background: #0a0a0a; color: #c9a84c; font-family: Rajdhani, sans-serif; margin: 0; }
+    body { background: #09080f; color: #c9a84c; font-family: Rajdhani, sans-serif; margin: 0; }
     .as-page { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
     /* Header */
     .as-header { display: flex; align-items: center; gap: 14px; padding: 12px 22px; border-bottom: 1px solid rgba(201,168,76,.22); background: rgba(0,0,0,.85); flex-shrink: 0; }
-    .as-title  { color: #C9A84C; font-size: 15px; letter-spacing: 4px; text-transform: uppercase; }
-    .as-sub    { color: #8d7a55; font-size: 10px; margin-top: 2px; }
-    .as-back   { border: 1px solid rgba(201,168,76,.35); background: #080604; color: #C9A84C; padding: 6px 10px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+    .as-title  { color: #C9A84C; font-size: 20px; letter-spacing: 4px; text-transform: uppercase; }
+    .as-sub    { color: #8d7a55; font-size: 15px; margin-top: 2px; }
+    .as-back   { border: 1px solid rgba(201,168,76,.35); background: #0a0918; color: #C9A84C; padding: 6px 10px; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
 
     /* Toolbar */
-    .as-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 22px; background: #111; border-bottom: 1px solid rgba(201,168,76,.1); flex-shrink: 0; flex-wrap: wrap; }
+    .as-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 22px; background: #111228; border-bottom: 1px solid rgba(201,168,76,.1); flex-shrink: 0; flex-wrap: wrap; }
     .as-toolbar input[type=text] {
       background: rgba(0,0,0,.6); border: 1px solid rgba(201,168,76,.2); color: #c9a84c;
-      font-family: Rajdhani, sans-serif; font-size: 12px; padding: 6px 10px;
+      font-family: Rajdhani, sans-serif; font-size: 17px; padding: 6px 10px;
       border-radius: 2px; outline: none; width: 200px;
     }
     .as-filter-btn {
       border: 1px solid rgba(201,168,76,.2); background: transparent; color: #8d7a55;
-      font-family: Rajdhani, sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+      font-family: Rajdhani, sans-serif; font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
       padding: 5px 12px; cursor: pointer; border-radius: 2px;
     }
     .as-filter-btn.active { border-color: rgba(201,168,76,.7); color: #f9f295; background: rgba(201,168,76,.08); }
     .as-filter-btn:hover  { border-color: rgba(201,168,76,.5); color: #c9a84c; }
-    .as-count { font-size: 10px; color: #555; letter-spacing: 2px; text-transform: uppercase; margin-left: auto; }
+    .as-count { font-size: 15px; color: #555; letter-spacing: 2px; text-transform: uppercase; margin-left: auto; }
 
     /* Grid */
     .as-grid-wrap { flex: 1; overflow-y: auto; padding: 16px 22px 40px; }
@@ -45,22 +45,22 @@
     .as-card:hover { border-color: rgba(201,168,76,.5); }
     .as-card.selected { border-color: #c9a84c; box-shadow: 0 0 10px rgba(201,168,76,.2); }
 
-    .as-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #111; display: block; }
+    .as-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #111228; display: block; }
     .as-thumb-video { width: 100%; aspect-ratio: 16/9; background: #000; display: block; }
-    .as-thumb-audio { width: 100%; padding: 20px 10px 10px; background: linear-gradient(180deg,#1a1400,#0a0a0a); display: flex; flex-direction: column; align-items: center; }
-    .as-thumb-audio .audio-icon { font-size: 28px; color: rgba(201,168,76,.5); }
+    .as-thumb-audio { width: 100%; padding: 20px 10px 10px; background: linear-gradient(180deg,#1a1400,#09080f); display: flex; flex-direction: column; align-items: center; }
+    .as-thumb-audio .audio-icon { font-size: 33px; color: rgba(201,168,76,.5); }
     .as-thumb-audio audio { width: 100%; margin-top: 8px; }
 
     .as-card-meta { padding: 8px 10px; }
-    .as-card-name { font-size: 11px; color: #c9a84c; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .as-card-info { font-size: 10px; color: #555; margin-top: 2px; }
+    .as-card-name { font-size: 16px; color: #c9a84c; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .as-card-info { font-size: 15px; color: #555; margin-top: 2px; }
     .as-card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-    .as-tag { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; padding: 1px 6px; border-radius: 10px; background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.2); color: #c9a84c; }
+    .as-tag { font-size: 14px; letter-spacing: 1px; text-transform: uppercase; padding: 1px 6px; border-radius: 10px; background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.2); color: #c9a84c; }
 
     .as-card-actions { display: flex; gap: 6px; padding: 0 10px 8px; }
     .as-card-actions button {
       flex: 1; background: transparent; border: 1px solid rgba(201,168,76,.15); color: #8d7a55;
-      font-family: Rajdhani, sans-serif; font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+      font-family: Rajdhani, sans-serif; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;
       padding: 4px 6px; cursor: pointer; border-radius: 2px;
     }
     .as-card-actions button:hover { border-color: rgba(201,168,76,.5); color: #c9a84c; }
@@ -69,7 +69,7 @@
 
     .as-type-badge {
       position: absolute; top: 6px; left: 6px;
-      font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 7px;
+      font-size: 14px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 7px;
       border-radius: 10px; font-weight: 700;
     }
     .badge-image { background: rgba(33,150,243,.15); color: #64b5f6; border: 1px solid rgba(33,150,243,.3); }
@@ -77,7 +77,7 @@
     .badge-audio { background: rgba(76,175,80,.15); color: #a5d6a7; border: 1px solid rgba(76,175,80,.3); }
     .badge-music { background: rgba(255,152,0,.15); color: #ffcc80; border: 1px solid rgba(255,152,0,.3); }
 
-    .as-empty { color: #444; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; grid-column: 1/-1; text-align: center; padding: 48px 0; }
+    .as-empty { color: #444; font-size: 17px; letter-spacing: 2px; text-transform: uppercase; grid-column: 1/-1; text-align: center; padding: 48px 0; }
 
     /* Tag editor modal */
     .as-modal-backdrop {
@@ -85,18 +85,18 @@
       z-index: 100; align-items: center; justify-content: center;
     }
     .as-modal-backdrop.open { display: flex; }
-    .as-modal { background: #111; border: 1px solid rgba(201,168,76,.3); border-radius: 4px; padding: 22px; width: 360px; max-width: 90vw; }
-    .as-modal-title { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; }
+    .as-modal { background: #111228; border: 1px solid rgba(201,168,76,.3); border-radius: 4px; padding: 22px; width: 360px; max-width: 90vw; }
+    .as-modal-title { font-size: 18px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; }
     .as-modal input[type=text] {
       background: rgba(0,0,0,.6); border: 1px solid rgba(201,168,76,.2); color: #c9a84c;
-      font-family: Rajdhani, sans-serif; font-size: 13px; padding: 8px 10px;
+      font-family: Rajdhani, sans-serif; font-size: 18px; padding: 8px 10px;
       width: 100%; box-sizing: border-box; border-radius: 2px; outline: none;
     }
-    .as-modal-note { font-size: 10px; color: #555; margin-top: 6px; }
+    .as-modal-note { font-size: 15px; color: #555; margin-top: 6px; }
     .as-modal-actions { display: flex; gap: 8px; margin-top: 14px; }
     .as-modal-actions button {
       flex: 1; background: transparent; border: 1px solid rgba(201,168,76,.3); color: #c9a84c;
-      font-family: Rajdhani, sans-serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      font-family: Rajdhani, sans-serif; font-size: 16px; letter-spacing: 2px; text-transform: uppercase;
       padding: 8px; cursor: pointer; border-radius: 2px;
     }
     .as-modal-actions button.save { background: rgba(201,168,76,.1); border-color: rgba(201,168,76,.6); color: #f9f295; }
@@ -225,7 +225,7 @@ function thumbHtml(a) {
       <audio src="${url}" controls preload="none"></audio>
     </div>`;
   }
-  return `<div style="width:100%;aspect-ratio:16/9;background:#111;display:flex;align-items:center;justify-content:center;color:#333;font-size:22px;">?</div>`;
+  return `<div style="width:100%;aspect-ratio:16/9;background:#111228;display:flex;align-items:center;justify-content:center;color:#333;font-size: 27px;">?</div>`;
 }
 
 // ── Tag modal ────────────────────────────────────────────────

@@ -12,7 +12,7 @@
 }
 
 .pb-shell {
-  background: linear-gradient(150deg, #121212 0%, #060606 100%);
+  background: linear-gradient(150deg, #121212 0%, #08071a 100%);
   border-bottom: 1px solid rgba(240, 192, 64, 0.18);
   border-top: 1px solid rgba(240, 192, 64, 0.45);
   padding: 14px 20px 12px;
@@ -180,7 +180,7 @@
     0 100%,
     11px 50%
   );
-  background: #0d0d0d;
+  background: #0d0c1e;
 }
 .pb-stage:first-child {
   clip-path: polygon(

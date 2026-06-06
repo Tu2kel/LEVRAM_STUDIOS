@@ -1,11 +1,25 @@
 {
   "ideas": [
     {
+      "id": "c68cfd83-5a77-4b25-8908-56deb2d71df9",
+      "title": "Chicago",
+      "source": "web",
+      "rawIdea": "MJ begging for his life - the chorus Chicago Explains it",
+      "tags": [],
+      "status": "raw",
+      "createdAt": "2026-06-06 01:07:10",
+      "updatedAt": "2026-06-06 01:07:10"
+    },
+    {
       "id": "idea-mj-001",
       "title": "Chicago Interpretation Skit",
       "source": "Michael Jackson - Chicago",
       "rawIdea": "To me it seemed like he got caught messing with someone's girl. The guy busts in and MJ starts singing the chorus like he's begging not to get killed.",
-      "tags": ["comedy","music","skit"],
+      "tags": [
+        "comedy",
+        "music",
+        "skit"
+      ],
       "status": "raw"
     }
   ]

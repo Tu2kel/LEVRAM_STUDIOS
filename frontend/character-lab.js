@@ -40,7 +40,8 @@ async function generateCharacterPreview() {
   const prompt = buildCharacterImagePrompt(character);
 
   if (promptBox) promptBox.value = prompt;
-  if (status) status.textContent = "GENERATING CHARACTER VISUAL TEST...";
+  // PHASE 8G — timing expectation: ComfyUI takes 30–120s
+  if (status) status.textContent = "GENERATING — this may take 30–120 seconds...";
   if (img) img.style.display = "none";
 
   try {
@@ -85,6 +86,26 @@ async function generateCharacterPreview() {
 
     img.src = finalUrl;
     img.style.display = "block";
+
+    // PHASE 8G — persist reference image URL to the character record if one is being edited
+    if (editingCharacterId) {
+      try {
+        const cache = window.LEVRAM_CHARACTERS_CACHE || [];
+        const existing = cache.find(c => c.id === editingCharacterId);
+        if (existing) {
+          const payload = { ...existing, reference_image_url: finalUrl };
+          await fetch(`${BASE}/characters/${editingCharacterId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          await loadCharacters();
+          console.log("PHASE 8G REFERENCE IMAGE SAVED:", finalUrl);
+        }
+      } catch (saveErr) {
+        console.warn("PHASE 8G could not save reference image to character:", saveErr);
+      }
+    }
   } catch (err) {
     console.error("CHARACTER PREVIEW ERROR:", err);
     if (status) status.textContent = "FRONTEND ERROR — CHECK CONSOLE";
@@ -242,6 +263,21 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
 
   const badge = document.getElementById("cl-edit-badge");
   if (badge) badge.style.display = "inline-block";
+
+  // PHASE 8G — auto-load existing reference image into the preview panel
+  const previewImg = document.getElementById("character-preview-img");
+  const previewStatus = document.getElementById("character-preview-status");
+  if (previewImg) {
+    if (c.reference_image_url) {
+      previewImg.src = c.reference_image_url;
+      previewImg.style.display = "block";
+      if (previewStatus) previewStatus.textContent = "Reference image loaded ✔";
+    } else {
+      previewImg.src = "";
+      previewImg.style.display = "none";
+      if (previewStatus) previewStatus.textContent = "";
+    }
+  }
 
   console.log("PHASE 8F.4 EDITING CHARACTER:", c.name, "id:", c.id);
 };

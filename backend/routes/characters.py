@@ -21,6 +21,7 @@ class CharacterPayload(BaseModel):
     default_voice_profile: str = ""
     personality: str = ""
     notes: str = ""
+    reference_image_url: str = ""  # PHASE 8G — persisted character reference image
 
 
 def load_data():
@@ -54,6 +55,7 @@ def create_character(payload: CharacterPayload):
         "default_voice_profile": payload.default_voice_profile,
         "personality": payload.personality,
         "notes": payload.notes,
+        "reference_image_url": payload.reference_image_url,
         "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -91,6 +93,7 @@ def update_character(character_id: str, payload: CharacterPayload):
         "default_voice_profile": payload.default_voice_profile,
         "personality": payload.personality,
         "notes": payload.notes,
+        "reference_image_url": payload.reference_image_url,
         "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
 
@@ -133,7 +136,8 @@ async def generate_character_preview(payload: dict):
         }
     }
 
-    render_result = generate_comfy_keyframe(item)
+    # PHASE 8G — portrait orientation for character reference images
+    render_result = generate_comfy_keyframe(item, width=512, height=768)
 
     image_url = (
         render_result.get("outputUrl")

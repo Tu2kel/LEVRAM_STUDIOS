@@ -41,7 +41,7 @@ def _download_image(filename, subfolder="", folder_type="output"):
         return res.read()
 
 
-def _build_workflow(prompt):
+def _build_workflow(prompt, width=768, height=512):
     return {
         "3": {
             "class_type": "KSampler",
@@ -67,8 +67,8 @@ def _build_workflow(prompt):
         "5": {
             "class_type": "EmptyLatentImage",
             "inputs": {
-                "width": 768,
-                "height": 512,
+                "width": width,
+                "height": height,
                 "batch_size": 1,
             },
         },
@@ -103,7 +103,7 @@ def _build_workflow(prompt):
     }
 
 
-def generate_comfy_keyframe(queue_item: dict):
+def generate_comfy_keyframe(queue_item: dict, width=768, height=512):
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
     shot = queue_item.get("shot") or {}
@@ -152,7 +152,7 @@ def generate_comfy_keyframe(queue_item: dict):
         if p and p.strip()
     )
 
-    workflow = _build_workflow(prompt)
+    workflow = _build_workflow(prompt, width=width, height=height)
 
     client_id = str(uuid.uuid4())
 

@@ -354,9 +354,21 @@
             <span class="panel-badge">Phase 9</span>
           </div>
           <div class="voice-lab">
+
+            <!-- Engine toggle -->
+            <div class="field-group">
+              <div class="field-label">Engine</div>
+              <div class="cl-voice-toggle" id="ig-engine-toggle">
+                <button class="cl-vtoggle-btn active" data-engine="dalle3">DALL-E 3</button>
+                <button class="cl-vtoggle-btn" data-engine="fal_flux">FLUX (fal.ai)</button>
+                <button class="cl-vtoggle-btn" data-engine="comfy">Local</button>
+              </div>
+              <div id="ig-engine-hint" class="field-hint" style="margin-top:4px;">Uses your OpenAI key — best prompt accuracy.</div>
+            </div>
+
             <div class="field-group">
               <div class="field-label">Prompt</div>
-              <textarea id="ig-prompt" class="script-input" style="height:100px;" placeholder="Describe the image — character, environment, mood, lighting..."></textarea>
+              <textarea id="ig-prompt" class="script-input" style="height:110px;" placeholder="Describe the image — character, environment, mood, lighting..."></textarea>
             </div>
             <div class="field-group">
               <div class="field-label">Character</div>
@@ -377,10 +389,10 @@
             <div class="field-group">
               <div class="field-label">Aspect Ratio</div>
               <select id="ig-aspect">
-                <option value="widescreen">Widescreen 16:9 — 768×512</option>
-                <option value="cinematic">Cinematic 2.35:1 — 896×384</option>
-                <option value="portrait">Portrait 9:16 — 512×768</option>
-                <option value="square">Square 1:1 — 512×512</option>
+                <option value="widescreen">Widescreen 16:9</option>
+                <option value="cinematic">Cinematic 2.35:1</option>
+                <option value="portrait">Portrait 9:16</option>
+                <option value="square">Square 1:1</option>
               </select>
             </div>
             <button id="ig-generate-btn" class="gen-btn" style="margin-top:8px;">Generate Image</button>
@@ -400,7 +412,11 @@
 
             <!-- Current result -->
             <div id="ig-result" style="display:none;">
-              <img id="ig-result-img" style="width:100%;border:1px solid var(--border);border-radius:2px;" alt="Generated image" />
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <span class="field-label" style="margin:0;">Latest</span>
+                <button onclick="document.getElementById('ig-result').style.display='none'" style="background:transparent;border:none;color:var(--text-dim);font-size:14px;cursor:pointer;padding:0 4px;" title="Close">✕</button>
+              </div>
+              <img id="ig-result-img" style="width:100%;border:1px solid var(--border);border-radius:2px;cursor:zoom-in;" alt="Generated image" onclick="igOpenLightbox(this.src)" />
               <div style="display:flex;justify-content:flex-end;margin-top:6px;">
                 <a id="ig-download" download style="font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download</a>
               </div>
@@ -409,7 +425,7 @@
             <!-- Gallery -->
             <div>
               <div class="field-label" style="margin-bottom:8px;">Recent Generations</div>
-              <div id="ig-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;">
+              <div id="ig-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;">
                 <div style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">Loading...</div>
               </div>
             </div>
@@ -418,6 +434,12 @@
         </div>
 
       </div><!-- /#tab-image-gen -->
+
+      <!-- Image Gen lightbox -->
+      <div id="ig-lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9000;align-items:center;justify-content:center;" onclick="igCloseLightbox(event)">
+        <button onclick="igCloseLightbox()" style="position:fixed;top:16px;right:20px;background:transparent;border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;padding:6px 14px;cursor:pointer;border-radius:2px;">✕ CLOSE</button>
+        <img id="ig-lightbox-img" style="max-width:92vw;max-height:90vh;object-fit:contain;border:1px solid rgba(201,168,76,0.2);border-radius:2px;" alt="Full size" />
+      </div>
 
       <!-- ROW 3 — Workspace Tab Bar -->
       <div class="workspace-tabs-bar" style="grid-column: 1/-1; grid-row: 3">

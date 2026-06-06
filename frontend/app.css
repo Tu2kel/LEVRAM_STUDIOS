@@ -1777,3 +1777,37 @@ body {
   border-color: rgba(201, 168, 76, 0.5) !important;
   box-shadow: 0 0 10px rgba(201, 168, 76, 0.2);
 }
+
+/* ─── Image Gen thumbnails ───────────────────────────────── */
+.ig-thumb {
+  position: relative;
+  cursor: pointer;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ig-thumb:hover {
+  border-color: rgba(201, 168, 76, 0.5);
+  box-shadow: 0 0 10px rgba(201, 168, 76, 0.2);
+}
+.ig-thumb img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+.ig-thumb-meta {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.65);
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 2px 4px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -127,6 +127,8 @@ window.saveCharacter = async function saveCharacter() {
 
     // PHASE 8F.4 — reset edit state after successful save
     editingCharacterId = null;
+    const badge = document.getElementById("cl-edit-badge");
+    if (badge) badge.style.display = "none";
 
     if (saveBtn) {
       saveBtn.classList.add("character-save-confirmed");
@@ -186,14 +188,16 @@ async function loadCharacters() {
     }
 
     list.innerHTML = characters.map(c => `
-      <div class="character-card">
-        <div class="character-card-name">⚜ ${c.name || "Unnamed Character"}</div>
-        <div class="character-card-meta">${c.gender || "Unknown"} • ${c.age || "Age N/A"}</div>
-        <div class="character-card-text">${c.appearance || ""}</div>
-        ${c.default_voice_profile ? `<div class="character-card-text" style="color:var(--gold);font-size:10px;">Voice: ${c.default_voice_profile}</div>` : ""}
-        <div style="display:flex;gap:6px;margin-top:6px;">
-          <button type="button" class="saved-voice-link" onclick="loadCharacterIntoForm('${c.id || ""}')">Edit</button>
-          <button type="button" class="saved-voice-delete" onclick="deleteCharacter('${c.id || ""}')">Delete</button>
+      <div class="character-card${c.default_voice_profile ? " has-voice" : ""}">
+        <div class="character-card-header">
+          <span class="character-card-name">⚜ ${c.name || "Unnamed"}</span>
+          ${c.default_voice_profile ? `<span class="character-card-voice-badge">Voice</span>` : ""}
+        </div>
+        <div class="character-card-meta">${[c.gender, c.age].filter(Boolean).join(" · ") || "No details"}</div>
+        ${c.default_voice_profile ? `<div class="character-card-voice">⚡ ${c.default_voice_profile}</div>` : ""}
+        <div class="character-card-actions">
+          <button type="button" class="cl-btn-edit" onclick="loadCharacterIntoForm('${c.id || ""}')">Edit</button>
+          <button type="button" class="cl-btn-delete" onclick="deleteCharacter('${c.id || ""}')">Delete</button>
         </div>
       </div>
     `).join("");
@@ -236,6 +240,9 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
   const saveBtn = document.getElementById("save-character-btn");
   if (saveBtn) saveBtn.textContent = "Update Character";
 
+  const badge = document.getElementById("cl-edit-badge");
+  if (badge) badge.style.display = "inline-block";
+
   console.log("PHASE 8F.4 EDITING CHARACTER:", c.name, "id:", c.id);
 };
 
@@ -255,6 +262,16 @@ window.deleteCharacter = async function deleteCharacter(id) {
   } catch (err) {
     console.error("DELETE CHARACTER ERROR:", err);
   }
+};
+
+// PHASE 8F.4 — reset form to create a new character
+window.newCharacter = function newCharacter() {
+  editingCharacterId = null;
+  clearCharacterForm();
+  const badge = document.getElementById("cl-edit-badge");
+  if (badge) badge.style.display = "none";
+  const saveBtn = document.getElementById("save-character-btn");
+  if (saveBtn) saveBtn.textContent = "Save Character";
 };
 
 document.addEventListener("DOMContentLoaded", loadCharacters);

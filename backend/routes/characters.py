@@ -28,6 +28,7 @@ class CharacterPayload(BaseModel):
     rvc_model_path: str = ""                 # path to .pth model
     rvc_index_path: str = ""                 # path to .index file (optional)
     rvc_source_type: str = "pretrained"      # "my_voice" | "pretrained"
+    default_fx_preset: str = "clean"         # villain|deep|monster|ghost|radio|clean
 
 
 def load_data():
@@ -67,6 +68,7 @@ def create_character(payload: CharacterPayload):
         "rvc_model_path": payload.rvc_model_path,
         "rvc_index_path": payload.rvc_index_path,
         "rvc_source_type": payload.rvc_source_type,
+        "default_fx_preset": payload.default_fx_preset,
         "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -110,6 +112,7 @@ def update_character(character_id: str, payload: CharacterPayload):
         "rvc_model_path": payload.rvc_model_path,
         "rvc_index_path": payload.rvc_index_path,
         "rvc_source_type": payload.rvc_source_type,
+        "default_fx_preset": payload.default_fx_preset,
         "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
 

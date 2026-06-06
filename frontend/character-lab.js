@@ -24,6 +24,7 @@ function getCharacterFormData() {
     rvc_model_path: selectedRvcModel,
     rvc_index_path: "",
     rvc_source_type: activeRvcSub?.dataset.rvcType || "pretrained",
+    default_fx_preset: document.getElementById("character-fx-preset")?.value || "clean",
   };
 }
 
@@ -267,6 +268,10 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
 
   // Pre-select voice dropdown; safe fallback if profile no longer exists
   loadVoiceProfilesForCharacters(c.default_voice_profile || "");
+
+  // Restore FX preset
+  const fxPresetEl = document.getElementById("character-fx-preset");
+  if (fxPresetEl) fxPresetEl.value = c.default_fx_preset || "clean";
 
   // Restore voice engine toggle
   setVoiceSource(c.voice_source || "edge_tts");

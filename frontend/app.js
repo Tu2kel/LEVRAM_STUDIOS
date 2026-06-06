@@ -76,9 +76,11 @@ const FX_PRESET_DEFAULTS = {
   clean:   { pitch: 100, bass: 50, reverb: 0,  volume: 100 },
 };
 
-document.querySelector("select.fx-preset")?.addEventListener("change", (e) => {
-  const defaults = FX_PRESET_DEFAULTS[e.target.value];
+function applyFxPreset(presetName) {
+  const defaults = FX_PRESET_DEFAULTS[presetName];
   if (!defaults) return;
+  const sel = document.querySelector("select.fx-preset");
+  if (sel) sel.value = presetName;
   ["pitch", "bass", "reverb", "volume"].forEach(key => {
     const el = document.getElementById(`fx-${key}`);
     if (el) {
@@ -86,6 +88,11 @@ document.querySelector("select.fx-preset")?.addEventListener("change", (e) => {
       if (el.nextElementSibling) el.nextElementSibling.textContent = defaults[key] + "%";
     }
   });
+}
+window.applyFxPreset = applyFxPreset;
+
+document.querySelector("select.fx-preset")?.addEventListener("change", (e) => {
+  applyFxPreset(e.target.value);
 });
 
 function getAssignedVoiceProfile() {

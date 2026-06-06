@@ -19,20 +19,28 @@ async function loadVoiceLabCharacters() {
       return `<option value="${c.name}">${c.name}${engine}</option>`;
     }).join("");
 
+    function activateCharacter(char) {
+      window.LEVRAM_ACTIVE_CHARACTER_RECORD = char;
+      renderVoiceCharBadge(char, badge);
+      // Auto-load this character's default FX preset + sliders
+      if (char.default_fx_preset && window.applyFxPreset) {
+        window.applyFxPreset(char.default_fx_preset);
+      }
+      // Update meta display
+      const metaChar = document.getElementById("meta-char");
+      if (metaChar) metaChar.textContent = char.name;
+    }
+
     // Set global active character record on change
     sel.addEventListener("change", () => {
       const selected = chars.find(c => c.name === sel.value);
-      if (selected) {
-        window.LEVRAM_ACTIVE_CHARACTER_RECORD = selected;
-        renderVoiceCharBadge(selected, badge);
-      }
+      if (selected) activateCharacter(selected);
     });
 
     // Init with first character
     const first = chars[0];
     sel.value = first.name;
-    window.LEVRAM_ACTIVE_CHARACTER_RECORD = first;
-    renderVoiceCharBadge(first, badge);
+    activateCharacter(first);
 
   } catch (err) {
     console.error("VOICE LAB CHARACTER LOAD ERROR:", err);

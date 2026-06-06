@@ -65,6 +65,59 @@
 
           <div class="cl-divider"></div>
 
+          <!-- Voice Engine Toggle -->
+          <div class="cl-section">
+            <div class="cl-section-label">Voice Engine</div>
+            <div class="cl-voice-toggle" id="voice-source-toggle">
+              <button class="cl-vtoggle-btn active" data-source="edge_tts">Basic</button>
+              <button class="cl-vtoggle-btn" data-source="elevenlabs">ElevenLabs</button>
+              <button class="cl-vtoggle-btn" data-source="rvc">RVC Model</button>
+            </div>
+
+            <!-- ElevenLabs panel -->
+            <div id="voice-panel-elevenlabs" class="cl-voice-panel" style="display:none;">
+              <p class="cl-voice-hint">Pick a pre-made voice or clone your own (Starter plan).</p>
+              <button class="cl-voice-action-btn" style="width:100%;" onclick="openVoicePicker()">⚡ Browse &amp; Select Voice</button>
+              <div class="cl-voice-status" id="el-voice-status">No voice selected</div>
+              <div class="cl-row-2" style="margin-top:6px;">
+                <input type="file" id="el-sample-file" accept="audio/*" style="display:none;" />
+                <button class="cl-voice-action-btn" onclick="document.getElementById('el-sample-file').click()">Upload Sample</button>
+                <button class="cl-voice-action-btn" onclick="cloneElevenLabsVoice()">Clone Voice</button>
+              </div>
+              <input id="el-voice-id" placeholder="Voice ID (auto-filled on select)" style="margin-top:6px;font-size:10px;" />
+              <input id="el-test-line" placeholder='Test line to speak...' style="margin-top:4px;font-size:10px;" />
+              <button class="cl-voice-action-btn" style="width:100%;margin-top:4px;" onclick="testSelectedVoice()">▶ Hear Selected Voice</button>
+              <audio id="el-test-audio" controls style="width:100%;margin-top:6px;display:none;"></audio>
+            </div>
+
+            <!-- RVC panel -->
+            <div id="voice-panel-rvc" class="cl-voice-panel" style="display:none;">
+              <div class="cl-rvc-subtoggle">
+                <button class="cl-rvc-sub active" data-rvc-type="pretrained">Pre-trained</button>
+                <button class="cl-rvc-sub" data-rvc-type="my_voice">My Voice</button>
+              </div>
+              <p class="cl-voice-hint" id="rvc-hint">Upload a community .pth model for a character voice type.</p>
+              <div class="cl-row-2">
+                <input type="file" id="rvc-model-file" accept=".pth" style="display:none;" />
+                <input type="file" id="rvc-index-file" accept=".index" style="display:none;" />
+                <button class="cl-voice-action-btn" onclick="document.getElementById('rvc-model-file').click()">.pth Model</button>
+                <button class="cl-voice-action-btn" onclick="document.getElementById('rvc-index-file').click()">.index (opt)</button>
+              </div>
+              <button class="cl-voice-action-btn" style="width:100%;margin-top:6px;" onclick="uploadRvcModel()">Upload Model</button>
+              <div class="cl-voice-status" id="rvc-voice-status">No model loaded</div>
+              <select id="rvc-model-select" style="margin-top:6px;">
+                <option value="">Select loaded model...</option>
+              </select>
+            </div>
+
+            <!-- Basic panel -->
+            <div id="voice-panel-edge_tts" class="cl-voice-panel">
+              <p class="cl-voice-hint">Using built-in edge_tts. No setup needed.</p>
+            </div>
+          </div>
+
+          <div class="cl-divider"></div>
+
           <div class="cl-section">
             <div class="cl-section-label">Profile</div>
             <textarea id="character-personality" placeholder="Personality"></textarea>
@@ -104,6 +157,23 @@
 
     </div>
   </main>
+
+  <!-- ── ElevenLabs Voice Picker Modal ── -->
+  <div id="voice-picker-modal" class="vp-overlay" style="display:none;" onclick="closeVoicePicker(event)">
+    <div class="vp-modal">
+      <div class="vp-header">
+        <span class="vp-title">⚡ Select ElevenLabs Voice</span>
+        <button class="vp-close" onclick="closeVoicePicker()">✕</button>
+      </div>
+      <div class="vp-search-row">
+        <input id="vp-search" class="vp-search" placeholder="Search voices..." oninput="filterVoices(this.value)" />
+        <input id="vp-test-text" class="vp-search" placeholder='Test line: "The shadows bow before me..."' style="margin-top:6px;font-size:10px;" />
+      </div>
+      <div id="vp-grid" class="vp-grid">
+        <div class="vp-loading">Loading voices...</div>
+      </div>
+    </div>
+  </div>
 
   <script src="character-lab.js"></script>
 </body>

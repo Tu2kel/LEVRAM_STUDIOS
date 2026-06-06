@@ -66,6 +66,28 @@ function getActiveFxPreset() {
   return document.querySelector("select.fx-preset").value;
 }
 
+// Preset → equalizer slider sync
+const FX_PRESET_DEFAULTS = {
+  villain: { pitch: 72,  bass: 75, reverb: 35, volume: 105 },
+  deep:    { pitch: 68,  bass: 85, reverb: 10, volume: 100 },
+  monster: { pitch: 62,  bass: 70, reverb: 55, volume: 112 },
+  ghost:   { pitch: 95,  bass: 15, reverb: 80, volume: 90  },
+  radio:   { pitch: 100, bass: 25, reverb: 0,  volume: 88  },
+  clean:   { pitch: 100, bass: 50, reverb: 0,  volume: 100 },
+};
+
+document.querySelector("select.fx-preset")?.addEventListener("change", (e) => {
+  const defaults = FX_PRESET_DEFAULTS[e.target.value];
+  if (!defaults) return;
+  ["pitch", "bass", "reverb", "volume"].forEach(key => {
+    const el = document.getElementById(`fx-${key}`);
+    if (el) {
+      el.value = defaults[key];
+      if (el.nextElementSibling) el.nextElementSibling.textContent = defaults[key] + "%";
+    }
+  });
+});
+
 function getAssignedVoiceProfile() {
   return window.LEVRAM_ACTIVE_VOICE_PROFILE || "";
 }

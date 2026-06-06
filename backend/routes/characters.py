@@ -21,7 +21,13 @@ class CharacterPayload(BaseModel):
     default_voice_profile: str = ""
     personality: str = ""
     notes: str = ""
-    reference_image_url: str = ""  # PHASE 8G — persisted character reference image
+    reference_image_url: str = ""
+    # Voice engine settings
+    voice_source: str = "edge_tts"          # "elevenlabs" | "rvc" | "edge_tts"
+    elevenlabs_voice_id: str = ""            # EL cloned voice ID
+    rvc_model_path: str = ""                 # path to .pth model
+    rvc_index_path: str = ""                 # path to .index file (optional)
+    rvc_source_type: str = "pretrained"      # "my_voice" | "pretrained"
 
 
 def load_data():
@@ -56,6 +62,11 @@ def create_character(payload: CharacterPayload):
         "personality": payload.personality,
         "notes": payload.notes,
         "reference_image_url": payload.reference_image_url,
+        "voice_source": payload.voice_source,
+        "elevenlabs_voice_id": payload.elevenlabs_voice_id,
+        "rvc_model_path": payload.rvc_model_path,
+        "rvc_index_path": payload.rvc_index_path,
+        "rvc_source_type": payload.rvc_source_type,
         "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -94,6 +105,11 @@ def update_character(character_id: str, payload: CharacterPayload):
         "personality": payload.personality,
         "notes": payload.notes,
         "reference_image_url": payload.reference_image_url,
+        "voice_source": payload.voice_source,
+        "elevenlabs_voice_id": payload.elevenlabs_voice_id,
+        "rvc_model_path": payload.rvc_model_path,
+        "rvc_index_path": payload.rvc_index_path,
+        "rvc_source_type": payload.rvc_source_type,
         "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
 

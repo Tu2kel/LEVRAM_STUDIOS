@@ -513,6 +513,294 @@
   border-radius: 6px;
 }
 
+/* ─── Voice Engine Toggle ───────────────────────────────────── */
+.cl-voice-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.cl-vtoggle-btn {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--imperial-border);
+  color: var(--imperial-text-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cl-vtoggle-btn:hover {
+  border-color: var(--imperial-gold);
+  color: var(--imperial-gold);
+}
+
+.cl-vtoggle-btn.active {
+  background: var(--imperial-gold-dim);
+  border-color: var(--imperial-gold);
+  color: var(--imperial-gold);
+}
+
+.cl-voice-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--imperial-border);
+  border-radius: 6px;
+}
+
+.cl-voice-hint {
+  font-size: 10px;
+  color: var(--imperial-text-dim);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cl-voice-action-btn {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: var(--imperial-blue-dim);
+  border: 1px solid var(--imperial-border-blue);
+  color: var(--imperial-blue-bright);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cl-voice-action-btn:hover {
+  background: var(--imperial-blue);
+  color: #fff;
+}
+
+.cl-voice-status {
+  font-size: 10px;
+  color: var(--imperial-text-dim);
+  padding: 4px 8px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+  border-left: 2px solid var(--imperial-gold);
+  word-break: break-all;
+}
+
+.cl-rvc-subtoggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.cl-rvc-sub {
+  flex: 1;
+  padding: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--imperial-border);
+  color: var(--imperial-text-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cl-rvc-sub.active {
+  background: var(--imperial-red-glow);
+  border-color: var(--imperial-red);
+  color: var(--imperial-red);
+}
+
+/* ─── Voice Picker Modal ────────────────────────────────────── */
+.vp-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.vp-modal {
+  background: var(--imperial-navy);
+  border: 1px solid var(--imperial-gold);
+  border-radius: 10px;
+  width: min(700px, 95vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(201,168,76,0.2);
+}
+
+.vp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--imperial-border);
+}
+
+.vp-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--imperial-gold);
+}
+
+.vp-close {
+  background: none;
+  border: none;
+  color: var(--imperial-text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.vp-close:hover { color: var(--imperial-red); }
+
+.vp-search-row {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--imperial-border);
+}
+
+.vp-search {
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--imperial-border);
+  border-radius: 6px;
+  color: var(--imperial-text);
+  font-size: 12px;
+  padding: 8px 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+.vp-search:focus { border-color: var(--imperial-gold); }
+
+.vp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.vp-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--imperial-border);
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vp-card:hover {
+  border-color: var(--imperial-gold);
+  background: var(--imperial-gold-dim);
+  transform: translateY(-1px);
+}
+
+.vp-card-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--imperial-gold);
+  letter-spacing: 0.5px;
+}
+
+.vp-card-desc {
+  font-size: 10px;
+  color: var(--imperial-text-dim);
+  line-height: 1.4;
+}
+
+.vp-card-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--imperial-blue-dim);
+  color: var(--imperial-blue-bright);
+  border: 1px solid var(--imperial-border-blue);
+  align-self: flex-start;
+}
+
+.vp-card-btns {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.vp-card-play {
+  flex: 1;
+  padding: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: var(--imperial-blue-dim);
+  border: 1px solid var(--imperial-border-blue);
+  color: var(--imperial-blue-bright);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.vp-card-play:hover {
+  background: var(--imperial-blue);
+  color: #fff;
+}
+
+.vp-card-select {
+  flex: 1;
+  padding: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--imperial-border);
+  color: var(--imperial-text-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.vp-card-select:hover {
+  background: var(--imperial-gold);
+  color: var(--imperial-navy);
+  border-color: var(--imperial-gold);
+}
+
+.vp-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--imperial-text-dim);
+  font-size: 11px;
+  padding: 40px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
 /* ─── Responsive ────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .cl-grid {

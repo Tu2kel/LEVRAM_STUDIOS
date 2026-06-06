@@ -83,67 +83,39 @@
             </select>
           </div>
           <div class="field-group">
-            <div class="field-label">FX Parameters</div>
+            <div class="field-label">Equalizer</div>
             <div class="fx-grid">
               <div class="slider-row">
-                <span class="slider-name">Pitch Shift</span
+                <span class="slider-name">Pitch</span
                 ><input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value="35"
-                  oninput="
-                    this.nextElementSibling.textContent = this.value + '%'
-                  "
-                /><span class="slider-val">35%</span>
+                  type="range" id="fx-pitch"
+                  min="50" max="150" value="72"
+                  oninput="this.nextElementSibling.textContent = this.value + '%'"
+                /><span class="slider-val">72%</span>
+              </div>
+              <div class="slider-row">
+                <span class="slider-name">Bass</span
+                ><input
+                  type="range" id="fx-bass"
+                  min="0" max="100" value="75"
+                  oninput="this.nextElementSibling.textContent = this.value + '%'"
+                /><span class="slider-val">75%</span>
               </div>
               <div class="slider-row">
                 <span class="slider-name">Reverb</span
                 ><input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value="55"
-                  oninput="
-                    this.nextElementSibling.textContent = this.value + '%'
-                  "
-                /><span class="slider-val">55%</span>
-              </div>
-              <div class="slider-row">
-                <span class="slider-name">Timbre</span
-                ><input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value="70"
-                  oninput="
-                    this.nextElementSibling.textContent = this.value + '%'
-                  "
-                /><span class="slider-val">70%</span>
-              </div>
-              <div class="slider-row">
-                <span class="slider-name">Distortion</span
-                ><input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value="20"
-                  oninput="
-                    this.nextElementSibling.textContent = this.value + '%'
-                  "
-                /><span class="slider-val">20%</span>
+                  type="range" id="fx-reverb"
+                  min="0" max="100" value="35"
+                  oninput="this.nextElementSibling.textContent = this.value + '%'"
+                /><span class="slider-val">35%</span>
               </div>
               <div class="slider-row">
                 <span class="slider-name">Volume</span
                 ><input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value="80"
-                  oninput="
-                    this.nextElementSibling.textContent = this.value + '%'
-                  "
-                /><span class="slider-val">80%</span>
+                  type="range" id="fx-volume"
+                  min="50" max="150" value="105"
+                  oninput="this.nextElementSibling.textContent = this.value + '%'"
+                /><span class="slider-val">105%</span>
               </div>
             </div>
           </div>
@@ -242,6 +214,9 @@
               </select>
             </div>
 
+            <!-- PHASE 8H — character info panel, populated by shot-builder.js -->
+            <div id="shot-character-panel" style="display:none; grid-column:1/-1;"></div>
+
             <div class="shot-field">
               <div class="field-label">Camera Mood</div>
               <select id="shot-camera">
@@ -264,12 +239,6 @@
                 <option>Bio-Green + Supernova Red (Banner)</option>
                 <option>Dark Neon / Rain</option>
                 <option>Custom</option>
-              </select>
-            </div>
-            <div class="shot-field">
-              <div class="field-label">AI Engine</div>
-              <select id="shot-engine">
-                <option>Imperio AI</option>
               </select>
             </div>
             <div class="shot-field" style="grid-column: 1/-1">
@@ -476,24 +445,15 @@
         <div class="timeline-tracks" style="flex-shrink: 0">
           <div class="track">
             <span class="track-label">Voice</span>
-            <div id="track-voice-body" class="track-body">
-              <div class="track-clip voice">
-                Hulk — "They left me for dead."
-              </div>
-            </div>
+            <div id="track-voice-body" class="track-body"></div>
           </div>
           <div class="track">
             <span class="track-label">FX</span>
-            <div id="track-fx-body" class="track-body">
-              <div class="track-clip fx">Villain Preset</div>
-            </div>
+            <div id="track-fx-body" class="track-body"></div>
           </div>
           <div class="track">
             <span class="track-label">Shots</span>
-            <div id="track-shot-body" class="track-body">
-              <div class="track-clip shot">SC-001 Close</div>
-              <div class="track-clip shot2">SC-002 Ground Level</div>
-            </div>
+            <div id="track-shot-body" class="track-body"></div>
           </div>
         </div>
         <!-- Shot cards — scrollable -->

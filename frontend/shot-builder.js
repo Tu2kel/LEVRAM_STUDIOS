@@ -100,10 +100,53 @@ function loadSceneIntoEditor(scene) {
           }
         });
 
+// ─── Phase 8H: Character Panel ────────────────────────────
+function renderCharacterPanel(character) {
+  const panel = document.getElementById("shot-character-panel");
+  if (!panel) return;
+
+  if (!character) {
+    panel.style.display = "none";
+    panel.innerHTML = "";
+    return;
+  }
+
+  const name = character.name || "Unknown";
+  const appearance = character.appearance || "";
+  const wardrobe = character.wardrobe || "";
+  const voice = character.default_voice_profile || "";
+  const imgUrl = character.reference_image_url || "";
+
+  panel.style.display = "block";
+  panel.innerHTML = `
+    <div style="
+      display:flex;gap:12px;align-items:flex-start;
+      padding:10px 12px;
+      background:rgba(201,168,76,0.05);
+      border:1px solid rgba(201,168,76,0.2);
+      border-left:3px solid var(--gold);
+      border-radius:6px;
+      margin-bottom:2px;
+    ">
+      ${imgUrl ? `<img src="${imgUrl}" style="width:64px;height:80px;object-fit:cover;border-radius:4px;border:1px solid rgba(201,168,76,0.3);flex-shrink:0;" />` : ""}
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:var(--gold);letter-spacing:1px;margin-bottom:4px;">⚜ ${name}</div>
+        ${appearance ? `<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${appearance.slice(0, 100)}${appearance.length > 100 ? "…" : ""}</div>` : ""}
+        ${wardrobe ? `<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${wardrobe.slice(0, 80)}${wardrobe.length > 80 ? "…" : ""}</div>` : ""}
+        ${voice ? `<span style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);padding:2px 6px;border-radius:2px;">⚡ ${voice}</span>` : ""}
+      </div>
+    </div>
+  `;
+}
+
 // ─── Phase 7: Prompt Intelligence ─────────────────────────
 function buildCinematicPrompt() {
+  const charRecord = window.LEVRAM_ACTIVE_CHARACTER_RECORD;
+
+  // PHASE 8H — visual override > character record > voice lab selection
   const character =
     document.getElementById("shot-char-override")?.value.trim() ||
+    charRecord?.name ||
     getActiveCharacter() ||
     "main character";
 
@@ -112,10 +155,16 @@ function buildCinematicPrompt() {
   const palette = document.getElementById("shot-palette")?.value || "";
   const description = document.getElementById("shot-desc")?.value.trim() || "";
 
+  // PHASE 8H — pull appearance and wardrobe from active character record
+  const charVisual = charRecord
+    ? [charRecord.appearance, charRecord.wardrobe].filter(Boolean).join(", ")
+    : "";
+
   const prompt = [
     description.toLowerCase().includes(character.toLowerCase())
       ? description
       : `${character}, ${description}`,
+    charVisual,
     `${shotType}`,
     `${cameraMood}`,
     `${palette}`,
@@ -144,6 +193,7 @@ document
 document
   .getElementById("btn-ai-build-shot")
   ?.addEventListener("click", async () => {
+    const btn = document.getElementById("btn-ai-build-shot");
     try {
       const idea =
         document.getElementById("ai-shot-idea")?.value.trim();
@@ -152,6 +202,9 @@ document
         setStatus("Enter an AI Shot Idea first.", true);
         return;
       }
+
+      if (btn) { btn.textContent = "Building..."; btn.disabled = true; }
+      setStatus("Building shot...");
 
       const res = await fetch(
         "http://127.0.0.1:8000/ai/build-shot",
@@ -230,6 +283,8 @@ document
     } catch (err) {
       console.error("AI BUILD ERROR:", err);
       setStatus(err.message || "AI shot generation failed.", true);
+    } finally {
+      if (btn) { btn.textContent = "AI Build Shot"; btn.disabled = false; }
     }
   });
 
@@ -249,7 +304,8 @@ function setSelectIfOptionExists(selectId, value) {
 document
   .getElementById("btn-ai-revise-shot")
   ?.addEventListener("click", async () => {
-
+    const btn = document.getElementById("btn-ai-revise-shot");
+    try {
     const override =
       document.getElementById("ai-override-notes")?.value.trim();
 
@@ -257,6 +313,9 @@ document
       setStatus("Enter Override Instructions first.", true);
       return;
     }
+
+    if (btn) { btn.textContent = "Revising..."; btn.disabled = true; }
+    setStatus("Revising shot...");
 
     const res = await fetch(
       "http://127.0.0.1:8000/ai/revise-shot",
@@ -303,6 +362,12 @@ document
     );
 
     setStatus("Shot revised from Director Notes.");
+    } catch (err) {
+      console.error("AI REVISE ERROR:", err);
+      setStatus(err.message || "Revision failed.", true);
+    } finally {
+      if (btn) { btn.textContent = "AI Revise Shot"; btn.disabled = false; }
+    }
   });
 
 // ─── Override Mode Toggles ────────────────────────────────
@@ -464,9 +529,14 @@ async function loadLevramCharacters() {
       window.LEVRAM_SELECTED_CHARACTER_PROMPT =
         [primaryPrompt, secondaryPrompt].filter(Boolean).join("\n\nSECONDARY CHARACTER:\n");
 
+      // PHASE 8H — expose full character record for Shot Builder injection
+      window.LEVRAM_ACTIVE_CHARACTER_RECORD = primary || null;
+
       console.log("PHASE 8D PRIMARY CHARACTER:", primary || "None");
       console.log("PHASE 8D SECONDARY CHARACTER:", secondary || "None");
       console.log("PHASE 8D CHARACTER PROMPT:", window.LEVRAM_SELECTED_CHARACTER_PROMPT);
+
+      renderCharacterPanel(primary);
 
       if (primary?.default_voice_profile) {
         window.LEVRAM_ACTIVE_VOICE_PROFILE = primary.default_voice_profile;

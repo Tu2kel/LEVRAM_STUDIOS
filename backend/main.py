@@ -11,6 +11,9 @@ from backend.routes.characters import router as characters_router
 from backend.routes.ideas import router as ideas_router
 from backend.routes.ai import router as ai_router
 from backend.routes.voices import router as voices_router
+from backend.routes.voice_clone import router as voice_clone_router
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI()
 
@@ -33,3 +36,4 @@ app.include_router(ideas_router)
 app.include_router(ai_router)
 app.include_router(characters_router)
 app.include_router(voices_router)
+app.include_router(voice_clone_router)

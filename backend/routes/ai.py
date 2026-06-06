@@ -41,8 +41,9 @@ def get_character_context(character_name: str = ""):
 
     characters = data.get("characters", []) if isinstance(data, dict) else []
 
+    # PHASE 8H — case-insensitive match handles "Slipstream" vs "SlipStream"
     for c in characters:
-        if c.get("name") == character_name:
+        if c.get("name", "").strip().lower() == character_name.strip().lower():
             context = f"""
 Name: {c.get("name", "")}
 Gender: {c.get("gender", "")}
@@ -54,10 +55,10 @@ Personality: {c.get("personality", "")}
 Notes: {c.get("notes", "")}
 """.strip()
 
-            print("PHASE 8C CHARACTER CONTEXT INJECTED:", c.get("name"))
+            print("PHASE 8H CHARACTER CONTEXT INJECTED:", c.get("name"))
             return context
 
-    print("PHASE 8C CHARACTER NOT FOUND:", character_name)
+    print("PHASE 8H CHARACTER NOT FOUND:", character_name)
     return ""
 
 @router.post("/ai/build-shot")

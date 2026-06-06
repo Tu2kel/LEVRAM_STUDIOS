@@ -95,6 +95,10 @@
           const fd = new FormData();
           fd.append("input_path", rawPath);
           fd.append("preset", preset);
+          fd.append("pitch",  document.getElementById("fx-pitch")?.value  ?? "100");
+          fd.append("bass",   document.getElementById("fx-bass")?.value   ?? "50");
+          fd.append("reverb", document.getElementById("fx-reverb")?.value ?? "0");
+          fd.append("volume", document.getElementById("fx-volume")?.value ?? "100");
 
           const res = await fetch(`${BASE}/voice-fx`, {
             method: "POST",

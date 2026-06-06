@@ -1,3 +1,59 @@
+// ─── Load characters into Voice Lab dropdown ─────────────
+async function loadVoiceLabCharacters() {
+  const sel   = document.getElementById("voice-char-select");
+  const badge = document.getElementById("voice-char-badge");
+  if (!sel) return;
+
+  try {
+    const res  = await fetch(`${BASE}/characters`);
+    const data = await res.json();
+    const chars = data.characters || [];
+
+    if (!chars.length) {
+      sel.innerHTML = '<option value="">No characters — create one in Character Lab</option>';
+      return;
+    }
+
+    sel.innerHTML = chars.map(c => {
+      const engine = c.voice_source === "elevenlabs" ? " ⚡" : c.voice_source === "rvc" ? " 🎙" : "";
+      return `<option value="${c.name}">${c.name}${engine}</option>`;
+    }).join("");
+
+    // Set global active character record on change
+    sel.addEventListener("change", () => {
+      const selected = chars.find(c => c.name === sel.value);
+      if (selected) {
+        window.LEVRAM_ACTIVE_CHARACTER_RECORD = selected;
+        renderVoiceCharBadge(selected, badge);
+      }
+    });
+
+    // Init with first character
+    const first = chars[0];
+    sel.value = first.name;
+    window.LEVRAM_ACTIVE_CHARACTER_RECORD = first;
+    renderVoiceCharBadge(first, badge);
+
+  } catch (err) {
+    console.error("VOICE LAB CHARACTER LOAD ERROR:", err);
+    sel.innerHTML = '<option value="">Could not load characters</option>';
+  }
+}
+
+function renderVoiceCharBadge(char, badge) {
+  if (!badge) return;
+  const engineLabel = {
+    elevenlabs: "⚡ ElevenLabs",
+    rvc:        "🎙 RVC",
+    edge_tts:   "Basic TTS",
+  }[char.voice_source] || "Basic TTS";
+
+  badge.style.display = "block";
+  badge.innerHTML = `<span class="vcb-engine">${engineLabel}</span>${char.elevenlabs_voice_id ? `<span class="vcb-id">${char.elevenlabs_voice_id.slice(0,8)}…</span>` : ""}`;
+}
+
+document.addEventListener("DOMContentLoaded", loadVoiceLabCharacters);
+
 // ─── Generate Voice ──────────────────────────────────────
       document
         .getElementById("btn-generate")

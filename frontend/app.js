@@ -93,15 +93,8 @@ function getAssignedVoiceProfile() {
 }
 
 function getActiveCharacter() {
-  const active = document.querySelector(".char-btn.active");
-  const label = active ? active.textContent.trim() : "Default";
-
-  if (label === "+ Custom") {
-    const custom = document.getElementById("custom-voice-character")?.value.trim();
-    return custom || "Custom";
-  }
-
-  return label;
+  const sel = document.getElementById("voice-char-select");
+  return sel?.value || "Default";
 }
 
 function fmtTime(sec) {
@@ -117,32 +110,9 @@ function fmtTime(sec) {
   return `${h}:${m}:${s}`;
 }
 
-// ─── Character preset buttons ────────────────────────────
-document.querySelectorAll(".char-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document
-      .querySelectorAll(".char-btn")
-      .forEach((b) => b.classList.remove("active"));
-
-    btn.classList.add("active");
-
-    const customInput = document.getElementById("custom-voice-character");
-    const isCustom = btn.textContent.trim() === "+ Custom";
-
-    if (customInput) {
-      customInput.style.display = isCustom ? "block" : "none";
-      if (isCustom) customInput.focus();
-    }
-
-    metaChar.textContent = getActiveCharacter();
-  });
-});
-
-document.getElementById("custom-voice-character")?.addEventListener("input", () => {
-  const active = document.querySelector(".char-btn.active");
-  if (active && active.textContent.trim() === "+ Custom") {
-    metaChar.textContent = getActiveCharacter();
-  }
+// ─── Character dropdown ───────────────────────────────────
+document.getElementById("voice-char-select")?.addEventListener("change", () => {
+  metaChar.textContent = getActiveCharacter();
 });
 
 // ─── Nav buttons ─────────────────────────────────────────

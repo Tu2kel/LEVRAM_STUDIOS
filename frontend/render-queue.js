@@ -109,10 +109,16 @@ function renderRenderQueue() {
           ` : ""}
         </div>
 
+            ${item.clipUrl ? `
+            <video class="rq-clip" src="${BASE}${item.clipUrl}" controls style="width:100%;max-height:140px;border-radius:4px;margin-top:8px;background:#000;"></video>
+          ` : ""}
+        </div>
+
         <div class="rq-job-right">
           <div class="render-status-pill render-status-${status}">${status}</div>
           <div class="render-actions">
-            <button onclick="generateKeyframeForQueueItem('${item.id}')">Generate</button>
+            <button onclick="generateKeyframeForQueueItem('${item.id}')">Keyframe</button>
+            <button onclick="assembleShotVideo('${item.id}')" ${!item.renderOutputUrl || !item.voicePath ? 'title="Need keyframe + voice first"' : ""}>Render Clip</button>
             <button onclick="deleteRenderQueueItem('${item.id}')">Delete</button>
           </div>
         </div>
@@ -199,8 +205,80 @@ async function deleteRenderQueueItem(itemId) {
   }
 }
 
+// ─── Lane 1: Render one shot clip (image + voice → .mp4) ────
+
+async function assembleShotVideo(itemId) {
+  const item = renderQueue.find(i => i.id === itemId);
+  if (!item) return;
+
+  if (!item.renderOutputUrl) {
+    alert("Generate a keyframe for this shot first.");
+    return;
+  }
+  if (!item.voicePath) {
+    alert("No voice audio found for this shot. Generate voice first.");
+    return;
+  }
+
+  const btn = document.querySelector(`.render-actions button[onclick="assembleShotVideo('${itemId}')"]`);
+  if (btn) { btn.disabled = true; btn.textContent = "Rendering…"; }
+
+  try {
+    const res = await fetch(`${BASE}/video/assemble-shot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item_id: itemId }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "Assembly failed");
+    await loadRenderQueue();
+  } catch (err) {
+    alert("Render Clip error: " + err.message);
+    if (btn) { btn.disabled = false; btn.textContent = "Render Clip"; }
+  }
+}
+
+// ─── Lane 1: Export full episode (concat all clips) ─────────
+
+async function assembleEpisode() {
+  const ready = renderQueue.filter(i => i.clipUrl);
+  if (!ready.length) {
+    alert("Render individual shot clips first, then export episode.");
+    return;
+  }
+
+  const titleEl = document.getElementById("ep-title-input");
+  const title   = titleEl?.value.trim() || "episode";
+  const btn     = document.getElementById("export-episode-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Exporting…"; }
+
+  try {
+    const res = await fetch(`${BASE}/video/assemble-episode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "Export failed");
+
+    const episodeUrl = BASE + data.episodeUrl;
+    const statusEl   = document.getElementById("ep-status");
+    if (statusEl) {
+      statusEl.innerHTML = `Episode ready — <a href="${episodeUrl}" download style="color:var(--gold);">Download ${data.episodeUrl.split("/").pop()}</a> (${data.clips} clips)`;
+    } else {
+      alert(`Episode ready: ${episodeUrl}`);
+    }
+  } catch (err) {
+    alert("Export Episode error: " + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Export Episode"; }
+  }
+}
+
 window.loadRenderQueue = loadRenderQueue;
 window.startRenderQueueItem = startRenderQueueItem;
 window.generateKeyframeForQueueItem = generateKeyframeForQueueItem;
 window.updateRenderStatus = updateRenderStatus;
 window.deleteRenderQueueItem = deleteRenderQueueItem;
+window.assembleShotVideo = assembleShotVideo;
+window.assembleEpisode   = assembleEpisode;

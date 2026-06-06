@@ -22,6 +22,7 @@
         <button class="nav-btn" data-tab="image-gen">Image Gen</button>
         <button class="nav-btn" data-tab="timeline">Timeline ↗</button>
         <button class="nav-btn" data-tab="export">Export ↗</button>
+        <button class="nav-btn" data-tab="settings">Settings ↗</button>
         <button id="theme-toggle" class="nav-btn">Ivory Mode</button>
       </nav>
       <div class="status-pill">
@@ -131,6 +132,9 @@
             Apply Voice FX
           </button>
           <button id="btn-generate" class="gen-btn">Generate Voice</button>
+          <button id="btn-attach-voice" class="gen-btn" style="display:none;background:linear-gradient(90deg,rgba(201,168,76,0.15),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-size:13px;letter-spacing:3px;margin-top:6px;">
+            Attach to Active Shot
+          </button>
           <p id="status-text" class="status">Ready</p>
         </div>
       </div>
@@ -272,7 +276,17 @@
               <select id="shot-duration">
                 <option>2s</option>
                 <option selected>4s</option>
+                <option>8s</option>
                 <option>16s</option>
+              </select>
+            </div>
+            <div class="shot-field">
+              <div class="field-label">AI Engine</div>
+              <select id="shot-engine">
+                <option value="gpt-4o">GPT-4o (OpenAI)</option>
+                <option value="claude-sonnet">Claude Sonnet</option>
+                <option value="claude-opus">Claude Opus</option>
+                <option value="ollama">Ollama (Local)</option>
               </select>
             </div>
           </div>
@@ -290,6 +304,18 @@
 
           <button id="btn-save-shot" class="build-shot-btn">
             Save Shot Card
+          </button>
+
+          <div style="border-top:1px solid rgba(201,168,76,0.15);margin:10px 0 8px;"></div>
+
+          <button id="btn-send-to-queue" class="build-shot-btn" style="background:linear-gradient(90deg,rgba(201,168,76,0.12),rgba(201,168,76,0.06));border-color:rgba(201,168,76,0.4);color:var(--gold);">
+            Send to Render Queue
+          </button>
+          <button id="btn-shot-keyframe" class="build-shot-btn" style="border-color:rgba(60,120,255,0.4);color:var(--blue-bright);">
+            Generate Keyframe →
+          </button>
+          <button id="btn-shot-wan-video" class="build-shot-btn" style="border-color:rgba(60,180,80,0.4);color:#4caf50;">
+            Generate Wan Video →
           </button>
         </div>
       </div><!-- /.right-panel -->
@@ -355,20 +381,61 @@
           </div>
           <div class="voice-lab">
 
-            <!-- Engine toggle -->
+            <!-- Image / Video mode toggle -->
             <div class="field-group">
-              <div class="field-label">Engine</div>
-              <div class="cl-voice-toggle" id="ig-engine-toggle">
-                <button class="cl-vtoggle-btn active" data-engine="dalle3">DALL-E 3</button>
-                <button class="cl-vtoggle-btn" data-engine="fal_flux">FLUX (fal.ai)</button>
-                <button class="cl-vtoggle-btn" data-engine="comfy">Local</button>
+              <div class="field-label">Mode</div>
+              <div class="cl-voice-toggle" id="ig-mode-toggle">
+                <button class="cl-vtoggle-btn active" data-mode="image">Image</button>
+                <button class="cl-vtoggle-btn" data-mode="video">Video (Wan2.1)</button>
               </div>
-              <div id="ig-engine-hint" class="field-hint" style="margin-top:4px;">Uses your OpenAI key — best prompt accuracy.</div>
             </div>
 
+            <!-- IMAGE ENGINE SECTION -->
+            <div id="ig-image-section">
+              <div class="field-group">
+                <div class="field-label">Engine</div>
+                <div class="cl-voice-toggle" id="ig-engine-toggle">
+                  <button class="cl-vtoggle-btn active" data-engine="dalle3">DALL-E 3</button>
+                  <button class="cl-vtoggle-btn" data-engine="fal_flux">FLUX (fal.ai)</button>
+                  <button class="cl-vtoggle-btn" data-engine="comfy">Local</button>
+                </div>
+                <div id="ig-engine-hint" class="field-hint" style="margin-top:4px;">Uses your OpenAI key — best prompt accuracy.</div>
+              </div>
+            </div>
+
+            <!-- VIDEO ENGINE SECTION -->
+            <div id="ig-video-section" style="display:none;">
+              <div class="field-group">
+                <div class="field-label">Video Engine</div>
+                <div class="cl-voice-toggle" id="ig-video-engine-toggle">
+                  <button class="cl-vtoggle-btn active" data-vengine="wan">Wan2.1 (Local)</button>
+                  <button class="cl-vtoggle-btn" data-vengine="kling" title="Requires Kling API key" style="opacity:0.45;">Kling 2.0</button>
+                  <button class="cl-vtoggle-btn" data-vengine="runway" title="Requires Runway API key" style="opacity:0.45;">Runway Gen-4</button>
+                </div>
+                <div id="ig-video-engine-hint" class="field-hint" style="margin-top:4px;">Wan2.1 1.3B T2V via ComfyUI. Generates ~5s clips.</div>
+              </div>
+              <div class="field-group">
+                <div class="field-label">Steps</div>
+                <input type="range" id="ig-wan-steps" min="10" max="50" value="25" oninput="this.nextElementSibling.textContent=this.value" style="width:100%;" />
+                <span style="font-size:11px;color:var(--text-dim);">25</span>
+              </div>
+              <div class="field-group" style="display:flex;gap:8px;">
+                <div style="flex:1;">
+                  <div class="field-label">CFG Scale</div>
+                  <input type="range" id="ig-wan-cfg" min="1" max="10" step="0.5" value="6" oninput="this.nextElementSibling.textContent=this.value" style="width:100%;"/>
+                  <span style="font-size:11px;color:var(--text-dim);">6</span>
+                </div>
+                <div style="flex:1;">
+                  <div class="field-label">Seed</div>
+                  <input type="number" id="ig-wan-seed" placeholder="Random" style="width:100%;background:#111;border:1px solid #333;color:#fff;padding:5px;border-radius:2px;font-size:12px;" />
+                </div>
+              </div>
+            </div>
+
+            <!-- SHARED: Prompt, Character, Style, Aspect -->
             <div class="field-group">
               <div class="field-label">Prompt</div>
-              <textarea id="ig-prompt" class="script-input" style="height:110px;" placeholder="Describe the image — character, environment, mood, lighting..."></textarea>
+              <textarea id="ig-prompt" class="script-input" style="height:110px;" placeholder="Describe the scene — character, environment, mood, lighting, action..."></textarea>
             </div>
             <div class="field-group">
               <div class="field-label">Character</div>
@@ -376,7 +443,7 @@
                 <option value="">None / Standalone</option>
               </select>
             </div>
-            <div class="field-group">
+            <div class="field-group" id="ig-style-group">
               <div class="field-label">Style</div>
               <select id="ig-style">
                 <option value="cinematic photorealistic">Cinematic Photorealistic</option>
@@ -384,6 +451,10 @@
                 <option value="comic book illustration">Comic Book</option>
                 <option value="anime illustration">Anime</option>
                 <option value="oil painting concept art">Concept Art</option>
+                <option value="noir film photography">Noir Film</option>
+                <option value="hyperrealistic 8k render">Hyperrealistic 8K</option>
+                <option value="graphic novel art">Graphic Novel</option>
+                <option value="watercolor concept art">Watercolor Concept</option>
               </select>
             </div>
             <div class="field-group">
@@ -422,11 +493,31 @@
               </div>
             </div>
 
+            <!-- Video result -->
+            <div id="ig-video-result" style="display:none;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <span class="field-label" style="margin:0;">Video Output</span>
+                <button onclick="document.getElementById('ig-video-result').style.display='none'" style="background:transparent;border:none;color:var(--text-dim);font-size:14px;cursor:pointer;padding:0 4px;">✕</button>
+              </div>
+              <video id="ig-video-player" controls style="width:100%;border:1px solid var(--border);border-radius:2px;background:#000;max-height:300px;"></video>
+              <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+                <a id="ig-video-download" download style="font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download Video</a>
+              </div>
+            </div>
+
             <!-- Gallery -->
             <div>
               <div class="field-label" style="margin-bottom:8px;">Recent Generations</div>
               <div id="ig-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;">
                 <div style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">Loading...</div>
+              </div>
+            </div>
+
+            <!-- Video Gallery -->
+            <div id="ig-video-gallery-section" style="display:none;">
+              <div class="field-label" style="margin-bottom:8px;">Generated Videos</div>
+              <div id="ig-video-gallery" style="display:flex;flex-direction:column;gap:8px;">
+                <div style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">No videos yet.</div>
               </div>
             </div>
 

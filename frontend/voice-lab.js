@@ -138,6 +138,13 @@ document.addEventListener("DOMContentLoaded", loadVoiceLabCharacters);
             dlRaw.style.pointerEvents = "auto";
 
             setStatus("Voice generated.");
+
+            // Show "Attach to Shot" button if we have an active scene
+            const attachBtn = document.getElementById("btn-attach-voice");
+            if (attachBtn && selectedSceneId) {
+              attachBtn.style.display = "block";
+              attachBtn.dataset.shotId = selectedSceneId;
+            }
           } catch (e) {
             setStatus("Error: " + e.message, true);
           }
@@ -323,9 +330,44 @@ async function deleteVoiceProfile(id) {
   }
 }
 
+// ─── Attach generated voice to the active shot ───────────
+async function attachVoiceToShot() {
+  const attachBtn = document.getElementById("btn-attach-voice");
+  const shotId = attachBtn?.dataset.shotId || selectedSceneId;
+
+  if (!shotId) {
+    setStatus("No active shot — save a shot first.", true);
+    return;
+  }
+  if (!rawUrl && !fxUrl) {
+    setStatus("Generate voice first.", true);
+    return;
+  }
+
+  try {
+    const res = await fetch(`${BASE}/scene/${shotId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawUrl: rawUrl || "", fxUrl: fxUrl || "" }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || "Attach failed");
+    setStatus(`Voice attached to shot ${shotId}.`);
+    if (attachBtn) attachBtn.textContent = "✓ Attached to Shot";
+    setTimeout(() => {
+      if (attachBtn) attachBtn.textContent = "Attach to Active Shot";
+    }, 3000);
+  } catch (err) {
+    console.error("ATTACH VOICE ERROR:", err);
+    setStatus(err.message || "Failed to attach voice.", true);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  const saveBtn = document.getElementById("btn-save-voice");
-  if (saveBtn) saveBtn.addEventListener("click", saveVoiceProfile);
+  const saveBtn   = document.getElementById("btn-save-voice");
+  const attachBtn = document.getElementById("btn-attach-voice");
+  if (saveBtn)   saveBtn.addEventListener("click", saveVoiceProfile);
+  if (attachBtn) attachBtn.addEventListener("click", attachVoiceToShot);
   loadVoiceLibrary();
 });
 

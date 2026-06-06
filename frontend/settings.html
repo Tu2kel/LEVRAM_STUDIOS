@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEVRAM — Settings</title>
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    body { background: #0a0a0a; color: #c9a84c; font-family: Rajdhani, sans-serif; margin: 0; }
+    .st-page      { padding: 22px; max-width: 820px; margin: 0 auto; }
+    .st-header    { display: flex; align-items: center; gap: 18px; padding: 14px 16px; border: 1px solid rgba(201,168,76,.22); background: rgba(0,0,0,.75); margin-bottom: 20px; }
+    .st-title     { color: #C9A84C; font-size: 16px; letter-spacing: 4px; text-transform: uppercase; }
+    .st-sub       { color: #8d7a55; font-size: 11px; margin-top: 4px; }
+    .st-back      { border: 1px solid rgba(201,168,76,.35); background: #080604; color: #C9A84C; padding: 8px 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+    .st-section   { border: 1px solid rgba(201,168,76,.15); background: rgba(0,0,0,.5); padding: 18px; border-radius: 4px; margin-bottom: 16px; }
+    .st-section-title { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #f9f295; margin-bottom: 14px; border-bottom: 1px solid rgba(201,168,76,.15); padding-bottom: 8px; }
+    .st-row       { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid rgba(201,168,76,.06); }
+    .st-row:last-child { border-bottom: none; }
+    .st-key       { font-size: 13px; color: #c9a84c; letter-spacing: 1px; }
+    .st-hint      { font-size: 10px; color: #666; margin-top: 2px; }
+    .st-pill      { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; font-weight: 700; }
+    .st-pill.ok   { background: rgba(40,180,60,.15); color: #4caf50; border: 1px solid rgba(40,180,60,.3); }
+    .st-pill.warn { background: rgba(255,160,0,.1); color: #ffa000; border: 1px solid rgba(255,160,0,.25); }
+    .st-pill.err  { background: rgba(200,0,0,.12); color: #ef5350; border: 1px solid rgba(200,0,0,.25); }
+    .st-refresh   { border: 1px solid rgba(201,168,76,.25); background: transparent; color: #C9A84C; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 12px; cursor: pointer; border-radius: 2px; margin-top: 12px; }
+    .st-refresh:hover { background: rgba(201,168,76,.1); }
+    .st-note      { font-size: 11px; color: #666; margin-top: 6px; line-height: 1.6; }
+    .st-env-rows  { font-size: 11px; color: #888; line-height: 1.8; }
+    .st-env-key   { color: #c9a84c; font-weight: 700; display: inline-block; width: 200px; }
+  </style>
+</head>
+<body>
+<div class="st-page">
+
+  <div class="st-header">
+    <button class="st-back" onclick="window.location.href='index.html'">← LEVRAM</button>
+    <div>
+      <div class="st-title">Settings</div>
+      <div class="st-sub">API key status, service connections, and environment configuration.</div>
+    </div>
+    <button class="st-refresh" onclick="checkStatus()">Refresh Status</button>
+  </div>
+
+  <!-- Connection Status -->
+  <div class="st-section">
+    <div class="st-section-title">Service Connections</div>
+    <div id="st-status-rows">
+      <div class="st-row"><span class="st-key">Checking…</span></div>
+    </div>
+    <p class="st-note">API keys are read from your <code>.env</code> file at startup. Restart the backend after editing <code>.env</code>.</p>
+  </div>
+
+  <!-- .env Reference -->
+  <div class="st-section">
+    <div class="st-section-title">.env Key Reference</div>
+    <div class="st-env-rows">
+      <div><span class="st-env-key">OPENAI_API_KEY</span> Required for DALL-E 3 image gen and AI shot building (GPT-4o).</div>
+      <div><span class="st-env-key">ELEVENLABS_API_KEY</span> Required for ElevenLabs TTS voice generation.</div>
+      <div><span class="st-env-key">FAL_KEY</span> Required for fal.ai FLUX.1-dev image generation.</div>
+      <div><span class="st-env-key">RVC_MODEL_PATH</span> Optional — path to RVC model for voice cloning.</div>
+      <div><span class="st-env-key">COMFY_URL</span> ComfyUI server URL (default: http://127.0.0.1:8188).</div>
+    </div>
+  </div>
+
+  <!-- ComfyUI Models -->
+  <div class="st-section">
+    <div class="st-section-title">ComfyUI Configuration</div>
+    <div class="st-row">
+      <div>
+        <div class="st-key">ComfyUI URL</div>
+        <div class="st-hint" id="comfy-url-display">http://127.0.0.1:8188</div>
+      </div>
+      <span id="comfy-pill" class="st-pill warn">Checking…</span>
+    </div>
+    <p class="st-note">
+      Wan2.1 T2V 1.3B is used for text-to-video generation. Required ComfyUI extensions:<br>
+      <strong>WanVideoWrapper</strong> — WanVideoModelLoader, WanVideoVAELoader, LoadWanVideoT5TextEncoder, WanVideoTextEncode, WanVideoEmptyEmbeds, WanVideoSampler, WanVideoDecode<br>
+      <strong>VideoHelperSuite</strong> — VHS_VideoCombine (saves MP4 output)
+    </p>
+  </div>
+
+  <!-- Engine Availability -->
+  <div class="st-section">
+    <div class="st-section-title">Engine Availability</div>
+    <div id="st-engine-rows">
+      <div class="st-row">
+        <div><div class="st-key">Image Gen: DALL-E 3</div><div class="st-hint">POST /image-gen/generate — engine: dalle3</div></div>
+        <span id="pill-dalle3" class="st-pill warn">…</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Image Gen: fal.ai FLUX</div><div class="st-hint">POST /image-gen/generate — engine: fal_flux</div></div>
+        <span id="pill-fal" class="st-pill warn">…</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Image Gen: ComfyUI Local</div><div class="st-hint">POST /image-gen/generate — engine: comfy</div></div>
+        <span id="pill-comfy-img" class="st-pill warn">…</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Voice Gen: ElevenLabs</div><div class="st-hint">POST /generate — uses ELEVENLABS_API_KEY</div></div>
+        <span id="pill-el" class="st-pill warn">…</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Voice Gen: Spark-TTS (Local)</div><div class="st-hint">Fallback when ElevenLabs is unavailable</div></div>
+        <span class="st-pill ok">Always Available</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Video Gen: Wan2.1 T2V</div><div class="st-hint">POST /video/generate-wan — requires ComfyUI + WanVideoWrapper</div></div>
+        <span id="pill-wan" class="st-pill warn">…</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Video Gen: Kling 2.0</div><div class="st-hint">Paid API — enable when ready</div></div>
+        <span class="st-pill err">No Key</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Video Gen: Runway Gen-4</div><div class="st-hint">Paid API — enable when ready</div></div>
+        <span class="st-pill err">No Key</span>
+      </div>
+      <div class="st-row">
+        <div><div class="st-key">Video Assembly: ffmpeg</div><div class="st-hint">Lane 1 — static image + voice → MP4 clip</div></div>
+        <span id="pill-ffmpeg" class="st-pill warn">…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Routes Reference -->
+  <div class="st-section">
+    <div class="st-section-title">Backend Routes Reference</div>
+    <div class="st-env-rows">
+      <div><span class="st-env-key">POST /generate</span> TTS voice generation</div>
+      <div><span class="st-env-key">POST /voice-fx</span> Voice FX processing</div>
+      <div><span class="st-env-key">GET  /characters</span> Character profiles</div>
+      <div><span class="st-env-key">GET  /scenes</span> Saved shot cards</div>
+      <div><span class="st-env-key">GET  /render-queue</span> Render queue state</div>
+      <div><span class="st-env-key">POST /render-queue/{id}/keyframe</span> ComfyUI keyframe gen</div>
+      <div><span class="st-env-key">POST /video/assemble-shot</span> ffmpeg shot clip</div>
+      <div><span class="st-env-key">POST /video/assemble-episode</span> ffmpeg episode concat</div>
+      <div><span class="st-env-key">POST /video/generate-wan</span> Wan2.1 T2V via ComfyUI</div>
+      <div><span class="st-env-key">POST /image-gen/generate</span> DALL-E 3 / FLUX / ComfyUI</div>
+      <div><span class="st-env-key">GET  /image-gen/gallery</span> Generated image list</div>
+      <div><span class="st-env-key">GET  /video/library</span> Generated video list</div>
+      <div><span class="st-env-key">GET  /ideas</span> Idea Vault entries</div>
+      <div><span class="st-env-key">GET  /settings/status</span> This page's data source</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const BASE = "http://127.0.0.1:8000";
+
+function pill(id, ok, label) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent  = label || (ok ? "Active" : "No Key");
+  el.className    = "st-pill " + (ok ? "ok" : "err");
+}
+
+async function checkStatus() {
+  const rowsEl = document.getElementById("st-status-rows");
+  try {
+    const res  = await fetch(`${BASE}/settings/status`);
+    const data = await res.json();
+
+    const comfyUrlEl = document.getElementById("comfy-url-display");
+    if (comfyUrlEl) comfyUrlEl.textContent = data.comfy_url || "http://127.0.0.1:8188";
+
+    // Comfy pill
+    const cp = document.getElementById("comfy-pill");
+    if (cp) {
+      cp.textContent = data.comfy_connected ? "Connected" : "Offline";
+      cp.className   = "st-pill " + (data.comfy_connected ? "ok" : "err");
+    }
+
+    // Engine pills
+    pill("pill-dalle3",   data.openai,          data.openai    ? "Active" : "No Key");
+    pill("pill-fal",      data.fal,             data.fal       ? "Active" : "No Key");
+    pill("pill-comfy-img",data.comfy_connected,  data.comfy_connected ? "Active" : "Offline");
+    pill("pill-el",       data.elevenlabs,       data.elevenlabs ? "Active" : "No Key");
+    pill("pill-wan",      data.comfy_connected,  data.comfy_connected ? "Active" : "ComfyUI Offline");
+    pill("pill-ffmpeg",   true,                 "Active");
+
+    // Service rows
+    const rows = [
+      { label: "Backend Server",     ok: data.backend,         hint: `${BASE}` },
+      { label: "OpenAI API",         ok: data.openai,          hint: "DALL-E 3 + GPT-4o shot AI" },
+      { label: "ElevenLabs API",     ok: data.elevenlabs,      hint: "Voice generation" },
+      { label: "fal.ai API",         ok: data.fal,             hint: "FLUX.1-dev image gen" },
+      { label: "RVC Voice Clone",    ok: data.rvc_model,       hint: "Voice cloning model" },
+      { label: "ComfyUI",            ok: data.comfy_connected, hint: data.comfy_url },
+    ];
+
+    rowsEl.innerHTML = rows.map(r => `
+      <div class="st-row">
+        <div>
+          <div class="st-key">${r.label}</div>
+          <div class="st-hint">${r.hint}</div>
+        </div>
+        <span class="st-pill ${r.ok ? "ok" : "err"}">${r.ok ? "Connected" : "Not Set"}</span>
+      </div>
+    `).join("");
+
+  } catch (err) {
+    console.error("SETTINGS STATUS ERROR:", err);
+    rowsEl.innerHTML = `<div class="st-row"><span class="st-key" style="color:#ef5350;">Backend offline — start the server first.</span></div>`;
+  }
+}
+
+window.addEventListener("DOMContentLoaded", checkStatus);
+window.checkStatus = checkStatus;
+</script>
+</body>
+</html>

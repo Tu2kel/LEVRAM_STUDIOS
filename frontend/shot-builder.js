@@ -46,7 +46,7 @@ function loadSceneIntoEditor(scene) {
               shot_type: document.getElementById("shot-type").value,
               camera_mood: document.getElementById("shot-camera").value,
               color_palette: document.getElementById("shot-palette").value,
-              ai_engine: document.getElementById("shot-engine").value,
+              ai_engine: document.getElementById("shot-engine")?.value || "",
               shot_description: document
                 .getElementById("shot-desc")
                 .value.trim(),
@@ -615,3 +615,142 @@ if (document.readyState === "loading") {
 } else {
   loadLevramCharacters();
 }
+
+// ─── Send to Render Queue ─────────────────────────────────
+document.getElementById("btn-send-to-queue")?.addEventListener("click", async () => {
+  const shotPrompt = document.getElementById("shot-prompt-input")?.value.trim() || "";
+  const dialogue   = document.getElementById("script-input")?.value.trim() || "";
+  const character  = document.getElementById("shot-character")?.selectedOptions?.[0]?.textContent || "";
+
+  if (!shotPrompt && !dialogue) {
+    setStatus("Build a shot first before adding to queue.", true);
+    return;
+  }
+
+  try {
+    // If we have a saved scene, use it; otherwise package current form state
+    const payload = {
+      shot: {
+        id:              selectedSceneId || null,
+        shot_number:     document.getElementById("shot-scene")?.value || "",
+        project:         document.getElementById("shot-project")?.value || "",
+        character:       character,
+        dialogue:        dialogue,
+        shotDesc:        document.getElementById("shot-desc")?.value.trim() || "",
+        shot_prompt:     shotPrompt,
+        voice_preset:    typeof getActiveFxPreset === "function" ? getActiveFxPreset() : "",
+        rawUrl:          rawUrl || "",
+        fxUrl:           fxUrl  || "",
+      }
+    };
+
+    const res = await fetch("http://127.0.0.1:8000/render-queue", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || "Queue add failed");
+    setStatus(`Shot added to Render Queue (${data.queue.length} total).`);
+  } catch (err) {
+    console.error("SEND TO QUEUE ERROR:", err);
+    setStatus(err.message || "Failed to add to queue.", true);
+  }
+});
+
+// ─── Keyframe → open Image Gen with shot prompt pre-filled ──
+document.getElementById("btn-shot-keyframe")?.addEventListener("click", () => {
+  const prompt    = document.getElementById("shot-prompt-input")?.value.trim() || "";
+  const character = document.getElementById("shot-character")?.selectedOptions?.[0]?.textContent || "";
+  const aspect    = (() => {
+    const dur = document.getElementById("shot-duration")?.value || "4s";
+    return "widescreen"; // shots are always widescreen
+  })();
+
+  if (!prompt) {
+    setStatus("Generate a shot prompt first.", true);
+    return;
+  }
+
+  // Pre-fill Image Gen
+  const igPrompt    = document.getElementById("ig-prompt");
+  const igCharacter = document.getElementById("ig-character");
+  const igAspect    = document.getElementById("ig-aspect");
+
+  if (igPrompt)    igPrompt.value    = prompt;
+  if (igCharacter && character) {
+    const opt = [...igCharacter.options].find(o => o.value === character);
+    if (opt) igCharacter.value = character;
+  }
+  if (igAspect)    igAspect.value    = aspect;
+
+  // Switch to Image Gen tab (image mode)
+  if (window.showTab) {
+    window.showTab("image-gen");
+    document.querySelectorAll(".nav-btn[data-tab]").forEach(b => {
+      b.classList.toggle("active", b.dataset.tab === "image-gen");
+    });
+    // Ensure image mode
+    const modeToggle = document.getElementById("ig-mode-toggle");
+    if (modeToggle) {
+      modeToggle.querySelectorAll(".cl-vtoggle-btn").forEach(b => {
+        b.classList.toggle("active", b.dataset.mode === "image");
+      });
+      if (typeof igApplyMode === "function") {
+        window.__igActiveMode = "image";
+      }
+    }
+  }
+
+  setStatus("Prompt sent to Image Gen → click Generate Image.");
+});
+
+// ─── Wan Video → open Image Gen in video mode with shot prompt ─
+document.getElementById("btn-shot-wan-video")?.addEventListener("click", () => {
+  const prompt    = document.getElementById("shot-prompt-input")?.value.trim() || "";
+  const character = document.getElementById("shot-character")?.selectedOptions?.[0]?.textContent || "";
+
+  if (!prompt) {
+    setStatus("Generate a shot prompt first.", true);
+    return;
+  }
+
+  const igPrompt    = document.getElementById("ig-prompt");
+  const igCharacter = document.getElementById("ig-character");
+
+  if (igPrompt)    igPrompt.value = prompt;
+  if (igCharacter && character) {
+    const opt = [...igCharacter.options].find(o => o.value === character);
+    if (opt) igCharacter.value = character;
+  }
+
+  // Switch to Image Gen tab and set video mode
+  if (window.showTab) {
+    window.showTab("image-gen");
+    document.querySelectorAll(".nav-btn[data-tab]").forEach(b => {
+      b.classList.toggle("active", b.dataset.tab === "image-gen");
+    });
+  }
+
+  // Activate video mode toggle
+  const modeToggle = document.getElementById("ig-mode-toggle");
+  if (modeToggle) {
+    modeToggle.querySelectorAll(".cl-vtoggle-btn").forEach(b => {
+      const isVideo = b.dataset.mode === "video";
+      b.classList.toggle("active", isVideo);
+    });
+  }
+  // Trigger mode apply
+  const imageSection = document.getElementById("ig-image-section");
+  const videoSection = document.getElementById("ig-video-section");
+  const styleGroup   = document.getElementById("ig-style-group");
+  const genBtn       = document.getElementById("ig-generate-btn");
+  const videoGallery = document.getElementById("ig-video-gallery-section");
+  if (imageSection) imageSection.style.display = "none";
+  if (videoSection) videoSection.style.display = "block";
+  if (styleGroup)   styleGroup.style.display   = "none";
+  if (genBtn)       genBtn.textContent = "Generate Video";
+  if (videoGallery) videoGallery.style.display  = "block";
+
+  setStatus("Prompt sent to Video Gen → click Generate Video.");
+});

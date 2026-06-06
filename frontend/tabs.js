@@ -41,7 +41,11 @@
           return;
         }
         if (tab === "export") {
-          window.open("render-queue.html", "_blank");
+          window.open("export.html", "_blank");
+          return;
+        }
+        if (tab === "settings") {
+          window.open("settings.html", "_blank");
           return;
         }
 

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LEVRAM STUDIOS — Initialize</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --gold:     #c9a84c;
+      --gold-l:   #fde68a;
+      --gold-d:   #8b6914;
+      --platinum: #d0d0e6;
+      --bg:       #09080f;
+      --surface:  #0d0c1e;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      font-family: Rajdhani, sans-serif;
+      color: #f0eee8;
+      overflow: hidden;
+    }
+
+    /* ── Background ───────────────────────────────────────── */
+    .bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse at 20% 15%, rgba(60, 30, 120, 0.55) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 85%, rgba(30, 10, 80, 0.45) 0%, transparent 50%),
+        var(--bg);
+    }
+    .bg::before {
+      content: "";
+      position: absolute; inset: 0;
+      background:
+        repeating-linear-gradient(92deg, transparent, transparent 120px, rgba(201,168,76,.018) 121px, rgba(201,168,76,.018) 122px),
+        repeating-linear-gradient(180deg, transparent, transparent 80px, rgba(201,168,76,.008) 81px, rgba(201,168,76,.008) 82px);
+    }
+
+    /* ── Layout ────────────────────────────────────────────── */
+    .stage {
+      position: relative; z-index: 1;
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0;
+    }
+
+    /* ── Logo ──────────────────────────────────────────────── */
+    .logo-block { text-align: center; margin-bottom: 12px; }
+
+    .logo-mark {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 88px;
+      letter-spacing: 18px;
+      background: linear-gradient(180deg, #fff 0%, #e0e0f0 20%, #a0a0c0 45%, #d8d8f0 72%, #fff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 40px rgba(201,168,76,.3)) drop-shadow(0 2px 4px rgba(0,0,0,.9));
+      line-height: 1;
+      user-select: none;
+    }
+
+    .logo-studios {
+      font-family: Rajdhani, sans-serif;
+      font-size: 20px;
+      letter-spacing: 12px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, var(--gold-d), var(--gold), var(--gold-l), var(--gold), var(--gold-d));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-top: -6px;
+    }
+
+    .logo-house {
+      font-size: 13px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: rgba(208, 208, 230, 0.55);
+      margin-top: 8px;
+    }
+
+    /* ── Gold divider ──────────────────────────────────────── */
+    .divider {
+      width: 320px; height: 1px; margin: 22px auto 32px;
+      background: linear-gradient(90deg, transparent, var(--gold-d), var(--gold), var(--gold-l), var(--gold), var(--gold-d), transparent);
+    }
+
+    /* ── Power button ──────────────────────────────────────── */
+    .power-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .power-btn {
+      width: 130px; height: 130px;
+      border-radius: 50%;
+      border: 2px solid rgba(201,168,76,.45);
+      background: radial-gradient(circle at 40% 35%, rgba(60,40,100,.9), rgba(9,8,15,.95));
+      box-shadow:
+        0 0 0 1px rgba(201,168,76,.12),
+        0 0 40px rgba(0,0,0,.8),
+        inset 0 0 30px rgba(201,168,76,.06);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .3s ease;
+      outline: none;
+      position: relative;
+    }
+
+    .power-btn:hover {
+      border-color: var(--gold);
+      box-shadow:
+        0 0 0 1px rgba(201,168,76,.3),
+        0 0 60px rgba(201,168,76,.25),
+        0 0 120px rgba(201,168,76,.10),
+        inset 0 0 40px rgba(201,168,76,.12);
+      transform: scale(1.04);
+    }
+
+    .power-btn.active {
+      border-color: #4caf50;
+      box-shadow:
+        0 0 0 2px rgba(76,175,80,.4),
+        0 0 60px rgba(76,175,80,.3),
+        inset 0 0 30px rgba(76,175,80,.1);
+      animation: power-pulse 2s ease-in-out infinite;
+    }
+
+    .power-btn.initializing {
+      border-color: var(--gold-l);
+      box-shadow:
+        0 0 0 2px rgba(253,230,138,.3),
+        0 0 60px rgba(253,230,138,.2),
+        inset 0 0 30px rgba(253,230,138,.08);
+      animation: spin-ring 1s linear infinite;
+    }
+
+    .power-icon {
+      width: 52px; height: 52px;
+      color: var(--gold);
+      transition: color .3s;
+    }
+    .power-btn:hover .power-icon { color: var(--gold-l); }
+    .power-btn.active .power-icon { color: #4caf50; }
+    .power-btn.initializing .power-icon { color: var(--gold-l); }
+
+    @keyframes power-pulse {
+      0%, 100% { box-shadow: 0 0 0 2px rgba(76,175,80,.4), 0 0 60px rgba(76,175,80,.3), inset 0 0 30px rgba(76,175,80,.1); }
+      50%       { box-shadow: 0 0 0 4px rgba(76,175,80,.6), 0 0 80px rgba(76,175,80,.4), inset 0 0 40px rgba(76,175,80,.15); }
+    }
+
+    @keyframes spin-ring {
+      from { border-top-color: var(--gold-l); border-right-color: rgba(201,168,76,.2); border-bottom-color: rgba(201,168,76,.2); border-left-color: rgba(201,168,76,.2); }
+      to   { transform: scale(1.04) rotate(360deg); }
+    }
+
+    .power-label {
+      font-size: 18px; letter-spacing: 5px; text-transform: uppercase;
+      color: rgba(201,168,76,.7);
+    }
+
+    /* ── Service status grid ───────────────────────────────── */
+    .services {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px 14px;
+      width: 520px;
+      margin-bottom: 32px;
+    }
+
+    .svc {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(13,12,30,.8);
+      border: 1px solid rgba(201,168,76,.18);
+      border-radius: 4px;
+      padding: 10px 14px;
+      transition: border-color .3s, background .3s;
+    }
+    .svc.ok    { border-color: rgba(76,175,80,.4);  background: rgba(76,175,80,.06); }
+    .svc.warn  { border-color: rgba(255,152,0,.3);   background: rgba(255,152,0,.04); }
+    .svc.err   { border-color: rgba(200,0,0,.3);     background: rgba(200,0,0,.04); }
+
+    .svc-dot {
+      width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(201,168,76,.3);
+      transition: background .3s, box-shadow .3s;
+    }
+    .svc.ok   .svc-dot { background: #4caf50; box-shadow: 0 0 8px #4caf50; }
+    .svc.warn .svc-dot { background: #ffa000; box-shadow: 0 0 8px #ffa000; }
+    .svc.err  .svc-dot { background: #ef5350; box-shadow: 0 0 8px #ef5350; }
+
+    .svc-info { flex: 1; }
+    .svc-name { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: rgba(201,168,76,.8); }
+    .svc-status { font-size: 12px; color: #555; margin-top: 1px; }
+    .svc.ok   .svc-status { color: #4caf50; }
+    .svc.warn .svc-status { color: #ffa000; }
+    .svc.err  .svc-status { color: #ef5350; }
+
+    /* ── Enter Studio button ───────────────────────────────── */
+    .enter-btn {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 24px;
+      letter-spacing: 8px;
+      color: #09080f;
+      background: linear-gradient(90deg, var(--gold-d), var(--gold), var(--gold-l), var(--gold), var(--gold-d));
+      background-size: 200% auto;
+      border: none;
+      padding: 16px 56px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background-position .4s, box-shadow .3s, transform .2s;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .enter-btn.visible { display: block; }
+    .enter-btn:hover {
+      background-position: right center;
+      box-shadow: 0 0 40px rgba(201,168,76,.5), 0 0 12px rgba(201,168,76,.25);
+      transform: translateY(-2px);
+    }
+
+    /* ── API config ─────────────────────────────────────────── */
+    .config-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 8px;
+    }
+    .config-input {
+      background: rgba(0,0,0,.6); border: 1px solid rgba(201,168,76,.25);
+      color: var(--gold); font-family: Rajdhani, sans-serif; font-size: 15px;
+      padding: 7px 12px; border-radius: 2px; outline: none; width: 280px;
+    }
+    .config-input::placeholder { color: rgba(201,168,76,.3); }
+    .config-btn {
+      background: transparent; border: 1px solid rgba(201,168,76,.35); color: var(--gold);
+      font-family: Rajdhani, sans-serif; font-size: 13px; letter-spacing: 2px;
+      text-transform: uppercase; padding: 7px 14px; border-radius: 2px; cursor: pointer;
+    }
+    .config-btn:hover { background: rgba(201,168,76,.1); }
+    .config-label { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: rgba(201,168,76,.4); }
+
+    /* ── Status message ─────────────────────────────────────── */
+    .status-msg {
+      font-size: 14px; letter-spacing: 3px; text-transform: uppercase;
+      color: rgba(201,168,76,.5); min-height: 22px; text-align: center;
+      margin-bottom: 6px;
+    }
+
+    /* ── Bottom bar ─────────────────────────────────────────── */
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #9b111e, #c9a84c, #fde68a, #c9a84c, #1f4fa3);
+      animation: sweep 4s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes sweep { 0% { opacity: .5; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+
+  <div class="stage">
+
+    <!-- Logo -->
+    <div class="logo-block">
+      <div class="logo-mark">LEVRAM</div>
+      <div class="logo-studios">Studios</div>
+      <div class="logo-house">The House of Kel LLC</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Power button -->
+    <div class="power-wrap">
+      <button class="power-btn" id="power-btn" onclick="initializeStudio()" title="Initialize Studio">
+        <svg class="power-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+          <line x1="12" y1="2" x2="12" y2="12"/>
+        </svg>
+      </button>
+      <div class="power-label" id="power-label">Initialize Studio</div>
+    </div>
+
+    <!-- Status message -->
+    <div class="status-msg" id="status-msg"></div>
+
+    <!-- Services grid -->
+    <div class="services" id="services-grid">
+      <div class="svc" id="svc-backend">
+        <div class="svc-dot"></div>
+        <div class="svc-info">
+          <div class="svc-name">Backend</div>
+          <div class="svc-status" id="st-backend">Waiting…</div>
+        </div>
+      </div>
+      <div class="svc" id="svc-mongodb">
+        <div class="svc-dot"></div>
+        <div class="svc-info">
+          <div class="svc-name">MongoDB</div>
+          <div class="svc-status" id="st-mongodb">Waiting…</div>
+        </div>
+      </div>
+      <div class="svc" id="svc-openai">
+        <div class="svc-dot"></div>
+        <div class="svc-info">
+          <div class="svc-name">OpenAI</div>
+          <div class="svc-status" id="st-openai">Waiting…</div>
+        </div>
+      </div>
+      <div class="svc" id="svc-elevenlabs">
+        <div class="svc-dot"></div>
+        <div class="svc-info">
+          <div class="svc-name">ElevenLabs</div>
+          <div class="svc-status" id="st-elevenlabs">Waiting…</div>
+        </div>
+      </div>
+      <div class="svc" id="svc-comfyui">
+        <div class="svc-dot"></div>
+        <div class="svc-info">
+          <div class="svc-name">ComfyUI T2V</div>
+          <div class="svc-status" id="st-comfyui">Waiting…</div>
+        </div>
+      </div>
+      <div class="svc" id="svc-fal">
+        <div class="svc-dot"></div>
+        <div class="svc-info">
+          <div class="svc-name">fal.ai</div>
+          <div class="svc-status" id="st-fal">Waiting…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enter Studio -->
+    <button class="enter-btn" id="enter-btn" onclick="enterStudio()">Enter Studio →</button>
+
+    <!-- API URL config -->
+    <div style="text-align:center;margin-top:6px;">
+      <div class="config-label" style="margin-bottom:6px;">Backend API URL</div>
+      <div class="config-row" style="justify-content:center;">
+        <input class="config-input" id="api-url-input" type="text" placeholder="http://127.0.0.1:8000" />
+        <button class="config-btn" onclick="saveApiUrl()">Save</button>
+      </div>
+      <div style="font-size:12px;color:rgba(201,168,76,.25);margin-top:6px;letter-spacing:1px;">
+        Use Railway URL (e.g. https://your-app.railway.app) for cloud deployment.
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bottom-bar"></div>
+
+  <script>
+    const DEFAULT_API = "http://127.0.0.1:8000";
+    let apiBase = localStorage.getItem("levram-api-url") || DEFAULT_API;
+
+    // Pre-fill the input
+    document.getElementById("api-url-input").value = apiBase;
+
+    function saveApiUrl() {
+      const val = document.getElementById("api-url-input").value.trim().replace(/\/$/, "");
+      if (!val) return;
+      apiBase = val;
+      localStorage.setItem("levram-api-url", apiBase);
+      setMsg("API URL saved. Ready to initialize.");
+    }
+
+    function setMsg(msg) {
+      document.getElementById("status-msg").textContent = msg;
+    }
+
+    function setSvc(id, state, label) {
+      const el = document.getElementById("svc-" + id);
+      if (!el) return;
+      el.className = "svc " + state;
+      const st = document.getElementById("st-" + id);
+      if (st) st.textContent = label;
+    }
+
+    async function delay(ms) {
+      return new Promise(r => setTimeout(r, ms));
+    }
+
+    async function initializeStudio() {
+      const btn   = document.getElementById("power-btn");
+      const label = document.getElementById("power-label");
+      const enter = document.getElementById("enter-btn");
+
+      btn.classList.add("initializing");
+      btn.onclick = null;  // prevent double-click
+      label.textContent = "Connecting…";
+      setMsg("Establishing connections…");
+
+      // Save API URL from input field (in case user typed but didn't click Save)
+      const inputVal = document.getElementById("api-url-input").value.trim().replace(/\/$/, "");
+      if (inputVal) { apiBase = inputVal; localStorage.setItem("levram-api-url", apiBase); }
+
+      let ok = 0;
+
+      // 1. Backend
+      setMsg("Connecting to backend…");
+      try {
+        const res  = await fetch(`${apiBase}/settings/status`, { signal: AbortSignal.timeout(6000) });
+        const data = await res.json();
+
+        setSvc("backend",     data.backend    ? "ok"  : "err",  data.backend    ? "Connected"    : "Offline");
+        setSvc("mongodb",     data.mongodb    ? "ok"  : "warn", data.mongodb    ? "Connected"    : "Not configured");
+        setSvc("openai",      data.openai     ? "ok"  : "warn", data.openai     ? "Active"       : "No Key");
+        setSvc("elevenlabs",  data.elevenlabs ? "ok"  : "warn", data.elevenlabs ? "Active"       : "No Key");
+        setSvc("comfyui",     data.comfy_connected ? "ok" : "warn", data.comfy_connected ? "Online" : "Offline (optional)");
+        setSvc("fal",         data.fal        ? "ok"  : "warn", data.fal        ? "Active"       : "No Key");
+
+        if (data.backend)    ok++;
+        if (data.mongodb)    ok++;
+        if (data.openai)     ok++;
+        if (data.elevenlabs) ok++;
+
+        await delay(400);
+
+        if (data.backend) {
+          btn.classList.remove("initializing");
+          btn.classList.add("active");
+          label.textContent = "Studio Live";
+          setMsg(ok >= 3 ? "Studio ready. All systems operational." : "Studio online — some services need configuration.");
+          enter.classList.add("visible");
+          enter.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        } else {
+          throw new Error("Backend offline");
+        }
+
+      } catch (err) {
+        btn.classList.remove("initializing");
+        label.textContent = "Connection Failed";
+        setMsg("Could not reach backend. Check the API URL or start the server.");
+        setSvc("backend", "err", "Offline");
+
+        // Re-enable button after a moment
+        setTimeout(() => {
+          btn.classList.remove("active");
+          btn.onclick = initializeStudio;
+          label.textContent = "Retry Initialize";
+        }, 3000);
+      }
+    }
+
+    function enterStudio() {
+      window.location.href = "index.html";
+    }
+
+    // Auto-initialize if API URL looks like Railway (always-on)
+    window.addEventListener("DOMContentLoaded", () => {
+      if (apiBase !== DEFAULT_API) {
+        // User has a custom (Railway) URL — auto-init after brief delay
+        setTimeout(initializeStudio, 800);
+      }
+    });
+  </script>
+</body>
+</html>

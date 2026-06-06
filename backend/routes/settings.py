@@ -1,7 +1,8 @@
-"""Settings status endpoint — reads env var presence, pings ComfyUI."""
+"""Settings + startup status endpoint."""
 import os
 import urllib.request
 from fastapi import APIRouter
+from backend.db import ping_db, MONGODB_URL
 
 router = APIRouter()
 
@@ -16,14 +17,17 @@ def _ping(url: str, timeout: int = 3) -> bool:
 
 
 @router.get("/settings/status")
-def get_settings_status():
+async def get_settings_status():
     comfy_url = os.environ.get("COMFY_URL", "http://127.0.0.1:8188")
+    mongo_ok = await ping_db()
     return {
+        "backend":         True,
         "openai":          bool(os.environ.get("OPENAI_API_KEY")),
         "elevenlabs":      bool(os.environ.get("ELEVENLABS_API_KEY")),
         "fal":             bool(os.environ.get("FAL_KEY")),
         "rvc_model":       bool(os.environ.get("RVC_MODEL_PATH")),
+        "mongodb":         mongo_ok,
+        "mongodb_url":     "configured" if MONGODB_URL else "not configured",
         "comfy_url":       comfy_url,
         "comfy_connected": _ping(f"{comfy_url}/system_stats"),
-        "backend":         True,
     }

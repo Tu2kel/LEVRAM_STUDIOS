@@ -27,6 +27,7 @@
     .st-env-rows  { font-size: 16px; color: #888; line-height: 1.8; }
     .st-env-key   { color: #c9a84c; font-weight: 700; display: inline-block; width: 200px; }
   </style>
+  <script src="config.js"></script>
 </head>
 <body>
 <div class="st-page">
@@ -46,6 +47,13 @@
     <div id="st-status-rows">
       <div class="st-row"><span class="st-key">Checking…</span></div>
     </div>
+    <div class="st-row" style="margin-top:10px;">
+      <div>
+        <div class="st-key">MongoDB</div>
+        <div class="st-hint" id="mongo-hint">Checking…</div>
+      </div>
+      <span id="pill-mongo" class="st-pill warn">…</span>
+    </div>
     <p class="st-note">API keys are read from your <code>.env</code> file at startup. Restart the backend after editing <code>.env</code>.</p>
   </div>
 
@@ -57,6 +65,7 @@
       <div><span class="st-env-key">ELEVENLABS_API_KEY</span> Required for ElevenLabs TTS voice generation.</div>
       <div><span class="st-env-key">FAL_KEY</span> Required for fal.ai FLUX.1-dev image generation.</div>
       <div><span class="st-env-key">RVC_MODEL_PATH</span> Optional — path to RVC model for voice cloning.</div>
+      <div><span class="st-env-key">MONGODB_URL</span> MongoDB connection string (mongodb+srv://...) for cloud persistence.</div>
       <div><span class="st-env-key">COMFY_URL</span> ComfyUI server URL (default: http://127.0.0.1:8188).</div>
     </div>
   </div>
@@ -169,7 +178,7 @@
 </div>
 
 <script>
-const BASE = "http://127.0.0.1:8000";
+const BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 function pill(id, ok, label) {
   const el = document.getElementById(id);
@@ -194,6 +203,15 @@ async function checkStatus() {
       cp.className   = "st-pill " + (data.comfy_connected ? "ok" : "err");
     }
 
+    // MongoDB pill
+    const mp = document.getElementById("pill-mongo");
+    const mh = document.getElementById("mongo-hint");
+    if (mp) {
+      mp.textContent = data.mongodb ? "Connected" : (data.mongodb_url === "configured" ? "Unreachable" : "Not Configured");
+      mp.className   = "st-pill " + (data.mongodb ? "ok" : (data.mongodb_url === "configured" ? "warn" : "err"));
+    }
+    if (mh) mh.textContent = data.mongodb_url === "configured" ? "MONGODB_URL set" : "Set MONGODB_URL in .env to enable cloud persistence";
+
     // Engine pills
     pill("pill-dalle3",   data.openai,          data.openai    ? "Active" : "No Key");
     pill("pill-fal",      data.fal,             data.fal       ? "Active" : "No Key");
@@ -209,6 +227,7 @@ async function checkStatus() {
       { label: "OpenAI API",         ok: data.openai,          hint: "DALL-E 3 + GPT-4o shot AI" },
       { label: "ElevenLabs API",     ok: data.elevenlabs,      hint: "Voice generation" },
       { label: "fal.ai API",         ok: data.fal,             hint: "FLUX.1-dev image gen" },
+      { label: "MongoDB",             ok: data.mongodb,         hint: data.mongodb_url === "configured" ? "Cloud persistence active" : "Set MONGODB_URL in .env" },
       { label: "RVC Voice Clone",    ok: data.rvc_model,       hint: "Voice cloning model" },
       { label: "ComfyUI",            ok: data.comfy_connected, hint: data.comfy_url },
     ];

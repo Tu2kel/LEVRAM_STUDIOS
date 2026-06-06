@@ -35,7 +35,7 @@ echo  Waiting for backend to initialize (10 seconds)...
 timeout /t 10 /nobreak > nul
 
 echo  Opening LEVRAM in your browser...
-start "" "http://127.0.0.1:8000/frontend/index.html"
+start "" "http://127.0.0.1:8000/frontend/launch.html"
 
 echo.
 echo  LEVRAM is running in the background.

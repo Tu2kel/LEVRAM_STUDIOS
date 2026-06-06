@@ -5,6 +5,7 @@
   <title>LEVRAM Render Viewer</title>
   <link rel="stylesheet" href="app.css" />
   <link rel="stylesheet" href="render-queue.css" />
+  <script src="config.js"></script>
 </head>
 <body>
   <div class="rq-page">
@@ -22,7 +23,7 @@
   </div>
 
   <script>
-    const BASE = "http://127.0.0.1:8000";
+    const BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
     async function loadRenderViewer(){
       const params = new URLSearchParams(window.location.search);

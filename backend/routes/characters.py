@@ -3,8 +3,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
-import json
-import uuid
+import json, uuid
+
+from backend.db import characters_col
 
 router = APIRouter()
 
@@ -22,168 +23,107 @@ class CharacterPayload(BaseModel):
     personality: str = ""
     notes: str = ""
     reference_image_url: str = ""
-    # Voice engine settings
-    voice_source: str = "edge_tts"          # "elevenlabs" | "rvc" | "edge_tts"
-    elevenlabs_voice_id: str = ""            # EL cloned voice ID
-    rvc_model_path: str = ""                 # path to .pth model
-    rvc_index_path: str = ""                 # path to .index file (optional)
-    rvc_source_type: str = "pretrained"      # "my_voice" | "pretrained"
-    default_fx_preset: str = "clean"         # villain|deep|monster|ghost|radio|clean
+    voice_source: str = "edge_tts"
+    elevenlabs_voice_id: str = ""
+    rvc_model_path: str = ""
+    rvc_index_path: str = ""
+    rvc_source_type: str = "pretrained"
+    default_fx_preset: str = "clean"
 
 
-def load_data():
+def _json_load():
     if not DATA_FILE.exists():
         DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
         DATA_FILE.write_text(json.dumps({"characters": []}, indent=2))
     return json.loads(DATA_FILE.read_text())
 
 
-def save_data(data):
+def _json_save(data):
     DATA_FILE.write_text(json.dumps(data, indent=2))
 
 
+def _strip(doc: dict) -> dict:
+    d = dict(doc)
+    d.pop("_id", None)
+    return d
+
+
 @router.get("/characters")
-def get_characters():
-    return load_data()
+@router.get("/api/characters")
+async def get_characters():
+    if characters_col is not None:
+        docs = await characters_col.find({}).to_list(None)
+        return {"success": True, "characters": [_strip(d) for d in docs]}
+    data = _json_load()
+    return {"success": True, "characters": data.get("characters", [])}
 
 
 @router.post("/characters")
-def create_character(payload: CharacterPayload):
-    data = load_data()
-
-    character = {
-        "id": str(uuid.uuid4()),
-        "name": payload.name.strip(),
-        "gender": payload.gender,
-        "age": payload.age,
-        "appearance": payload.appearance,
-        "wardrobe": payload.wardrobe,
-        "voice": payload.voice,
-        "default_voice_profile": payload.default_voice_profile,
-        "personality": payload.personality,
-        "notes": payload.notes,
-        "reference_image_url": payload.reference_image_url,
-        "voice_source": payload.voice_source,
-        "elevenlabs_voice_id": payload.elevenlabs_voice_id,
-        "rvc_model_path": payload.rvc_model_path,
-        "rvc_index_path": payload.rvc_index_path,
-        "rvc_source_type": payload.rvc_source_type,
-        "default_fx_preset": payload.default_fx_preset,
-        "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-
-    if not character["name"]:
+async def create_character(payload: CharacterPayload):
+    if not payload.name.strip():
         raise HTTPException(status_code=400, detail="Character name is required")
-
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    character = {"id": str(uuid.uuid4()), **payload.model_dump(), "createdAt": now, "updatedAt": now}
+    character["name"] = character["name"].strip()
+    if characters_col is not None:
+        await characters_col.insert_one(character)
+        docs = await characters_col.find({}).to_list(None)
+        return {"success": True, "character": _strip(character), "characters": [_strip(d) for d in docs]}
+    data = _json_load()
     data["characters"].append(character)
-    save_data(data)
-
+    _json_save(data)
     return {"success": True, "character": character, "characters": data["characters"]}
 
 
-# PHASE 8F.4 — update existing character without duplicating
 @router.put("/characters/{character_id}")
-def update_character(character_id: str, payload: CharacterPayload):
-    data = load_data()
-    characters = data.get("characters", []) if isinstance(data, dict) else []
-
-    idx = next((i for i, c in enumerate(characters) if c.get("id") == character_id), None)
-    if idx is None:
-        raise HTTPException(status_code=404, detail="Character not found")
-
+async def update_character(character_id: str, payload: CharacterPayload):
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="Character name is required")
-
-    existing = characters[idx]
-    existing.update({
-        "name": payload.name.strip(),
-        "gender": payload.gender,
-        "age": payload.age,
-        "appearance": payload.appearance,
-        "wardrobe": payload.wardrobe,
-        "voice": payload.voice,
-        "default_voice_profile": payload.default_voice_profile,
-        "personality": payload.personality,
-        "notes": payload.notes,
-        "reference_image_url": payload.reference_image_url,
-        "voice_source": payload.voice_source,
-        "elevenlabs_voice_id": payload.elevenlabs_voice_id,
-        "rvc_model_path": payload.rvc_model_path,
-        "rvc_index_path": payload.rvc_index_path,
-        "rvc_source_type": payload.rvc_source_type,
-        "default_fx_preset": payload.default_fx_preset,
-        "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
-
-    data["characters"][idx] = existing
-    save_data(data)
-
-    return {"success": True, "character": existing, "characters": data["characters"]}
+    updates = {**payload.model_dump(), "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    updates["name"] = updates["name"].strip()
+    if characters_col is not None:
+        result = await characters_col.find_one_and_update({"id": character_id}, {"$set": updates}, return_document=True)
+        if not result:
+            raise HTTPException(status_code=404, detail="Character not found")
+        docs = await characters_col.find({}).to_list(None)
+        return {"success": True, "character": _strip(result), "characters": [_strip(d) for d in docs]}
+    data = _json_load()
+    idx = next((i for i, c in enumerate(data["characters"]) if c.get("id") == character_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="Character not found")
+    data["characters"][idx].update(updates)
+    _json_save(data)
+    return {"success": True, "character": data["characters"][idx], "characters": data["characters"]}
 
 
 @router.delete("/characters/{character_id}")
-def delete_character(character_id: str):
-    data = load_data()
+async def delete_character(character_id: str):
+    if characters_col is not None:
+        result = await characters_col.delete_one({"id": character_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Character not found")
+        docs = await characters_col.find({}).to_list(None)
+        return {"success": True, "characters": [_strip(d) for d in docs]}
+    data = _json_load()
     before = len(data["characters"])
-
-    data["characters"] = [
-        c for c in data["characters"]
-        if c.get("id") != character_id
-    ]
-
+    data["characters"] = [c for c in data["characters"] if c.get("id") != character_id]
     if len(data["characters"]) == before:
         raise HTTPException(status_code=404, detail="Character not found")
-
-    save_data(data)
+    _json_save(data)
     return {"success": True, "characters": data["characters"]}
+
 
 @router.post("/character-lab/generate")
 async def generate_character_preview(payload: dict):
     prompt = payload.get("prompt") or ""
-
-    item = {
-        "id": "character-preview",
-        "shotId": "character-preview",
-        "shot": {
-            "character": payload.get("character", {}).get("name", "Character Preview"),
-            "shotDesc": prompt,
-            "shotPrompt": prompt,
-            "renderStyle": "cinematic photorealistic",
-            "scene": "Character Lab",
-            "shot_number": "CHARACTER-PREVIEW"
-        }
-    }
-
-    # PHASE 8G — portrait orientation for character reference images
+    item = {"id": "character-preview", "shotId": "character-preview", "shot": {
+        "character": payload.get("character", {}).get("name", "Character Preview"),
+        "shotDesc": prompt, "shotPrompt": prompt,
+        "renderStyle": "cinematic photorealistic",
+        "scene": "Character Lab", "shot_number": "CHARACTER-PREVIEW",
+    }}
     render_result = generate_comfy_keyframe(item, width=512, height=768)
-
-    image_url = (
-        render_result.get("outputUrl")
-        or render_result.get("renderOutputUrl")
-        or render_result.get("image_url")
-        or render_result.get("url")
-    )
-
-    return {
-        "success": True,
-        "message": "Character preview generated",
-        "prompt": prompt,
-        "image_url": image_url,
-        "data": render_result
-    }
-
-
-# ===============================
-# PHASE 8C — CHARACTER RETRIEVAL
-# ===============================
-
-@router.get("/characters")
-@router.get("/api/characters")
-def get_characters():
-    data = load_data()
-    characters = data.get("characters", []) if isinstance(data, dict) else []
-    return {
-        "success": True,
-        "characters": characters
-    }
+    image_url = (render_result.get("outputUrl") or render_result.get("renderOutputUrl")
+                 or render_result.get("image_url") or render_result.get("url"))
+    return {"success": True, "message": "Character preview generated", "prompt": prompt,
+            "image_url": image_url, "data": render_result}

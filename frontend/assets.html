@@ -101,6 +101,7 @@
     }
     .as-modal-actions button.save { background: rgba(201,168,76,.1); border-color: rgba(201,168,76,.6); color: #f9f295; }
   </style>
+  <script src="config.js"></script>
 </head>
 <body>
 <div class="as-page">
@@ -146,7 +147,7 @@
 </div>
 
 <script>
-const BASE = "http://127.0.0.1:8000";
+const BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 let allAssets   = [];
 let activeType  = "all";
 let tagTarget   = null;

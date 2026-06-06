@@ -15,6 +15,8 @@ from fastapi import APIRouter, HTTPException
 from openai import OpenAI
 from pydantic import BaseModel
 
+from backend.db import episodes_col
+
 router       = APIRouter()
 client       = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 EPISODES_DIR = Path("data/episodes")
@@ -26,6 +28,12 @@ LEVRAM_SYSTEM_PROMPT = LORE_FILE.read_text(encoding="utf-8") if LORE_FILE.exists
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _strip(doc: dict) -> dict:
+    d = dict(doc)
+    d.pop("_id", None)
+    return d
+
 
 def _load_characters() -> list:
     if not CHARS_FILE.exists():
@@ -65,7 +73,7 @@ def _openai_json(system: str, user: str, temperature: float = 0.85) -> dict:
     return json.loads(res.choices[0].message.content)
 
 
-def _load_episodes() -> list:
+def _json_load_episodes() -> list:
     episodes = []
     for f in sorted(EPISODES_DIR.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
         try:
@@ -75,20 +83,20 @@ def _load_episodes() -> list:
     return episodes
 
 
-def _save_episode(ep: dict) -> dict:
+def _json_save_episode(ep: dict) -> dict:
     ep["updatedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     path = EPISODES_DIR / f"{ep['id']}.json"
     path.write_text(json.dumps(ep, indent=2, ensure_ascii=False), encoding="utf-8")
     return ep
 
 
-# ─── Routes ───────────────────────────────────────────────────────────────────
+# ─── AI Generation Routes ─────────────────────────────────────────────────────
 
 class ConceptPayload(BaseModel):
-    project:    str             # "Kelz Saga", "Hulk Saga", etc.
-    characters: list[str] = [] # character names involved
-    theme:      str = ""       # core conflict or theme
-    tone:       str = ""       # "dark", "tragic", "action", etc.
+    project:    str
+    characters: list[str] = []
+    theme:      str = ""
+    tone:       str = ""
     episode_num: int = 1
     extra_notes: str = ""
 
@@ -239,7 +247,7 @@ Write the scene dialogue."""
 class MonologuePayload(BaseModel):
     character:    str
     context:      str
-    internal:     bool = True  # internal monologue vs spoken
+    internal:     bool = True
     project:      str = ""
 
 
@@ -279,7 +287,7 @@ Character Context:
 class VillainPOVPayload(BaseModel):
     character:    str
     ideology:     str
-    inciting_act: str  # what did they do / what triggered this
+    inciting_act: str
     project:      str = ""
 
 
@@ -328,28 +336,50 @@ class EpisodeSavePayload(BaseModel):
 
 
 @router.get("/story/episodes")
-def get_episodes():
-    return {"success": True, "episodes": _load_episodes()}
+async def get_episodes():
+    if episodes_col is not None:
+        docs = await episodes_col.find({}).sort("updatedAt", -1).to_list(None)
+        return {"success": True, "episodes": [_strip(d) for d in docs]}
+    return {"success": True, "episodes": _json_load_episodes()}
 
 
 @router.post("/story/episodes")
-def save_episode(payload: EpisodeSavePayload):
+async def save_episode(payload: EpisodeSavePayload):
     ep = payload.model_dump()
     if not ep["id"]:
         ep["id"] = str(uuid.uuid4())
     ep["createdAt"] = ep.get("createdAt") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return {"success": True, "episode": _save_episode(ep)}
+    ep["updatedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if episodes_col is not None:
+        await episodes_col.delete_many({"id": ep["id"]})
+        await episodes_col.insert_one(ep)
+        return {"success": True, "episode": _strip(ep)}
+
+    return {"success": True, "episode": _json_save_episode(ep)}
 
 
 @router.put("/story/episodes/{ep_id}")
-def update_episode(ep_id: str, payload: EpisodeSavePayload):
+async def update_episode(ep_id: str, payload: EpisodeSavePayload):
     ep = payload.model_dump()
     ep["id"] = ep_id
-    return {"success": True, "episode": _save_episode(ep)}
+    ep["updatedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if episodes_col is not None:
+        result = await episodes_col.find_one_and_update(
+            {"id": ep_id}, {"$set": ep}, upsert=True, return_document=True
+        )
+        return {"success": True, "episode": _strip(result)}
+
+    return {"success": True, "episode": _json_save_episode(ep)}
 
 
 @router.delete("/story/episodes/{ep_id}")
-def delete_episode(ep_id: str):
+async def delete_episode(ep_id: str):
+    if episodes_col is not None:
+        await episodes_col.delete_one({"id": ep_id})
+        return {"success": True}
+
     path = EPISODES_DIR / f"{ep_id}.json"
     if path.exists():
         path.unlink()

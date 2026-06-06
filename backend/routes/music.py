@@ -15,15 +15,17 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from backend.db import music_col
+
 router    = APIRouter()
 MUSIC_DIR = Path("output/music")
 MUSIC_DIR.mkdir(parents=True, exist_ok=True)
 MUSIC_DB  = Path("data/music_library.json")
 
 
-# ─── Library helpers ──────────────────────────────────────────
+# ─── JSON fallback helpers ─────────────────────────────────────
 
-def _load_library() -> list:
+def _json_load() -> list:
     if not MUSIC_DB.exists():
         return []
     try:
@@ -32,19 +34,25 @@ def _load_library() -> list:
         return []
 
 
-def _save_library(tracks: list):
+def _json_save(tracks: list):
     MUSIC_DB.parent.mkdir(parents=True, exist_ok=True)
     MUSIC_DB.write_text(json.dumps(tracks, indent=2), encoding="utf-8")
+
+
+def _strip(doc: dict) -> dict:
+    d = dict(doc)
+    d.pop("_id", None)
+    return d
 
 
 # ─── Upload a track ───────────────────────────────────────────
 
 @router.post("/music/upload")
 async def upload_track(
-    name:        str        = Form(...),
-    mood:        str        = Form(""),
-    project:     str        = Form(""),
-    file:        UploadFile = File(...),
+    name:    str        = Form(...),
+    mood:    str        = Form(""),
+    project: str        = Form(""),
+    file:    UploadFile = File(...),
 ):
     ext      = Path(file.filename).suffix.lower() or ".mp3"
     track_id = str(uuid.uuid4())
@@ -65,42 +73,60 @@ async def upload_track(
         "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
-    lib = _load_library()
-    lib.insert(0, track)
-    _save_library(lib)
+    if music_col is not None:
+        await music_col.insert_one(track)
+        return {"success": True, "track": _strip(track)}
 
+    lib = _json_load()
+    lib.insert(0, track)
+    _json_save(lib)
     return {"success": True, "track": track}
 
 
 @router.get("/music/library")
-def get_library():
-    lib = _load_library()
-    # Filter to files that still exist on disk
+async def get_library():
+    if music_col is not None:
+        docs = await music_col.find({}).sort("createdAt", -1).to_list(None)
+        alive = [_strip(d) for d in docs if (MUSIC_DIR / d["filename"]).exists()]
+        if len(alive) < len(docs):
+            dead_ids = [d["id"] for d in docs if not (MUSIC_DIR / d["filename"]).exists()]
+            await music_col.delete_many({"id": {"$in": dead_ids}})
+        return {"success": True, "tracks": alive}
+
+    lib = _json_load()
     lib = [t for t in lib if (MUSIC_DIR / t["filename"]).exists()]
-    _save_library(lib)
+    _json_save(lib)
     return {"success": True, "tracks": lib}
 
 
 @router.delete("/music/{track_id}")
-def delete_track(track_id: str):
-    lib   = _load_library()
+async def delete_track(track_id: str):
+    if music_col is not None:
+        doc = await music_col.find_one({"id": track_id})
+        if doc:
+            f = MUSIC_DIR / doc["filename"]
+            if f.exists():
+                f.unlink()
+        await music_col.delete_one({"id": track_id})
+        return {"success": True}
+
+    lib = _json_load()
     track = next((t for t in lib if t["id"] == track_id), None)
     if track:
         f = MUSIC_DIR / track["filename"]
         if f.exists():
             f.unlink()
-    lib = [t for t in lib if t["id"] != track_id]
-    _save_library(lib)
+    _json_save([t for t in lib if t["id"] != track_id])
     return {"success": True}
 
 
 # ─── Mix music into a video ────────────────────────────────────
 
 class MixPayload(BaseModel):
-    video_url:    str         # e.g. "/output/videos/episode_xyz.mp4"
-    music_url:    str         # e.g. "/output/music/music_abc.mp3"
-    music_volume: float = 0.25  # 0.0 – 1.0 under dialogue
-    fade_out_sec: int   = 4   # seconds to fade music at end
+    video_url:    str
+    music_url:    str
+    music_volume: float = 0.25
+    fade_out_sec: int   = 4
 
 
 @router.post("/music/mix")
@@ -121,13 +147,12 @@ def mix_music(payload: MixPayload):
     vol  = max(0.0, min(1.0, payload.music_volume))
     fade = max(1, payload.fade_out_sec)
 
-    # Get video duration for the fade-out start point
     probe = subprocess.run(
         ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(vid_path)],
         capture_output=True, text=True
     )
     try:
-        duration = float(json.loads(probe.stdout)["format"]["duration"])
+        duration   = float(json.loads(probe.stdout)["format"]["duration"])
         fade_start = max(0, duration - fade)
     except Exception:
         fade_start = 0
@@ -153,11 +178,7 @@ def mix_music(payload: MixPayload):
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=f"ffmpeg mix error:\n{result.stderr}")
 
-    return {
-        "success":  True,
-        "mixedUrl": "/output/videos/" + out_name,
-        "engine":   "ffmpeg",
-    }
+    return {"success": True, "mixedUrl": "/output/videos/" + out_name, "engine": "ffmpeg"}
 
 
 # ─── Social format export ──────────────────────────────────────
@@ -174,7 +195,7 @@ SOCIAL_FORMATS = {
 
 class SocialExportPayload(BaseModel):
     video_url: str
-    format:    str = "youtube"   # key from SOCIAL_FORMATS
+    format:    str = "youtube"
     title:     str = ""
     tags:      list[str] = []
 
@@ -197,7 +218,6 @@ def social_export(payload: SocialExportPayload):
     out_path = out_dir / out_name
     w, h     = fmt["w"], fmt["h"]
 
-    # Scale + pad to target dimensions (letter/pillar box with black)
     vf = (
         f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
         f"pad={w}:{h}:-1:-1:color=black,setsar=1"
@@ -216,7 +236,6 @@ def social_export(payload: SocialExportPayload):
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=f"ffmpeg error:\n{result.stderr}")
 
-    # Write metadata sidecar
     meta_path = out_dir / f"{payload.format}_{ts}_{vid_path.stem}_meta.txt"
     meta_path.write_text(
         f"Title: {payload.title or vid_path.stem}\n"
@@ -228,12 +247,12 @@ def social_export(payload: SocialExportPayload):
     )
 
     return {
-        "success":   True,
-        "videoUrl":  "/output/social/" + out_name,
-        "metaUrl":   "/output/social/" + meta_path.name,
-        "format":    payload.format,
-        "note":      fmt["note"],
-        "size":      f"{w}x{h}",
+        "success":  True,
+        "videoUrl": "/output/social/" + out_name,
+        "metaUrl":  "/output/social/" + meta_path.name,
+        "format":   payload.format,
+        "note":     fmt["note"],
+        "size":     f"{w}x{h}",
     }
 
 

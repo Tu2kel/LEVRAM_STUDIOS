@@ -57,6 +57,7 @@
     .char-check input { accent-color:var(--gold); }
     .char-check label { font-size: 17px; color:#bbb; cursor:pointer; }
   </style>
+  <script src="config.js"></script>
 </head>
 <body>
 <div class="se-page">
@@ -257,7 +258,7 @@
 </div>
 
 <script>
-const BASE = "http://127.0.0.1:8000";
+const BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 let characters    = [];
 let activeBeat    = null;
 let currentConcept   = null;

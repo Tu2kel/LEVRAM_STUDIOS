@@ -32,6 +32,7 @@
     .vlib-dl:hover{ background: rgba(201,168,76,.1); }
     .vlib-empty   { color: var(--text-dim, #666); font-size: 16px; letter-spacing: 2px; text-transform: uppercase; padding: 20px 0; }
   </style>
+  <script src="config.js"></script>
 </head>
 <body>
 <div class="ex-page">
@@ -106,7 +107,7 @@
 </div>
 
 <script>
-const BASE = "http://127.0.0.1:8000";
+const BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 let allVideos   = [];
 let queueItems  = [];
 

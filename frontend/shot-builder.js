@@ -207,7 +207,7 @@ document
       setStatus("Building shot...");
 
       const res = await fetch(
-        "http://127.0.0.1:8000/ai/build-shot",
+        `${window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000"}/ai/build-shot`,
         {
           method: "POST",
           headers: {
@@ -318,7 +318,7 @@ document
     setStatus("Revising shot...");
 
     const res = await fetch(
-      "http://127.0.0.1:8000/ai/revise-shot",
+      `${window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000"}/ai/revise-shot`,
       {
         method: "POST",
         headers: {
@@ -487,7 +487,7 @@ async function loadLevramCharacters() {
   if (!select) return;
 
   try {
-    const res = await fetch("http://127.0.0.1:8000/characters");
+    const res = await fetch(`${window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000"}/characters`);
     const data = await res.json();
 
     const characters = Array.isArray(data)
@@ -542,7 +542,7 @@ async function loadLevramCharacters() {
         window.LEVRAM_ACTIVE_VOICE_PROFILE = primary.default_voice_profile;
 
         try {
-          const voiceRes = await fetch("http://127.0.0.1:8000/voices");
+          const voiceRes = await fetch(`${window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000"}/voices`);
           const voiceData = await voiceRes.json();
           const voices = voiceData.voices || [];
 
@@ -644,7 +644,7 @@ document.getElementById("btn-send-to-queue")?.addEventListener("click", async ()
       }
     };
 
-    const res = await fetch("http://127.0.0.1:8000/render-queue", {
+    const res = await fetch(`${window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000"}/render-queue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

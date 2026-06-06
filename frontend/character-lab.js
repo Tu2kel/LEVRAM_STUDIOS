@@ -1,4 +1,4 @@
-const BASE = "http://127.0.0.1:8000";
+const BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 // PHASE 8F.4 — track which character is being edited (null = new)
 let editingCharacterId = null;

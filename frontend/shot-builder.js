@@ -606,6 +606,31 @@ if (document.readyState === "loading") {
   loadLevramCharacters();
 }
 
+// ─── Story Engine → Shot Builder pipeline injection ───────────
+(function injectBeatFromStoryEngine() {
+  function tryInject() {
+    const raw = localStorage.getItem('levram-beat-inject');
+    if (!raw) return;
+    try {
+      const beat = JSON.parse(raw);
+      localStorage.removeItem('levram-beat-inject');
+      const descEl   = document.getElementById('shot-desc');
+      const scriptEl = document.getElementById('script-input');
+      const typeEl   = document.getElementById('shot-type');
+      if (descEl   && beat.description)    descEl.value    = beat.description;
+      if (scriptEl && beat.character_state) scriptEl.value = beat.character_state;
+      if (typeEl   && beat.shot_type)       typeEl.value   = beat.shot_type;
+      if (window.showTab) window.showTab('shot-builder');
+      setTimeout(() => setStatus(`Beat ${beat.beat_number}: "${beat.beat_title}" loaded — build your shot, then Send to Queue.`), 100);
+    } catch(e) {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInject);
+  } else {
+    tryInject();
+  }
+}());
+
 // ─── Send to Render Queue ─────────────────────────────────
 document.getElementById("btn-send-to-queue")?.addEventListener("click", async () => {
   const shotPrompt = document.getElementById("shot-prompt-input")?.value.trim() || "";

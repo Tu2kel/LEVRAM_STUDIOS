@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel
 
 router   = APIRouter()
@@ -329,6 +329,18 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
         "engine":   "fal_i2v",
         "source_image": image_url,
     }
+
+
+@router.post("/video/upload-image")
+async def upload_image_for_video(file: UploadFile = File(...)):
+    """Accept a logo/image file, save to output dir, return its server path for I2V."""
+    IMG_DIR = Path("output/renders/images")
+    IMG_DIR.mkdir(parents=True, exist_ok=True)
+    ext = Path(file.filename or "upload.png").suffix or ".png"
+    name = f"upload_{uuid.uuid4().hex[:10]}{ext}"
+    dest = IMG_DIR / name
+    dest.write_bytes(await file.read())
+    return {"success": True, "image_url": f"/output/renders/images/{name}"}
 
 
 @router.post("/video/image-to-video")

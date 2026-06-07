@@ -42,6 +42,8 @@
     .se-beat-desc { font-size: 16px; color:#888; line-height:1.5; }
     .se-beat-meta { display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
     .se-beat-tag  { font-size: 14px; letter-spacing:1px; text-transform:uppercase; background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.2); color:var(--gold); padding:2px 7px; border-radius:10px; }
+    .se-beat-send { margin-top:8px; padding:4px 10px; font-size:12px; letter-spacing:2px; text-transform:uppercase; background:rgba(201,168,76,0.12); border:1px solid rgba(201,168,76,0.35); color:var(--gold); border-radius:3px; cursor:pointer; font-family:Rajdhani,sans-serif; }
+    .se-beat-send:hover { background:rgba(201,168,76,0.22); border-color:var(--gold); }
     .se-dialogue  { background:rgba(0,0,0,0.5); border-left:3px solid rgba(201,168,76,0.4); padding:10px 14px; border-radius:0 4px 4px 0; }
     .se-dlg-char  { font-size: 15px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); margin-bottom:4px; }
     .se-dlg-line  { font-size: 18px; color:#e8d7a0; line-height:1.6; }
@@ -453,6 +455,7 @@ function renderBeatSheet(bs) {
               ${b.shot_type_hint ? `<span class="se-beat-tag">${b.shot_type_hint}</span>` : ""}
               ${b.duration_seconds ? `<span class="se-beat-tag">${b.duration_seconds}s</span>` : ""}
             </div>
+            <button class="se-beat-send" onclick="event.stopPropagation();sendBeatToShotBuilder(${JSON.stringify(b).replace(/"/g,'&quot;')})">→ Shot Builder</button>
           </div>
         `).join("")}
       </div>
@@ -472,6 +475,19 @@ function selectBeat(beat, el) {
   if (info) info.innerHTML = `<span style="color:#C9A84C;">Beat ${beat.beat_number}:</span> ${beat.beat_title}`;
   if (charSel) charSel.style.display = "flex";
   if (genBtn)  genBtn.style.display = "block";
+}
+
+// ─── Pipeline: Send beat → Shot Builder ──────────────────────
+function sendBeatToShotBuilder(beat) {
+  localStorage.setItem('levram-beat-inject', JSON.stringify({
+    description:    beat.description    || '',
+    beat_title:     beat.beat_title     || '',
+    shot_type:      beat.shot_type_hint || '',
+    character_state: beat.character_state || '',
+    emotional_note: beat.emotional_note || '',
+    beat_number:    beat.beat_number    || '',
+  }));
+  window.location.href = 'index.html';
 }
 
 // ─── Generate Dialogue ────────────────────────────────────────

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEVRAM — Title Sequence Builder</title>
+  <link rel="stylesheet" href="app.css" />
+  <script src="config.js"></script>
+  <style>
+    :root { --gold:#C9A84C; --gold-dim:rgba(201,168,76,0.15); --border:rgba(201,168,76,0.2); }
+    *     { box-sizing:border-box; }
+    body  { background:#09080f; color:#c9a84c; font-family:Rajdhani,sans-serif; margin:0; min-height:100vh; }
+
+    .ts-header { display:flex; align-items:center; gap:14px; padding:12px 20px; background:rgba(0,0,0,0.85); border-bottom:2px solid rgba(201,168,76,0.25); }
+    .ts-logo   { font-size:19px; letter-spacing:5px; text-transform:uppercase; color:#f9f295; }
+    .ts-sub    { font-size:13px; color:#666; letter-spacing:2px; }
+    .ts-back   { margin-left:auto; border:1px solid var(--border); background:#0a0918; color:var(--gold); padding:7px 14px; font-size:13px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; font-family:Rajdhani,sans-serif; }
+
+    .ts-body   { display:grid; grid-template-columns:380px 1fr; gap:0; height:calc(100vh - 57px); overflow:hidden; }
+
+    /* ── Left column ── */
+    .ts-left   { border-right:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; }
+    .ts-section { padding:16px; border-bottom:1px solid rgba(201,168,76,0.1); }
+    .ts-section-title { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:#f9f295; margin-bottom:12px; }
+
+    /* Drop zone */
+    .ts-drop   { border:2px dashed rgba(201,168,76,0.3); border-radius:6px; padding:30px 16px; text-align:center; cursor:pointer; transition:border-color .2s,background .2s; position:relative; }
+    .ts-drop:hover,.ts-drop.drag-over { border-color:var(--gold); background:rgba(201,168,76,0.06); }
+    .ts-drop input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .ts-drop-icon { font-size:32px; margin-bottom:8px; }
+    .ts-drop-label { font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#888; }
+    .ts-preview-img { width:100%; max-height:160px; object-fit:contain; border-radius:4px; border:1px solid var(--border); margin-top:10px; display:none; }
+
+    /* Presets */
+    .ts-preset-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .ts-preset { background:rgba(0,0,0,0.35); border:1px solid rgba(201,168,76,0.15); border-radius:4px; padding:10px; cursor:pointer; transition:border-color .15s,background .15s; }
+    .ts-preset:hover { border-color:rgba(201,168,76,0.4); }
+    .ts-preset.active { border-color:var(--gold); background:rgba(201,168,76,0.08); }
+    .ts-preset-name { font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#fff; margin-bottom:3px; }
+    .ts-preset-desc { font-size:11px; color:#666; line-height:1.4; }
+
+    /* Controls */
+    .ts-row  { display:flex; gap:8px; margin-bottom:10px; }
+    .ts-label { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#888; margin-bottom:5px; }
+    .ts-sel  { background:#0a0918; border:1px solid var(--border); color:var(--gold); padding:7px 10px; font-size:13px; font-family:Rajdhani,sans-serif; border-radius:3px; flex:1; }
+    .ts-sel option { background:#0a0918; }
+    .ts-textarea { background:#0a0918; border:1px solid var(--border); color:#ccc; padding:8px 10px; font-size:13px; font-family:Rajdhani,sans-serif; border-radius:3px; width:100%; resize:vertical; min-height:64px; }
+    .ts-btn  { width:100%; padding:13px; font-size:14px; letter-spacing:3px; text-transform:uppercase; background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05)); border:1px solid rgba(201,168,76,0.5); color:var(--gold); cursor:pointer; font-family:Rajdhani,sans-serif; font-weight:700; border-radius:4px; transition:background .2s; margin-top:6px; }
+    .ts-btn:hover:not(:disabled) { background:rgba(201,168,76,0.2); }
+    .ts-btn:disabled { opacity:.45; cursor:not-allowed; }
+    .ts-status { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:#888; margin-top:10px; text-align:center; min-height:18px; }
+
+    /* ── Right column ── */
+    .ts-right  { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; overflow-y:auto; gap:24px; }
+    .ts-result { display:none; flex-direction:column; align-items:center; gap:16px; width:100%; max-width:680px; }
+    .ts-result video { width:100%; border-radius:6px; border:1px solid var(--border); background:#000; }
+    .ts-result-title { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:#f9f295; align-self:flex-start; }
+    .ts-dl-btn { padding:9px 22px; font-size:12px; letter-spacing:3px; text-transform:uppercase; background:rgba(201,168,76,0.12); border:1px solid rgba(201,168,76,0.4); color:var(--gold); cursor:pointer; font-family:Rajdhani,sans-serif; text-decoration:none; border-radius:3px; }
+    .ts-empty { color:#333; font-size:13px; letter-spacing:3px; text-transform:uppercase; text-align:center; }
+    .ts-empty-icon { font-size:64px; margin-bottom:16px; opacity:.3; }
+    .ts-spinner { width:48px; height:48px; border:3px solid rgba(201,168,76,0.15); border-top-color:var(--gold); border-radius:50%; animation:spin .9s linear infinite; display:none; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="ts-header">
+  <div>
+    <div class="ts-logo">LEVRAM · STUDIOS</div>
+    <div class="ts-sub">Title Sequence Builder — Logo / Intro Animation</div>
+  </div>
+  <button class="ts-back" onclick="window.location.href='index.html'">← Main Studio</button>
+</div>
+
+<div class="ts-body">
+
+  <!-- ── LEFT: Controls ── -->
+  <div class="ts-left">
+
+    <!-- Upload -->
+    <div class="ts-section">
+      <div class="ts-section-title">1. Logo / Image</div>
+      <div class="ts-drop" id="ts-drop" ondragover="tsDragOver(event)" ondragleave="tsDragLeave(event)" ondrop="tsDrop(event)">
+        <input type="file" id="ts-file" accept="image/*" onchange="tsFileChosen(this)">
+        <div class="ts-drop-icon">🎬</div>
+        <div class="ts-drop-label">Drop image or click to upload</div>
+        <div style="font-size:11px;color:#444;margin-top:4px;letter-spacing:1px;">PNG · JPG · WEBP</div>
+      </div>
+      <img id="ts-img-preview" class="ts-preview-img" alt="Preview" />
+    </div>
+
+    <!-- Presets -->
+    <div class="ts-section">
+      <div class="ts-section-title">2. Motion Style</div>
+      <div class="ts-preset-grid" id="ts-preset-grid">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+
+    <!-- Custom prompt override -->
+    <div class="ts-section">
+      <div class="ts-section-title">3. Custom Motion Prompt (optional)</div>
+      <textarea id="ts-custom-prompt" class="ts-textarea" placeholder="Describe the movement — overrides the preset prompt if filled in…"></textarea>
+    </div>
+
+    <!-- Engine + Duration -->
+    <div class="ts-section">
+      <div class="ts-section-title">4. Engine &amp; Duration</div>
+      <div class="ts-row">
+        <div style="flex:1">
+          <div class="ts-label">Engine</div>
+          <select id="ts-engine" class="ts-sel">
+            <option value="wan21_i2v">Wan 2.1 1.3B — Fast</option>
+            <option value="wan21_14b_i2v" selected>Wan 2.1 14B — Best Quality</option>
+            <option value="hunyuan_i2v">HunyuanVideo — Cinematic</option>
+          </select>
+        </div>
+        <div style="width:110px">
+          <div class="ts-label">Duration</div>
+          <select id="ts-duration" class="ts-sel">
+            <option value="3">3 sec</option>
+            <option value="5" selected>5 sec</option>
+            <option value="8">8 sec</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="ts-btn" id="ts-gen-btn" onclick="tsGenerate()" disabled>Generate Title Sequence</button>
+      <div class="ts-status" id="ts-status"></div>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT: Result ── -->
+  <div class="ts-right">
+    <div class="ts-spinner" id="ts-spinner"></div>
+    <div class="ts-empty" id="ts-empty">
+      <div class="ts-empty-icon">🎥</div>
+      Upload your logo, choose a style,<br>hit Generate.
+    </div>
+    <div class="ts-result" id="ts-result">
+      <div class="ts-result-title">Your Title Sequence</div>
+      <video id="ts-video" controls loop></video>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <a id="ts-dl" class="ts-dl-btn" download>Download MP4</a>
+        <button class="ts-dl-btn" onclick="tsGenerate()" style="cursor:pointer;">Regenerate</button>
+      </div>
+      <div id="ts-result-prompt" style="font-size:11px;color:#444;letter-spacing:1px;line-height:1.5;text-align:center;max-width:500px;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const TS_BASE = window.LEVRAM_CONFIG?.api || 'http://127.0.0.1:8000';
+
+const TS_PRESETS = [
+  {
+    name: 'Epic Logo Reveal',
+    desc: 'Dramatic zoom with light rays',
+    prompt: 'slow dramatic zoom into logo, radiant golden light rays emanating outward, lens flare, god rays, epic cinematic reveal, particles floating in light beam, camera slowly pushing in',
+  },
+  {
+    name: 'Cosmic Emergence',
+    desc: 'Stars & deep space materializing',
+    prompt: 'deep space background, stars materializing and swirling, logo emerging from cosmic darkness, nebula colors, slow camera drift, galaxy forming, ethereal glow pulsing',
+  },
+  {
+    name: 'Paramount Clouds',
+    desc: 'Clouds parting, logo revealed',
+    prompt: 'dramatic storm clouds slowly parting to reveal logo, rays of light breaking through clouds, cinematic sky, epic orchestral atmosphere, slow zoom, golden hour lighting',
+  },
+  {
+    name: 'Gold Surge',
+    desc: 'Liquid gold particles flowing',
+    prompt: 'liquid gold particles flowing and swirling around logo, metallic sheen, luxury cinematic reveal, warm amber light, slow pan, golden smoke wisps curling upward',
+  },
+  {
+    name: 'Power Surge',
+    desc: 'Electric arcs & energy',
+    prompt: 'electric arcs sparking around edges of logo, power surge energy rings expanding outward, high-voltage atmosphere, chrome and silver gleam, dramatic lighting, slow zoom',
+  },
+];
+
+let tsUploadedImageUrl = null;
+let tsActivePreset = null;
+
+// ── Preset rendering ──────────────────────────────────────────
+(function() {
+  const grid = document.getElementById('ts-preset-grid');
+  grid.innerHTML = TS_PRESETS.map((p, i) => `
+    <div class="ts-preset" id="ts-preset-${i}" onclick="tsSelectPreset(${i})">
+      <div class="ts-preset-name">${p.name}</div>
+      <div class="ts-preset-desc">${p.desc}</div>
+    </div>
+  `).join('');
+  tsSelectPreset(0);
+}());
+
+function tsSelectPreset(idx) {
+  document.querySelectorAll('.ts-preset').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`ts-preset-${idx}`);
+  if (el) el.classList.add('active');
+  tsActivePreset = TS_PRESETS[idx];
+}
+
+// ── Drop zone ─────────────────────────────────────────────────
+function tsDragOver(e) { e.preventDefault(); document.getElementById('ts-drop').classList.add('drag-over'); }
+function tsDragLeave(e) { document.getElementById('ts-drop').classList.remove('drag-over'); }
+function tsDrop(e) {
+  e.preventDefault();
+  document.getElementById('ts-drop').classList.remove('drag-over');
+  const file = e.dataTransfer?.files?.[0];
+  if (file && file.type.startsWith('image/')) tsUploadFile(file);
+}
+function tsFileChosen(input) {
+  const file = input.files?.[0];
+  if (file) tsUploadFile(file);
+}
+
+async function tsUploadFile(file) {
+  tsSetStatus('Uploading image…');
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await window.levFetch(`${TS_BASE}/video/upload-image`, { method: 'POST', body: form });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || 'Upload failed');
+    tsUploadedImageUrl = data.image_url;
+    // Show preview
+    const preview = document.getElementById('ts-img-preview');
+    preview.src = TS_BASE + data.image_url;
+    preview.style.display = 'block';
+    document.getElementById('ts-gen-btn').disabled = false;
+    tsSetStatus('Image ready — choose a style and generate.');
+  } catch(e) {
+    tsSetStatus('Upload failed: ' + e.message);
+  }
+}
+
+// ── Generate ──────────────────────────────────────────────────
+async function tsGenerate() {
+  if (!tsUploadedImageUrl) { tsSetStatus('Upload a logo image first.'); return; }
+  const preset = tsActivePreset || TS_PRESETS[0];
+  const customPrompt = document.getElementById('ts-custom-prompt').value.trim();
+  const prompt  = customPrompt || preset.prompt;
+  const model   = document.getElementById('ts-engine').value;
+  const duration = parseInt(document.getElementById('ts-duration').value, 10);
+
+  document.getElementById('ts-gen-btn').disabled = true;
+  document.getElementById('ts-empty').style.display = 'none';
+  document.getElementById('ts-result').style.display = 'none';
+  document.getElementById('ts-spinner').style.display = 'block';
+  tsSetStatus(`Generating via ${model} — this may take 1–3 minutes…`);
+
+  try {
+    const res = await window.levFetch(`${TS_BASE}/video/image-to-video`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_url: tsUploadedImageUrl, prompt, model, duration }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || 'Generation failed');
+
+    const videoUrl = TS_BASE + data.outputUrl;
+    const vid = document.getElementById('ts-video');
+    vid.src = videoUrl;
+    document.getElementById('ts-dl').href = videoUrl;
+    document.getElementById('ts-dl').download = data.outputUrl.split('/').pop();
+    document.getElementById('ts-result-prompt').textContent = 'Prompt: ' + (customPrompt || preset.name + ' — ' + prompt.slice(0, 120));
+    document.getElementById('ts-result').style.display = 'flex';
+    tsSetStatus('Title sequence ready!');
+  } catch(e) {
+    tsSetStatus('Error: ' + e.message);
+    document.getElementById('ts-empty').style.display = 'block';
+  } finally {
+    document.getElementById('ts-spinner').style.display = 'none';
+    document.getElementById('ts-gen-btn').disabled = false;
+  }
+}
+
+function tsSetStatus(msg) { document.getElementById('ts-status').textContent = msg; }
+</script>
+</body>
+</html>

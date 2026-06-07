@@ -56,6 +56,10 @@
           window.open("settings.html", "_blank");
           return;
         }
+        if (tab === "title-seq") {
+          window.open("title-sequence.html", "_blank");
+          return;
+        }
         if (tab === "voice-clone") {
           window.open("voice-clone.html", "_blank");
           return;

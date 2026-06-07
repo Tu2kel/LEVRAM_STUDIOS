@@ -41,6 +41,7 @@ app.add_middleware(
 )
 
 app.mount("/output", StaticFiles(directory="output"), name="output")
+app.mount("/frontend", StaticFiles(directory="frontend", html=True), name="frontend")
 
 app.include_router(tts_router)
 app.include_router(voice_fx_router)

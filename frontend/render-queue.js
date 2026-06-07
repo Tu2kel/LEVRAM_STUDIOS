@@ -28,8 +28,6 @@ async function loadRenderQueue() {
 
     renderQueue = data.queue || data.jobs || data.items || [];
 
-    console.log("RQ API DATA:", data);
-    console.log("RQ LOADED:", renderQueue.length);
   } catch (e) {
     console.error("RQ API failed:", e);
     renderQueue = [];

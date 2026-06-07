@@ -32,6 +32,22 @@ for _d in ["output/renders/images", "output/renders/keyframes",
            "output/videos", "output/music", "data"]:
     Path(_d).mkdir(parents=True, exist_ok=True)
 
+# ── Startup key validation ─────────────────────────────────────
+_REQUIRED_KEYS = {
+    "FAL_KEY":          "fal.ai image/video generation",
+    "OPENAI_API_KEY":   "GPT-4o-mini (shot builder, story engine)",
+    "ELEVENLABS_API_KEY": "ElevenLabs voice generation",
+}
+for _key, _feature in _REQUIRED_KEYS.items():
+    if not os.getenv(_key):
+        print(f"[LEVRAM] WARNING: {_key} not set — {_feature} will fail at runtime.")
+
+if not os.getenv("MONGODB_URL"):
+    print("[LEVRAM] INFO: MONGODB_URL not set — using JSON file fallback for all storage.")
+
+if not os.getenv("LEVRAM_PASSWORD"):
+    print("[LEVRAM] INFO: LEVRAM_PASSWORD not set — API is open (set this in Railway Variables).")
+
 app = FastAPI()
 
 # ── Password gate middleware ───────────────────────────────────

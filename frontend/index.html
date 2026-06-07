@@ -414,27 +414,32 @@
             <div id="ig-video-section" style="display:none;">
               <div class="field-group">
                 <div class="field-label">Video Engine</div>
-                <div class="cl-voice-toggle" id="ig-video-engine-toggle">
-                  <button class="cl-vtoggle-btn active" data-vengine="wan">Wan2.1 (Local)</button>
-                  <button class="cl-vtoggle-btn" data-vengine="kling" title="Requires Kling API key" style="opacity:0.45;">Kling 2.0</button>
-                  <button class="cl-vtoggle-btn" data-vengine="runway" title="Requires Runway API key" style="opacity:0.45;">Runway Gen-4</button>
+                <div class="cl-voice-toggle" id="ig-video-engine-toggle" style="flex-wrap:wrap;gap:4px;">
+                  <button class="cl-vtoggle-btn active" data-vengine="wan21">Wan 2.1 — Fast</button>
+                  <button class="cl-vtoggle-btn" data-vengine="wan21_14b">Wan 2.1 — Best</button>
+                  <button class="cl-vtoggle-btn" data-vengine="hunyuan">HunyuanVideo</button>
+                  <button class="cl-vtoggle-btn" data-vengine="cogvideox">CogVideoX 5B</button>
+                  <button class="cl-vtoggle-btn" data-vengine="wan" title="Requires local ComfyUI running">Local (ComfyUI)</button>
                 </div>
-                <div id="ig-video-engine-hint" class="field-hint" style="margin-top:4px;">Wan2.1 1.3B T2V via ComfyUI. Generates ~5s clips.</div>
+                <div id="ig-video-engine-hint" class="field-hint" style="margin-top:4px;">All cloud engines run via fal.ai — FAL_KEY required.</div>
               </div>
-              <div class="field-group">
-                <div class="field-label">Steps</div>
-                <input type="range" id="ig-wan-steps" min="10" max="50" value="25" oninput="this.nextElementSibling.textContent=this.value" style="width:100%;" />
-                <span style="font-size: 16px;color:var(--text-dim);">25</span>
-              </div>
-              <div class="field-group" style="display:flex;gap:8px;">
-                <div style="flex:1;">
-                  <div class="field-label">CFG Scale</div>
-                  <input type="range" id="ig-wan-cfg" min="1" max="10" step="0.5" value="6" oninput="this.nextElementSibling.textContent=this.value" style="width:100%;"/>
-                  <span style="font-size: 16px;color:var(--text-dim);">6</span>
+              <!-- ComfyUI-only controls (shown only when Local engine selected) -->
+              <div id="ig-wan-local-controls" style="display:none;">
+                <div class="field-group">
+                  <div class="field-label">Steps</div>
+                  <input type="range" id="ig-wan-steps" min="10" max="50" value="25" oninput="this.nextElementSibling.textContent=this.value" style="width:100%;" />
+                  <span style="font-size:16px;color:var(--text-dim);">25</span>
                 </div>
-                <div style="flex:1;">
-                  <div class="field-label">Seed</div>
-                  <input type="number" id="ig-wan-seed" placeholder="Random" style="width:100%;background:#111228;border:1px solid #333;color:#fff;padding:5px;border-radius:2px;font-size: 17px;" />
+                <div class="field-group" style="display:flex;gap:8px;">
+                  <div style="flex:1;">
+                    <div class="field-label">CFG Scale</div>
+                    <input type="range" id="ig-wan-cfg" min="1" max="10" step="0.5" value="6" oninput="this.nextElementSibling.textContent=this.value" style="width:100%;"/>
+                    <span style="font-size:16px;color:var(--text-dim);">6</span>
+                  </div>
+                  <div style="flex:1;">
+                    <div class="field-label">Seed</div>
+                    <input type="number" id="ig-wan-seed" placeholder="Random" style="width:100%;background:#111228;border:1px solid #333;color:#fff;padding:5px;border-radius:2px;font-size:17px;" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -817,6 +822,25 @@
               <textarea id="character-personality" placeholder="Personality"></textarea>
               <textarea id="character-notes" placeholder="Notes"></textarea>
               <button id="save-character-btn" type="button" onclick="saveCharacter()">Save Character</button>
+
+              <!-- Reference Images + LoRA Training (inline) -->
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(201,168,76,0.15);">
+                <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Reference Images — LoRA Training</div>
+                <input type="file" id="cl-ref-upload" multiple accept="image/*" style="display:none;" onchange="clUploadReferences()" />
+                <button type="button" onclick="document.getElementById('cl-ref-upload').click()"
+                        style="width:100%;background:rgba(0,0,0,0.3);border:1px dashed rgba(201,168,76,0.3);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:7px;border-radius:2px;cursor:pointer;margin-bottom:6px;">
+                  + Upload Photos
+                </button>
+                <div id="cl-ref-thumbs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:3px;margin-bottom:6px;"></div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span id="cl-ref-count" style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">0 images</span>
+                  <button id="cl-train-btn" type="button" onclick="clTrainLora()" disabled
+                          style="flex:1;background:rgba(139,105,20,0.3);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:5px 8px;border-radius:2px;cursor:pointer;opacity:0.5;">
+                    Train LoRA (need 5+)
+                  </button>
+                </div>
+                <div id="cl-lora-status" style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-top:5px;min-height:14px;"></div>
+              </div>
             </div>
 
             <div class="character-list">

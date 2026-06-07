@@ -1,3 +1,5 @@
+const SB_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
+
 function loadSceneIntoEditor(scene) {
         selectedSceneId = scene.id;
 
@@ -66,8 +68,8 @@ function loadSceneIntoEditor(scene) {
             };
 
             const saveUrl = selectedSceneId
-              ? `http://localhost:8000/scene/${selectedSceneId}`
-              : "http://localhost:8000/save-scene";
+              ? `${SB_BASE}/scene/${selectedSceneId}`
+              : `${SB_BASE}/save-scene`;
 
             const saveMethod = selectedSceneId ? "PUT" : "POST";
 
@@ -115,7 +117,8 @@ function renderCharacterPanel(character) {
   const appearance = character.appearance || "";
   const wardrobe = character.wardrobe || "";
   const voice = character.default_voice_profile || "";
-  const imgUrl = character.reference_image_url || "";
+  const rawImgUrl = character.reference_image_url || "";
+  const imgUrl = rawImgUrl.startsWith("http") ? rawImgUrl : (rawImgUrl ? SB_BASE + rawImgUrl : "");
 
   panel.style.display = "block";
   panel.innerHTML = `
@@ -207,7 +210,7 @@ document
       setStatus("Building shot...");
 
       const res = await levFetch(
-        `${window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000"}/ai/build-shot`,
+        `${SB_BASE}/ai/build-shot`,
         {
           method: "POST",
           headers: {
@@ -237,7 +240,6 @@ document
 
       const data = await res.json();
 
-      console.log("AI BUILD RESPONSE:", data);
 
       if (!res.ok || !data.success) {
         throw new Error(data.error || data.message || "AI build failed");
@@ -318,7 +320,7 @@ document
     setStatus("Revising shot...");
 
     const res = await levFetch(
-      `${window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000"}/ai/revise-shot`,
+      `${SB_BASE}/ai/revise-shot`,
       {
         method: "POST",
         headers: {
@@ -487,7 +489,7 @@ async function loadLevramCharacters() {
   if (!select) return;
 
   try {
-    const res = await levFetch(`${window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000"}/characters`);
+    const res = await levFetch(`${SB_BASE}/characters`);
     const data = await res.json();
 
     const characters = Array.isArray(data)
@@ -532,9 +534,6 @@ async function loadLevramCharacters() {
       // PHASE 8H — expose full character record for Shot Builder injection
       window.LEVRAM_ACTIVE_CHARACTER_RECORD = primary || null;
 
-      console.log("PHASE 8D PRIMARY CHARACTER:", primary || "None");
-      console.log("PHASE 8D SECONDARY CHARACTER:", secondary || "None");
-      console.log("PHASE 8D CHARACTER PROMPT:", window.LEVRAM_SELECTED_CHARACTER_PROMPT);
 
       renderCharacterPanel(primary);
 
@@ -542,7 +541,7 @@ async function loadLevramCharacters() {
         window.LEVRAM_ACTIVE_VOICE_PROFILE = primary.default_voice_profile;
 
         try {
-          const voiceRes = await levFetch(`${window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000"}/voices`);
+          const voiceRes = await levFetch(`${SB_BASE}/voices`);
           const voiceData = await voiceRes.json();
           const voices = voiceData.voices || [];
 
@@ -553,15 +552,7 @@ async function loadLevramCharacters() {
           window.LEVRAM_ACTIVE_VOICE_RECORD = null;
         }
 
-        console.log(
-          "PHASE 8F ACTIVE VOICE PROFILE:",
-          window.LEVRAM_ACTIVE_VOICE_PROFILE
-        );
 
-        console.log(
-          "PHASE 8F ACTIVE VOICE RECORD:",
-          window.LEVRAM_ACTIVE_VOICE_RECORD
-        );
       } else {
         window.LEVRAM_ACTIVE_VOICE_PROFILE = "";
         window.LEVRAM_ACTIVE_VOICE_RECORD = null;
@@ -574,7 +565,6 @@ async function loadLevramCharacters() {
       secondarySelect.addEventListener("change", updateSelectedCharacterPrompts);
     }
 
-    console.log("PHASE 8C CHARACTERS LOADED:", characters.length);
   } catch (err) {
     console.error("PHASE 8C CHARACTER LOAD FAILED:", err);
   }
@@ -644,7 +634,7 @@ document.getElementById("btn-send-to-queue")?.addEventListener("click", async ()
       }
     };
 
-    const res = await levFetch(`${window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000"}/render-queue`, {
+    const res = await levFetch(`${SB_BASE}/render-queue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

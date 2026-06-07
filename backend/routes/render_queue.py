@@ -8,6 +8,58 @@ import uuid
 from backend.db import render_queue_col
 from backend.services.comfy_service import generate_comfy_keyframe
 
+def _generate_keyframe_with_fallback(item: dict) -> dict:
+    """Try ComfyUI first; fall back to fal.ai FLUX if ComfyUI is unreachable."""
+    try:
+        return generate_comfy_keyframe(item)
+    except Exception as comfy_err:
+        print(f"[LEVRAM] ComfyUI keyframe failed ({comfy_err}), falling back to fal.ai FLUX")
+        import os, uuid
+        from pathlib import Path
+        try:
+            import fal_client
+        except ImportError:
+            raise RuntimeError("fal-client not installed and ComfyUI unavailable") from comfy_err
+
+        api_key = os.getenv("FAL_KEY")
+        if not api_key:
+            raise RuntimeError("FAL_KEY not set and ComfyUI unavailable") from comfy_err
+
+        shot = item.get("shot") or item
+        prompt = (
+            shot.get("shotPrompt") or shot.get("shot_prompt") or
+            shot.get("shotDesc") or shot.get("shot_description") or
+            "cinematic scene, dramatic lighting, high detail, film still"
+        )
+        character = shot.get("character") or shot.get("voice_character") or ""
+        if character:
+            prompt = f"{character}, {prompt}"
+
+        os.environ["FAL_KEY"] = api_key
+        result = fal_client.run(
+            "fal-ai/flux/dev",
+            arguments={"prompt": prompt, "image_size": "landscape_16_9", "num_inference_steps": 28},
+        )
+        image_url = result["images"][0]["url"] if result.get("images") else None
+        if not image_url:
+            raise RuntimeError("fal.ai returned no image") from comfy_err
+
+        import urllib.request as ur
+        rid = uuid.uuid4().hex[:8]
+        out_dir = Path("output/renders/keyframes")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"kf_fal_{rid}.png"
+        local_path = out_dir / filename
+        ur.urlretrieve(image_url, local_path)
+        out_url = f"/output/renders/keyframes/{filename}"
+        return {
+            "renderId": rid,
+            "outputPath": str(local_path),
+            "outputUrl": out_url,
+            "promptUsed": prompt,
+            "comfyPromptId": "",
+        }
+
 router = APIRouter()
 
 QUEUE_FILE = Path("data/render_queue.json")
@@ -172,7 +224,7 @@ async def generate_keyframe(item_id: str):
         item["updatedAt"] = _now()
         await render_queue_col.update_one({"id": item_id}, {"$set": {"status": "rendering", "updatedAt": _now()}})
 
-        render_result = generate_comfy_keyframe(item)
+        render_result = _generate_keyframe_with_fallback(item)
         updates = {
             "status":           "complete",
             "renderId":         render_result["renderId"],
@@ -194,7 +246,7 @@ async def generate_keyframe(item_id: str):
         if item["id"] == item_id:
             item["status"] = "rendering"
             item["updatedAt"] = _now()
-            render_result = generate_comfy_keyframe(item)
+            render_result = _generate_keyframe_with_fallback(item)
             item.update({
                 "status":           "complete",
                 "renderId":         render_result["renderId"],

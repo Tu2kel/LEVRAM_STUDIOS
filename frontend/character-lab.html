@@ -153,7 +153,7 @@
         </div>
       </section>
 
-      <!-- RIGHT — Visual Test -->
+      <!-- RIGHT — Visual Test + LoRA Training -->
       <section class="cl-panel cl-preview-panel">
         <div class="cl-panel-header">
           <span class="cl-panel-label">Character Visual Test</span>
@@ -163,6 +163,38 @@
           <textarea id="character-preview-prompt" placeholder="Generated image prompt will appear here..."></textarea>
           <div id="character-preview-status" class="character-preview-status"></div>
           <img id="character-preview-img" class="character-preview-img" alt="Character preview" style="display:none;" />
+        </div>
+
+        <!-- ── Reference Images + LoRA Training ── -->
+        <div class="cl-panel-header" style="margin-top:16px;">
+          <span class="cl-panel-label">Reference Images + LoRA Training</span>
+        </div>
+        <div class="cl-preview-body" id="cl-lora-section">
+          <div style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">
+            Upload 5–20 photos of this character. LEVRAM will train a LoRA to lock their face, build, and style into every generation.
+          </div>
+
+          <!-- Upload trigger -->
+          <input type="file" id="cl-ref-upload" multiple accept="image/*" style="display:none;" onchange="clUploadReferences()" />
+          <button type="button" onclick="document.getElementById('cl-ref-upload').click()"
+                  style="width:100%;background:rgba(0,0,0,0.4);border:1px dashed rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:10px;border-radius:3px;cursor:pointer;margin-bottom:8px;">
+            + Upload Reference Photos
+          </button>
+
+          <!-- Thumbnail grid -->
+          <div id="cl-ref-thumbs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:4px;margin-bottom:8px;"></div>
+
+          <!-- Count + Train button -->
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span id="cl-ref-count" style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">0 images</span>
+            <button id="cl-train-btn" type="button" onclick="clTrainLora()" disabled
+                    style="flex:1;background:linear-gradient(90deg,rgba(139,105,20,0.4),rgba(201,168,76,0.4));border:1px solid rgba(201,168,76,0.5);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;opacity:0.5;">
+              Train LoRA (need 5+)
+            </button>
+          </div>
+
+          <!-- LoRA status -->
+          <div id="cl-lora-status" style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-top:6px;min-height:16px;"></div>
         </div>
       </section>
 

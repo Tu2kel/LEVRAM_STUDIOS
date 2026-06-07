@@ -8,9 +8,11 @@ const IG_ENGINE_HINTS = {
 };
 
 const IG_VIDEO_ENGINE_HINTS = {
-  wan:    "Wan2.1 1.3B T2V via ComfyUI. Generates ~5s clips. Free.",
-  kling:  "Kling 2.0 — requires paid API key.",
-  runway: "Runway Gen-4 — requires paid API key.",
+  wan:        "Wan 2.1 1.3B — local ComfyUI. Free, requires ComfyUI running.",
+  wan21:      "Wan 2.1 1.3B — fal.ai cloud. Fast, ~3 min.",
+  wan21_14b:  "Wan 2.1 14B — fal.ai cloud. Best quality, ~8 min.",
+  hunyuan:    "HunyuanVideo — fal.ai cloud. Strong motion, ~6 min.",
+  cogvideox:  "CogVideoX 5B — fal.ai cloud. Cinematic style, ~5 min.",
 };
 
 let igActiveEngine      = localStorage.getItem("ig-engine")       || "dalle3";
@@ -84,24 +86,31 @@ function igInitVideoEngineToggle() {
   const toggle = document.getElementById("ig-video-engine-toggle");
   if (!toggle) return;
 
+  // Default to wan21 (fal.ai cloud) if stored value is old "wan" non-local
+  if (igActiveVideoEngine === "kling" || igActiveVideoEngine === "runway") {
+    igActiveVideoEngine = "wan21";
+    localStorage.setItem("ig-video-engine", igActiveVideoEngine);
+  }
+
+  function applyVideoEngine(engine) {
+    toggle.querySelectorAll(".cl-vtoggle-btn").forEach(b => b.classList.remove("active"));
+    const active = toggle.querySelector(`[data-vengine="${engine}"]`);
+    if (active) active.classList.add("active");
+    const hint = document.getElementById("ig-video-engine-hint");
+    if (hint) hint.textContent = IG_VIDEO_ENGINE_HINTS[engine] || "";
+    const localControls = document.getElementById("ig-wan-local-controls");
+    if (localControls) localControls.style.display = engine === "wan" ? "block" : "none";
+  }
+
   toggle.querySelectorAll(".cl-vtoggle-btn").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.vengine === igActiveVideoEngine);
     btn.addEventListener("click", () => {
-      if (btn.style.opacity === "0.45") {
-        alert("This video engine requires a paid API key. Set it in .env and re-enable.");
-        return;
-      }
-      toggle.querySelectorAll(".cl-vtoggle-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
       igActiveVideoEngine = btn.dataset.vengine;
       localStorage.setItem("ig-video-engine", igActiveVideoEngine);
-      const hint = document.getElementById("ig-video-engine-hint");
-      if (hint) hint.textContent = IG_VIDEO_ENGINE_HINTS[igActiveVideoEngine] || "";
+      applyVideoEngine(igActiveVideoEngine);
     });
   });
 
-  const hint = document.getElementById("ig-video-engine-hint");
-  if (hint) hint.textContent = IG_VIDEO_ENGINE_HINTS[igActiveVideoEngine] || "";
+  applyVideoEngine(igActiveVideoEngine);
 }
 
 // ─── Character select ─────────────────────────────────────
@@ -196,25 +205,36 @@ async function igGenerateVideo() {
     return;
   }
 
-  if (igActiveVideoEngine !== "wan") {
-    if (statusEl) statusEl.textContent = "Paid video engines not yet enabled. Use Wan2.1.";
-    return;
-  }
+  const falCloudEngines = ["wan21", "wan21_14b", "hunyuan", "cogvideox"];
+  const isFalCloud = falCloudEngines.includes(igActiveVideoEngine);
+  const engineLabel = IG_VIDEO_ENGINE_HINTS[igActiveVideoEngine]?.split(" — ")[0] || igActiveVideoEngine;
 
-  if (statusEl) statusEl.textContent = "Generating Wan2.1 video… this can take 3-12 min.";
+  const etaMap = { wan21: "~3 min", wan21_14b: "~8 min", hunyuan: "~6 min", cogvideox: "~5 min", wan: "~5 min" };
+  if (statusEl) statusEl.textContent = `Generating via ${engineLabel} — ${etaMap[igActiveVideoEngine] || "a few minutes"}…`;
   if (btn) { btn.disabled = true; btn.textContent = "Generating Video…"; }
 
   try {
-    const res = await levFetch(`${IG_BASE}/video/generate-wan`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, character, aspect, steps, cfg, seed }),
-    });
+    let res, data;
 
-    const data = await res.json();
+    if (isFalCloud) {
+      res = await levFetch(`${IG_BASE}/video/generate-fal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, model: igActiveVideoEngine, aspect, duration: 5 }),
+      });
+    } else {
+      res = await levFetch(`${IG_BASE}/video/generate-wan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, character, aspect, steps, cfg, seed }),
+      });
+    }
+
+    data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Video generation failed");
 
-    const videoUrl    = IG_BASE + data.outputUrl;
+    const outPath  = data.outputUrl || data.videoUrl;
+    const videoUrl = IG_BASE + outPath;
     const resultBox   = document.getElementById("ig-result");
     const videoResult = document.getElementById("ig-video-result");
     const videoPlayer = document.getElementById("ig-video-player");
@@ -223,9 +243,9 @@ async function igGenerateVideo() {
     if (resultBox)   resultBox.style.display   = "none";
     if (videoResult) videoResult.style.display  = "block";
     if (videoPlayer) videoPlayer.src = videoUrl;
-    if (videoDl)     { videoDl.href = videoUrl; videoDl.download = data.outputUrl?.split("/").pop() || "levram_video.mp4"; }
+    if (videoDl)     { videoDl.href = videoUrl; videoDl.download = outPath?.split("/").pop() || "levram_video.mp4"; }
 
-    if (statusEl) statusEl.textContent = `Video ready — ${data.frames} frames @ ${data.fps}fps`;
+    if (statusEl) statusEl.textContent = `Video ready — ${engineLabel}`;
     await igLoadVideoGallery();
 
   } catch (err) {

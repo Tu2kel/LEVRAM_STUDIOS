@@ -63,7 +63,6 @@ async function generateCharacterPreview() {
     });
 
     const data = await res.json();
-    console.log("CHARACTER PREVIEW RESPONSE:", data);
 
     const imageUrl =
       data.image_url ||
@@ -98,23 +97,25 @@ async function generateCharacterPreview() {
     img.src = finalUrl;
     img.style.display = "block";
 
-    // PHASE 8G — persist reference image URL to the character record if one is being edited
+    // Persist preview image URL as relative path (strip host so it works on Railway)
     if (editingCharacterId) {
       try {
         const cache = window.LEVRAM_CHARACTERS_CACHE || [];
         const existing = cache.find(c => c.id === editingCharacterId);
         if (existing) {
-          const payload = { ...existing, reference_image_url: finalUrl };
+          const relativePath = finalUrl.startsWith("http")
+            ? finalUrl.replace(/^https?:\/\/[^/]+/, "")
+            : finalUrl;
+          const payload = { ...existing, reference_image_url: relativePath };
           await levFetch(`${BASE}/characters/${editingCharacterId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
           await loadCharacters();
-          console.log("PHASE 8G REFERENCE IMAGE SAVED:", finalUrl);
         }
       } catch (saveErr) {
-        console.warn("PHASE 8G could not save reference image to character:", saveErr);
+        console.error("Could not save reference image to character:", saveErr);
       }
     }
   } catch (err) {
@@ -146,7 +147,6 @@ window.saveCharacter = async function saveCharacter() {
     });
 
     const data = await res.json();
-    console.log("SAVE CHARACTER RESPONSE:", data);
 
     if (!res.ok) {
       if (saveBtn) saveBtn.textContent = "SAVE FAILED";
@@ -211,7 +211,6 @@ async function loadCharacters() {
       nameCounts[key] = (nameCounts[key] || 0) + 1;
     });
     Object.entries(nameCounts).forEach(([key, count]) => {
-      if (count > 1) console.warn(`PHASE 8F.4 DUPLICATE CHARACTER NAME: "${key}" appears ${count} times`);
     });
 
     if (!characters.length) {
@@ -297,7 +296,10 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
   const previewStatus = document.getElementById("character-preview-status");
   if (previewImg) {
     if (c.reference_image_url) {
-      previewImg.src = c.reference_image_url;
+      const refUrl = c.reference_image_url.startsWith("http")
+        ? c.reference_image_url
+        : BASE + c.reference_image_url;
+      previewImg.src = refUrl;
       previewImg.style.display = "block";
       if (previewStatus) previewStatus.textContent = "Reference image loaded ✔";
     } else {
@@ -307,7 +309,7 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
     }
   }
 
-  console.log("PHASE 8F.4 EDITING CHARACTER:", c.name, "id:", c.id);
+  clRefreshLoraPanel(c);
 };
 
 // PHASE 8F.4 — delete a character by id
@@ -337,6 +339,130 @@ window.newCharacter = function newCharacter() {
   const saveBtn = document.getElementById("save-character-btn");
   if (saveBtn) saveBtn.textContent = "Save Character";
 };
+
+// ── Reference Images + LoRA Training ──────────────────────────
+
+async function clUploadReferences() {
+  const input = document.getElementById("cl-ref-upload");
+  const files = Array.from(input?.files || []);
+  if (!files.length) return;
+
+  if (!editingCharacterId) {
+    levShowError("Save the character first, then upload reference images.");
+    input.value = "";
+    return;
+  }
+
+  const statusEl = document.getElementById("cl-lora-status");
+  if (statusEl) statusEl.textContent = `Uploading ${files.length} image(s)…`;
+
+  let uploadedCount = 0;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await levFetch(`${BASE}/characters/${editingCharacterId}/upload-reference`, {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (res.ok && data.success) uploadedCount++;
+    } catch (err) {
+      console.error("REF UPLOAD ERROR:", err);
+    }
+  }
+
+  input.value = "";
+  if (statusEl) statusEl.textContent = `Uploaded ${uploadedCount} of ${files.length}. Refreshing…`;
+  await loadCharacters();
+  const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
+  clRefreshLoraPanel(cached);
+}
+
+function clRefreshLoraPanel(character) {
+  const refs = character?.reference_images || [];
+  const thumbGrid = document.getElementById("cl-ref-thumbs");
+  const countEl   = document.getElementById("cl-ref-count");
+  const trainBtn  = document.getElementById("cl-train-btn");
+  const statusEl  = document.getElementById("cl-lora-status");
+
+  if (thumbGrid) {
+    thumbGrid.innerHTML = refs.map(url => {
+      const src = url.startsWith("http") ? url : BASE + url;
+      return `<img src="${src}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:2px;border:1px solid rgba(201,168,76,0.2);" />`;
+    }).join("");
+  }
+
+  const count = refs.length;
+  if (countEl) countEl.textContent = `${count} image${count !== 1 ? "s" : ""}`;
+
+  if (trainBtn) {
+    const ready = count >= 5;
+    trainBtn.disabled = !ready;
+    trainBtn.style.opacity = ready ? "1" : "0.5";
+    trainBtn.textContent = ready
+      ? (character?.lora_status === "ready" ? "Re-Train LoRA" : "Train LoRA")
+      : `Train LoRA (need ${5 - count} more)`;
+  }
+
+  if (statusEl && character?.lora_status) {
+    const labels = { ready: "LoRA READY ✔", training: "Training in progress…", failed: "Training failed — try again" };
+    statusEl.textContent = labels[character.lora_status] || "";
+    statusEl.style.color = character.lora_status === "ready" ? "var(--gold)" : "var(--text-dim)";
+  }
+}
+
+async function clTrainLora() {
+  if (!editingCharacterId) return;
+
+  const trainBtn = document.getElementById("cl-train-btn");
+  const statusEl = document.getElementById("cl-lora-status");
+
+  if (trainBtn) { trainBtn.disabled = true; trainBtn.textContent = "Starting training…"; }
+  if (statusEl) statusEl.textContent = "Submitting to fal.ai — training takes ~10 min…";
+
+  try {
+    const res = await levFetch(`${BASE}/characters/${editingCharacterId}/train-lora`, {
+      method: "POST",
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Training failed to start");
+
+    if (statusEl) statusEl.textContent = "Training started — poll status every 30s…";
+    clPollLoraStatus();
+  } catch (err) {
+    if (statusEl) { statusEl.textContent = err.message; statusEl.style.color = "#ff6b6b"; }
+    if (trainBtn) { trainBtn.disabled = false; trainBtn.textContent = "Retry Train LoRA"; }
+  }
+}
+
+let _loraStatusInterval = null;
+function clPollLoraStatus() {
+  if (_loraStatusInterval) clearInterval(_loraStatusInterval);
+  _loraStatusInterval = setInterval(async () => {
+    if (!editingCharacterId) { clearInterval(_loraStatusInterval); return; }
+    try {
+      const res  = await levFetch(`${BASE}/characters/${editingCharacterId}/lora-status`);
+      const data = await res.json();
+      const statusEl = document.getElementById("cl-lora-status");
+      if (data.lora_status === "ready") {
+        clearInterval(_loraStatusInterval);
+        if (statusEl) { statusEl.textContent = "LoRA READY ✔ — all future generations are character-locked"; statusEl.style.color = "var(--gold)"; }
+        await loadCharacters();
+        const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
+        clRefreshLoraPanel(cached);
+      } else if (data.lora_status === "failed") {
+        clearInterval(_loraStatusInterval);
+        if (statusEl) { statusEl.textContent = "Training failed — check logs and retry"; statusEl.style.color = "#ff6b6b"; }
+      } else {
+        if (statusEl) statusEl.textContent = `Training in progress… (${new Date().toLocaleTimeString()})`;
+      }
+    } catch (_) {}
+  }, 30000);
+}
+
+window.clUploadReferences = clUploadReferences;
+window.clTrainLora        = clTrainLora;
 
 document.addEventListener("DOMContentLoaded", loadCharacters);
 window.generateCharacterPreview = generateCharacterPreview;

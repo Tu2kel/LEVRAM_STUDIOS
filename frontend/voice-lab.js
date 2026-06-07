@@ -71,10 +71,8 @@ document.addEventListener("DOMContentLoaded", loadVoiceLabCharacters);
           let character;
           const _avr = window.LEVRAM_ACTIVE_VOICE_RECORD;
           if (_avr) {
-            console.log("PHASE 8F.3 ACTIVE VOICE CONSUMED", _avr);
             character = _avr.character || _avr.name || getActiveCharacter();
           } else {
-            console.log("PHASE 8F.3 FALLBACK MANUAL VOICE");
             character = getActiveCharacter();
           }
 

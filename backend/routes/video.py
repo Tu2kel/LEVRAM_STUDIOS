@@ -19,6 +19,14 @@ BASE_DIR = Path(".")
 VID_DIR  = Path("output/videos")
 VID_DIR.mkdir(parents=True, exist_ok=True)
 
+# ── Rate limiting: max 3 concurrent fal.ai generation calls ──────────────────
+_FAL_SEM = asyncio.Semaphore(3)
+
+# ── In-memory async job store ─────────────────────────────────────────────────
+# Survives for the lifetime of the server process. On Railway, this resets
+# on redeploy — fine for generation jobs which complete in minutes.
+_JOBS: dict = {}   # job_id → {status, result, error, started_at, type}
+
 
 # ─── Helpers ─────────────────────────────────────────────────
 
@@ -282,16 +290,38 @@ class FalVideoPayload(BaseModel):
 @router.post("/video/generate-fal")
 async def generate_fal_video(payload: FalVideoPayload):
     if payload.model not in FAL_T2V_MODELS:
-        raise HTTPException(status_code=400, detail=f"Unknown T2V model: {payload.model}. Use /video/fal-models to list options.")
-    loop = asyncio.get_event_loop()
-    try:
-        result = await loop.run_in_executor(
-            None,
-            lambda: _fal_video(payload.prompt, payload.model, payload.aspect, payload.duration),
-        )
-        return {"success": True, **result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=f"Unknown T2V model: {payload.model}.")
+
+    job_id = uuid.uuid4().hex
+    _JOBS[job_id] = {
+        "status": "queued", "result": None, "error": None,
+        "started_at": datetime.now().isoformat(), "type": "t2v",
+    }
+
+    async def _run():
+        async with _FAL_SEM:
+            _JOBS[job_id]["status"] = "running"
+            loop = asyncio.get_event_loop()
+            try:
+                result = await loop.run_in_executor(
+                    None, lambda: _fal_video(payload.prompt, payload.model, payload.aspect, payload.duration)
+                )
+                _JOBS[job_id]["status"] = "complete"
+                _JOBS[job_id]["result"] = result
+            except Exception as e:
+                _JOBS[job_id]["status"] = "failed"
+                _JOBS[job_id]["error"] = str(e)
+
+    asyncio.create_task(_run())
+    return {"success": True, "job_id": job_id, "status": "queued"}
+
+
+@router.get("/video/job/{job_id}")
+async def get_job_status(job_id: str):
+    job = _JOBS.get(job_id)
+    if not job:
+        return {"success": False, "error": "Job not found or expired"}
+    return {"success": True, **job}
 
 
 # ── Image-to-Video (character-locked) ────────────────────────
@@ -382,18 +412,32 @@ async def upload_image_for_video(file: UploadFile = File(...)):
 
 @router.post("/video/image-to-video")
 async def image_to_video(payload: FalI2VPayload):
-    """Animate a keyframe image — locks character appearance in the video."""
+    """Animate a keyframe image — returns job_id immediately, poll /video/job/{id}."""
     if payload.model not in FAL_I2V_MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown I2V model: {payload.model}")
-    loop = asyncio.get_event_loop()
-    try:
-        result = await loop.run_in_executor(
-            None,
-            lambda: _fal_image_to_video(payload.image_url, payload.prompt, payload.model, payload.duration),
-        )
-        return {"success": True, **result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+    job_id = uuid.uuid4().hex
+    _JOBS[job_id] = {
+        "status": "queued", "result": None, "error": None,
+        "started_at": datetime.now().isoformat(), "type": "i2v",
+    }
+
+    async def _run():
+        async with _FAL_SEM:
+            _JOBS[job_id]["status"] = "running"
+            loop = asyncio.get_event_loop()
+            try:
+                result = await loop.run_in_executor(
+                    None, lambda: _fal_image_to_video(payload.image_url, payload.prompt, payload.model, payload.duration)
+                )
+                _JOBS[job_id]["status"] = "complete"
+                _JOBS[job_id]["result"] = result
+            except Exception as e:
+                _JOBS[job_id]["status"] = "failed"
+                _JOBS[job_id]["error"] = str(e)
+
+    asyncio.create_task(_run())
+    return {"success": True, "job_id": job_id, "status": "queued"}
 
 
 @router.get("/video/fal-models")

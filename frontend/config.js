@@ -69,4 +69,38 @@
     clearTimeout(_levErrTimer);
     _levErrTimer = setTimeout(() => { banner.style.display = "none"; }, 6000);
   };
+  // ── Job poller — polls /video/job/{id} every 3s, calls callbacks on state change
+  // Usage: levPollJob(jobId, baseUrl, { onRunning, onComplete, onFailed, intervalMs })
+  window.levPollJob = function(jobId, baseUrl, { onRunning, onComplete, onFailed, intervalMs = 3000 } = {}) {
+    const started = Date.now();
+    let timer = null;
+
+    async function check() {
+      try {
+        const res  = await window.levFetch(`${baseUrl}/video/job/${jobId}`);
+        const data = await res.json();
+        const elapsed = Math.round((Date.now() - started) / 1000);
+
+        if (data.status === "running" && onRunning)  onRunning(elapsed);
+        if (data.status === "queued"  && onRunning)  onRunning(elapsed);
+
+        if (data.status === "complete") {
+          clearInterval(timer);
+          if (onComplete) onComplete(data.result, elapsed);
+          return;
+        }
+        if (data.status === "failed") {
+          clearInterval(timer);
+          if (onFailed) onFailed(data.error || "Generation failed");
+          return;
+        }
+      } catch(e) {
+        // network blip — keep polling
+      }
+    }
+
+    check();
+    timer = setInterval(check, intervalMs);
+    return () => clearInterval(timer); // returns cancel fn
+  };
 })();

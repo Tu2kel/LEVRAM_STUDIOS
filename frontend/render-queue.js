@@ -291,7 +291,7 @@ async function animateKeyframe(itemId) {
   const motionPrompt = prompt("Motion prompt (optional — describe the movement):", "") || "";
 
   const statusEl = document.getElementById("ep-status");
-  if (statusEl) statusEl.textContent = `Animating ${itemId} via ${modelKey}…`;
+  if (statusEl) statusEl.textContent = `Submitted I2V job via ${modelKey} — polling…`;
 
   try {
     const res = await levFetch(`${BASE}/video/image-to-video`, {
@@ -305,12 +305,24 @@ async function animateKeyframe(itemId) {
       }),
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.detail || "I2V failed");
+    if (!data.success) throw new Error(data.detail || "I2V submit failed");
 
-    if (statusEl) {
-      statusEl.innerHTML = `Video ready — <a href="${BASE + data.outputUrl}" download style="color:var(--gold);">Download ${data.outputUrl?.split("/").pop()}</a>`;
-    }
-    await loadRenderQueue();
+    levPollJob(data.job_id, BASE, {
+      onRunning: (sec) => {
+        if (statusEl) statusEl.textContent = `Animating via ${modelKey} — ${sec}s elapsed…`;
+      },
+      onComplete: async (result) => {
+        const outUrl = result.outputUrl || result.videoUrl;
+        const fullUrl = outUrl.startsWith("http") ? outUrl : BASE + outUrl;
+        if (statusEl) {
+          statusEl.innerHTML = `Video ready — <a href="${fullUrl}" download style="color:var(--gold);">Download ${outUrl.split("/").pop()}</a>`;
+        }
+        await loadRenderQueue();
+      },
+      onFailed: (err) => {
+        if (statusEl) statusEl.textContent = "Animate failed: " + err;
+      },
+    });
   } catch (err) {
     alert("Animate error: " + err.message);
     if (statusEl) statusEl.textContent = "Animate failed: " + err.message;

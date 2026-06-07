@@ -253,26 +253,40 @@ async function tsGenerate() {
   tsSetStatus(`Generating via ${model} — this may take 1–3 minutes…`);
 
   try {
-    const res = await window.levFetch(`${TS_BASE}/video/image-to-video`, {
+    const res  = await window.levFetch(`${TS_BASE}/video/image-to-video`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image_url: tsUploadedImageUrl, prompt, model, duration }),
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.detail || 'Generation failed');
+    if (!data.success) throw new Error(data.detail || 'Submit failed');
 
-    const videoUrl = TS_BASE + data.outputUrl;
-    const vid = document.getElementById('ts-video');
-    vid.src = videoUrl;
-    document.getElementById('ts-dl').href = videoUrl;
-    document.getElementById('ts-dl').download = data.outputUrl.split('/').pop();
-    document.getElementById('ts-result-prompt').textContent = 'Prompt: ' + (customPrompt || preset.name + ' — ' + prompt.slice(0, 120));
-    document.getElementById('ts-result').style.display = 'flex';
-    tsSetStatus('Title sequence ready!');
+    window.levPollJob(data.job_id, TS_BASE, {
+      onRunning: (sec) => tsSetStatus(`Generating via ${model} — ${sec}s elapsed…`),
+      onComplete: (result) => {
+        const outPath  = result.outputUrl || result.videoUrl;
+        const videoUrl = outPath.startsWith('http') ? outPath : TS_BASE + outPath;
+        const vid = document.getElementById('ts-video');
+        vid.src = videoUrl;
+        document.getElementById('ts-dl').href = videoUrl;
+        document.getElementById('ts-dl').download = outPath.split('/').pop();
+        document.getElementById('ts-result-prompt').textContent = 'Prompt: ' + (customPrompt || preset.name + ' — ' + prompt.slice(0, 120));
+        document.getElementById('ts-result').style.display = 'flex';
+        document.getElementById('ts-spinner').style.display = 'none';
+        document.getElementById('ts-gen-btn').disabled = false;
+        tsSetStatus('Title sequence ready!');
+      },
+      onFailed: (err) => {
+        tsSetStatus('Error: ' + err);
+        document.getElementById('ts-empty').style.display = 'block';
+        document.getElementById('ts-spinner').style.display = 'none';
+        document.getElementById('ts-gen-btn').disabled = false;
+      },
+    });
+
   } catch(e) {
     tsSetStatus('Error: ' + e.message);
     document.getElementById('ts-empty').style.display = 'block';
-  } finally {
     document.getElementById('ts-spinner').style.display = 'none';
     document.getElementById('ts-gen-btn').disabled = false;
   }

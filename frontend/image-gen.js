@@ -213,46 +213,64 @@ async function igGenerateVideo() {
   if (statusEl) statusEl.textContent = `Generating via ${engineLabel} — ${etaMap[igActiveVideoEngine] || "a few minutes"}…`;
   if (btn) { btn.disabled = true; btn.textContent = "Generating Video…"; }
 
-  try {
-    let res, data;
-
-    if (isFalCloud) {
-      res = await levFetch(`${IG_BASE}/video/generate-fal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, model: igActiveVideoEngine, aspect, duration: 5 }),
-      });
-    } else {
-      res = await levFetch(`${IG_BASE}/video/generate-wan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, character, aspect, steps, cfg, seed }),
-      });
-    }
-
-    data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.detail || "Video generation failed");
-
-    const outPath  = data.outputUrl || data.videoUrl;
-    const videoUrl = IG_BASE + outPath;
+  function showVideoResult(outPath) {
+    const videoUrl    = outPath.startsWith("http") ? outPath : IG_BASE + outPath;
     const resultBox   = document.getElementById("ig-result");
     const videoResult = document.getElementById("ig-video-result");
     const videoPlayer = document.getElementById("ig-video-player");
     const videoDl     = document.getElementById("ig-video-download");
-
-    if (resultBox)   resultBox.style.display   = "none";
-    if (videoResult) videoResult.style.display  = "block";
+    if (resultBox)   resultBox.style.display  = "none";
+    if (videoResult) videoResult.style.display = "block";
     if (videoPlayer) videoPlayer.src = videoUrl;
-    if (videoDl)     { videoDl.href = videoUrl; videoDl.download = outPath?.split("/").pop() || "levram_video.mp4"; }
-
+    if (videoDl) { videoDl.href = videoUrl; videoDl.download = outPath.split("/").pop() || "levram_video.mp4"; }
     if (statusEl) statusEl.textContent = `Video ready — ${engineLabel}`;
-    await igLoadVideoGallery();
+    igLoadVideoGallery();
+    if (btn) { btn.disabled = false; btn.textContent = "Generate Video"; }
+  }
+
+  try {
+    if (isFalCloud) {
+      // Async job: submit → poll
+      const res  = await levFetch(`${IG_BASE}/video/generate-fal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, model: igActiveVideoEngine, aspect, duration: 5 }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.detail || "Submit failed");
+
+      levPollJob(data.job_id, IG_BASE, {
+        onRunning: (sec) => {
+          if (statusEl) statusEl.textContent = `Generating via ${engineLabel} — ${sec}s elapsed…`;
+        },
+        onComplete: (result) => {
+          showVideoResult(result.outputUrl || result.videoUrl);
+        },
+        onFailed: (err) => {
+          if (statusEl) statusEl.textContent = "Failed: " + err;
+          if (btn) { btn.disabled = false; btn.textContent = "Generate Video"; }
+        },
+      });
+      return; // btn re-enabled inside callbacks
+
+    } else {
+      const res  = await levFetch(`${IG_BASE}/video/generate-wan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, character, aspect, steps, cfg, seed }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.detail || "Video generation failed");
+      showVideoResult(data.outputUrl || data.videoUrl);
+    }
 
   } catch (err) {
     console.error("IG VIDEO GENERATE ERROR:", err);
     if (statusEl) statusEl.textContent = err.message || "Video generation failed.";
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "Generate Video"; }
+    if (!isFalCloud) {
+      if (btn) { btn.disabled = false; btn.textContent = "Generate Video"; }
+    }
   }
 }
 
@@ -392,44 +410,50 @@ async function igRunI2V() {
   const statusEl = document.getElementById("ig-i2v-status");
   const btn      = document.getElementById("ig-i2v-go-btn");
 
-  const modelLabels = {
-    wan21_i2v:     "Wan 2.1 1.3B",
-    wan21_14b_i2v: "Wan 2.1 14B",
-    hunyuan_i2v:   "HunyuanVideo",
-  };
-  if (statusEl) statusEl.textContent = `Animating via ${modelLabels[model] || model} — takes 3–10 min…`;
+  const modelLabels = { wan21_i2v: "Wan 2.1 1.3B", wan21_14b_i2v: "Wan 2.1 14B", hunyuan_i2v: "HunyuanVideo" };
+  const label = modelLabels[model] || model;
+
+  if (statusEl) statusEl.textContent = `Submitting to ${label}…`;
   if (btn) { btn.disabled = true; btn.textContent = "Animating…"; }
 
-  try {
-    const res = await levFetch(`${IG_BASE}/video/image-to-video`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image_url: igCurrentImageUrl, prompt, model, duration }),
-    });
-
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.detail || "I2V failed");
-
-    const videoUrl    = IG_BASE + data.outputUrl;
+  function showI2VResult(outPath) {
+    const videoUrl    = outPath.startsWith("http") ? outPath : IG_BASE + outPath;
     const videoResult = document.getElementById("ig-video-result");
     const videoPlayer = document.getElementById("ig-video-player");
     const videoDl     = document.getElementById("ig-video-download");
     const resultBox   = document.getElementById("ig-result");
     const i2vPanel    = document.getElementById("ig-i2v-panel");
-
     if (i2vPanel)    i2vPanel.style.display   = "none";
     if (resultBox)   resultBox.style.display   = "none";
     if (videoResult) videoResult.style.display = "block";
     if (videoPlayer) videoPlayer.src = videoUrl;
-    if (videoDl)     { videoDl.href = videoUrl; videoDl.download = data.outputUrl?.split("/").pop() || "levram_i2v.mp4"; }
+    if (videoDl)     { videoDl.href = videoUrl; videoDl.download = outPath.split("/").pop() || "levram_i2v.mp4"; }
+    if (statusEl) statusEl.textContent = `Video ready — ${label}`;
+    if (btn) { btn.disabled = false; btn.textContent = "Generate Video"; }
+    igLoadVideoGallery();
+  }
 
-    if (statusEl) statusEl.textContent = `Video ready — ${modelLabels[model] || model}`;
-    await igLoadVideoGallery();
+  try {
+    const res  = await levFetch(`${IG_BASE}/video/image-to-video`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image_url: igCurrentImageUrl, prompt, model, duration }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "I2V submit failed");
+
+    levPollJob(data.job_id, IG_BASE, {
+      onRunning: (sec) => { if (statusEl) statusEl.textContent = `Animating via ${label} — ${sec}s elapsed…`; },
+      onComplete: (result) => showI2VResult(result.outputUrl || result.videoUrl),
+      onFailed:   (err)    => {
+        if (statusEl) statusEl.textContent = "Failed: " + err;
+        if (btn) { btn.disabled = false; btn.textContent = "Generate Video"; }
+      },
+    });
 
   } catch (err) {
     console.error("IG I2V ERROR:", err);
     if (statusEl) statusEl.textContent = err.message || "I2V failed.";
-  } finally {
     if (btn) { btn.disabled = false; btn.textContent = "Generate Video"; }
   }
 }

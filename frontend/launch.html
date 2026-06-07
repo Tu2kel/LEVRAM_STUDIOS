@@ -358,7 +358,13 @@
 
   <script>
     const DEFAULT_API = "http://127.0.0.1:8000";
-    let apiBase = localStorage.getItem("levram-api-url") || DEFAULT_API;
+    const _isLocal = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
+    const _stored  = (localStorage.getItem("levram-api-url") || "").trim().replace(/\/$/, "");
+    const _storedIsLocal = _stored.includes("127.0.0.1") || _stored.includes("localhost");
+    // Ignore a saved localhost URL when we're running on Railway/remote
+    let apiBase = (_stored && !(_storedIsLocal && !_isLocal))
+      ? _stored
+      : (_isLocal ? DEFAULT_API : window.location.origin);
 
     // Pre-fill the input
     document.getElementById("api-url-input").value = apiBase;

@@ -92,19 +92,34 @@
         <div id="upload-status" class="ms-status"></div>
       </div>
 
-      <!-- Paid Stubs -->
+      <!-- AI Score Generation -->
       <div class="ms-panel">
-        <div class="ms-panel-title">AI Score Generation (Paid)</div>
-        <div class="suno-stub">
-          <div class="suno-label">Suno API</div>
-          <div class="suno-note">Generate custom AI music from a mood description. Requires SUNO_API_KEY in .env.</div>
-          <div style="margin-top:8px;font-size: 14px;letter-spacing:2px;text-transform:uppercase;color:#333;">Not yet enabled</div>
+        <div class="ms-panel-title">AI Score Generation</div>
+        <div class="ms-label">Mood / Scene Description</div>
+        <textarea id="ai-music-prompt" class="ms-input" rows="3" style="resize:vertical;line-height:1.4;padding:8px;"
+          placeholder="e.g. Dark cinematic orchestral score, villain reveal, deep brass, rising tension, Hans Zimmer style…"></textarea>
+
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <div style="flex:1;">
+            <div class="ms-label">Duration</div>
+            <select id="ai-music-duration" class="ms-select">
+              <option value="15">15 sec — Sting</option>
+              <option value="30" selected>30 sec — Scene Loop</option>
+              <option value="60">60 sec — Full Scene</option>
+              <option value="90">90 sec — Episode Score</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <div class="ms-label">Track Name (optional)</div>
+            <input type="text" id="ai-music-name" class="ms-input" placeholder="Main Theme" style="height:auto;padding:8px;" />
+          </div>
         </div>
-        <div class="suno-stub" style="margin-top:8px;">
-          <div class="suno-label">Udio API</div>
-          <div class="suno-note">Alternative AI music generation. Requires UDIO_API_KEY in .env.</div>
-          <div style="margin-top:8px;font-size: 14px;letter-spacing:2px;text-transform:uppercase;color:#333;">Not yet enabled</div>
-        </div>
+
+        <button class="ms-btn" id="ai-music-btn" onclick="generateAIMusic()" style="margin-top:10px;">
+          Generate Score via AI
+        </button>
+        <div id="ai-music-status" class="ms-status"></div>
+        <audio id="ai-music-preview" controls style="display:none;width:100%;margin-top:10px;"></audio>
       </div>
 
       <!-- Mix into Episode -->
@@ -278,6 +293,43 @@ async function loadVideos() {
     document.getElementById("social-video").innerHTML = opts;
   } catch(e) {
     console.error("VIDEO LOAD ERROR:", e);
+  }
+}
+
+// ─── AI Music Generation ──────────────────────────────────────
+async function generateAIMusic() {
+  const prompt   = document.getElementById("ai-music-prompt").value.trim();
+  const duration = parseInt(document.getElementById("ai-music-duration").value, 10);
+  const name     = document.getElementById("ai-music-name").value.trim();
+  const statusEl = document.getElementById("ai-music-status");
+  const btn      = document.getElementById("ai-music-btn");
+  const preview  = document.getElementById("ai-music-preview");
+
+  if (!prompt) { statusEl.textContent = "Enter a mood / scene description first."; return; }
+
+  btn.disabled = true;
+  btn.textContent = "Generating…";
+  statusEl.textContent = `Generating ${duration}s score via fal.ai — this takes ~30–60 seconds…`;
+  preview.style.display = "none";
+
+  try {
+    const res  = await levFetch(`${BASE}/music/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, duration, name }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "Generation failed");
+
+    preview.src = BASE + data.url;
+    preview.style.display = "block";
+    statusEl.textContent = `"${data.track.name}" generated — added to library.`;
+    await loadLibrary();
+  } catch(e) {
+    statusEl.textContent = "Error: " + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Generate Score via AI";
   }
 }
 

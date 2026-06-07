@@ -606,6 +606,12 @@ if (document.readyState === "loading") {
   loadLevramCharacters();
 }
 
+// Refresh battery when project name changes
+document.addEventListener("DOMContentLoaded", () => {
+  const projEl = document.getElementById("shot-project");
+  if (projEl) projEl.addEventListener("input", () => window.refreshBattery?.());
+});
+
 // ─── Story Engine → Shot Builder pipeline injection ───────────
 (function injectBeatFromStoryEngine() {
   function tryInject() {

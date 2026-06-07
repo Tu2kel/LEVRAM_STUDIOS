@@ -150,7 +150,9 @@ async function loadScenes() {
       createdAt: s.saved_at || "",
     }));
 
+    window.shots = shots;
     renderTimeline();
+    window.refreshBattery?.();
   } catch (e) {
     console.error(e);
     renderTimeline();

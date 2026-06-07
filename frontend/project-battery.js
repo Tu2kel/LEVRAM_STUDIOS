@@ -56,23 +56,33 @@ const BATTERY_ICONS = {
 
 function getSceneBatteryStatus(scene) {
   if (!scene)
-    return {
-      idea: false,
-      script: false,
-      voice: false,
-      shot: false,
-      render: false,
-      export: false,
-    };
+    return { idea: false, script: false, voice: false, shot: false, render: false, export: false };
   return {
-    idea: Boolean(
-      scene.id || scene.project || scene.shotDesc || scene.shotPrompt,
-    ),
+    idea:   Boolean(scene.id || scene.project || scene.shotDesc || scene.shotPrompt),
     script: Boolean(scene.dialogue && scene.dialogue.trim()),
-    voice: Boolean(scene.rawUrl || scene.fxUrl),
-    shot: Boolean(scene.shotPrompt && scene.shotPrompt.trim()),
+    voice:  Boolean(scene.rawUrl || scene.fxUrl),
+    shot:   Boolean(scene.shotPrompt && scene.shotPrompt.trim()),
     render: Boolean(scene.renderStatus === "complete"),
     export: Boolean(scene.exportUrl || scene.exportedAt),
+  };
+}
+
+function getProjectBatteryStatus(projectName, scenes, queue) {
+  const name = (projectName || "").toLowerCase().trim();
+  const ps = (scenes || []).filter(s =>
+    (s.project || s.title || "").toLowerCase().trim() === name
+  );
+  const pq = (queue || []).filter(q =>
+    (q.project || "").toLowerCase().trim() === name
+  );
+  if (!ps.length && !pq.length) return getSceneBatteryStatus(null);
+  return {
+    idea:   true,
+    script: ps.some(s => s.dialogue && s.dialogue.trim()),
+    voice:  ps.some(s => s.rawUrl || s.fxUrl || s.voicePath),
+    shot:   ps.some(s => s.shotPrompt && s.shotPrompt.trim()),
+    render: pq.some(q => q.status === "complete") || ps.some(s => s.renderStatus === "complete"),
+    export: ps.some(s => s.exportUrl || s.exportedAt),
   };
 }
 
@@ -80,22 +90,26 @@ function renderProjectBattery(scene) {
   const host = document.getElementById("project-battery-host");
   if (!host) return;
 
-  const status = getSceneBatteryStatus(scene);
+  // Determine project name from: shot-project input → scene → fallback
+  const projectName = (
+    document.getElementById("shot-project")?.value?.trim() ||
+    scene?.project || scene?.title || null
+  );
+
+  // Use project-level status when we have enough data, else scene-level
+  let status;
+  if (projectName && (window.shots?.length || window.renderQueue?.length)) {
+    status = getProjectBatteryStatus(projectName, window.shots, window.renderQueue);
+  } else {
+    status = getSceneBatteryStatus(scene);
+  }
+
   const doneCount = Object.values(status).filter(Boolean).length;
   const total = BATTERY_STAGES.length;
   const pct = Math.round((doneCount / total) * 100);
-  const C = 2 * Math.PI * 26; // r=26 for 60px ring
+  const C = 2 * Math.PI * 26;
 
-  // Scene display name — use scene number + dialogue snippet, or fallback
-  const sceneName = scene
-    ? (scene.shot_number || scene.id || "Scene") +
-      (scene.dialogue
-        ? ' — "' +
-          scene.dialogue.slice(0, 40) +
-          (scene.dialogue.length > 40 ? "…" : "") +
-          '"'
-        : "")
-    : "No Scene Selected";
+  const sceneName = projectName || "No Project Selected";
 
   // Current and next stage
   const curIdx = BATTERY_STAGES.findIndex((s) => !status[s.key]);
@@ -142,7 +156,7 @@ function renderProjectBattery(scene) {
     <div class="pb-shell">
       <div class="pb-top">
         <div>
-          <div class="pb-eyebrow">♛ Current Scene:</div>
+          <div class="pb-eyebrow">♛ Current Project:</div>
           <div class="pb-scene-name">${sceneName}</div>
         </div>
         <div class="pb-prog-block">
@@ -213,6 +227,11 @@ function setActiveSceneForBattery(scene) {
   window.activeScene = scene;
   renderProjectBattery(scene);
 }
+
+// Call this after shots or queue load to refresh project-level status
+window.refreshBattery = function() {
+  renderProjectBattery(window.activeScene || null);
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   renderProjectBattery(null);

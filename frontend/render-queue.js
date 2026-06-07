@@ -27,13 +27,16 @@ async function loadRenderQueue() {
     const data = await res.json();
 
     renderQueue = data.queue || data.jobs || data.items || [];
+    window.renderQueue = renderQueue;
 
   } catch (e) {
     console.error("RQ API failed:", e);
     renderQueue = [];
+    window.renderQueue = [];
   }
 
   renderRenderQueue();
+  window.refreshBattery?.();
 }
 
 async function clearRenderQueue() {

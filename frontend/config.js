@@ -1,16 +1,15 @@
 /**
  * LEVRAM Studios — global API config
  *
- * All pages import this first. BASE_URL resolves to:
- *   1. localStorage "levram-api-url"  (set by launch.html when user saves Railway URL)
- *   2. http://127.0.0.1:8000          (local dev fallback)
- *
- * Usage in any page:
- *   const BASE = window.LEVRAM_CONFIG.api;
+ * Resolves BASE URL in priority order:
+ *   1. localStorage "levram-api-url"  (manually saved Railway URL)
+ *   2. window.location.origin         (if already on Railway / non-localhost)
+ *   3. http://127.0.0.1:8000          (local dev fallback)
  */
 (function () {
   const stored = (localStorage.getItem("levram-api-url") || "").trim().replace(/\/$/, "");
+  const isLocal = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
   window.LEVRAM_CONFIG = {
-    api: stored || "http://127.0.0.1:8000",
+    api: stored || (isLocal ? "http://127.0.0.1:8000" : window.location.origin),
   };
 })();

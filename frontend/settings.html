@@ -198,7 +198,7 @@ function pill(id, ok, label) {
 async function checkStatus() {
   const rowsEl = document.getElementById("st-status-rows");
   try {
-    const res  = await fetch(`${BASE}/settings/status`);
+    const res  = await levFetch(`${BASE}/settings/status`);
     const data = await res.json();
 
     const comfyUrlEl = document.getElementById("comfy-url-display");

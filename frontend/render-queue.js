@@ -3,7 +3,7 @@ async function addShotToRenderQueue(id) {
     const shot = shots.find((s) => s.id === id);
     if (!shot) return;
 
-    const res = await fetch(`${BASE}/render-queue`, {
+    const res = await levFetch(`${BASE}/render-queue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ shot }),
@@ -22,7 +22,7 @@ async function addShotToRenderQueue(id) {
 
 async function loadRenderQueue() {
   try {
-    const res = await fetch(`${BASE}/render-queue`);
+    const res = await levFetch(`${BASE}/render-queue`);
     if (!res.ok) throw new Error(`Server ${res.status}`);
     const data = await res.json();
 
@@ -40,7 +40,7 @@ async function loadRenderQueue() {
 
 async function clearRenderQueue() {
   try {
-    const res = await fetch(`${BASE}/render-queue/clear`, { method: "POST" });
+    const res = await levFetch(`${BASE}/render-queue/clear`, { method: "POST" });
     if (!res.ok) throw new Error(`Server ${res.status}`);
     renderQueue = [];
     renderRenderQueue();
@@ -59,77 +59,74 @@ function renderRenderQueue() {
   count.textContent = `${renderQueue.length} Job${renderQueue.length !== 1 ? "s" : ""}`;
 
   if (!renderQueue.length) {
-    panel.innerHTML = `<div class="rq-empty">Queue empty — API returned 0 jobs</div>`;
+    panel.innerHTML = `<div class="rq-empty">Queue empty — add shots from the Voice Lab or Timeline.</div>`;
     return;
   }
 
-  panel.innerHTML = renderQueue
-    .map((item) => {
-      const shot = item.shot || item || {};
-      const status = item.status || "pending";
-      const title =
-        shot.shot_number ||
-        item.shot_number ||
-        shot.scene ||
-        shot.id ||
-        "UNKNOWN";
+  panel.innerHTML = renderQueue.map((item) => {
+    const shot   = item.shot || item || {};
+    const status = item.status || "pending";
 
-      const sub =
-        shot.shotDesc ||
-        shot.shot_description ||
-        item.shotDesc ||
-        item.shot_description ||
-        shot.title ||
-        "Untitled Shot";
+    const title = shot.shot_number || item.shot_number || shot.scene || shot.id || "UNKNOWN";
+    const sub   = shot.shotDesc || shot.shot_description || item.shotDesc || item.shot_description || shot.title || "Untitled Shot";
+    const char  = shot.character || item.character || shot.voice_character || "";
+    const preset = shot.preset || item.preset || shot.voice_preset || "";
 
-      const char =
-        shot.character ||
-        item.character ||
-        shot.voice_character ||
-        "";
+    const hasKeyframe = Boolean(item.renderOutputUrl);
+    const hasVoice    = Boolean(item.voicePath);
+    const hasClip     = Boolean(item.clipUrl);
 
-      const preset =
-        shot.preset ||
-        item.preset ||
-        shot.voice_preset ||
-        "";
-
-      return `
-      <div class="rq-job-card">
-        <div>
-          <div class="rq-job-title">${title}${char ? " · " + char : ""}${preset ? " · " + preset : ""}</div>
-          <div class="rq-job-sub">${sub}</div>
-          ${shot.dialogue ? `<div class="tl-dialogue" style="margin-top:8px;">"${String(shot.dialogue).slice(0, 80)}${String(shot.dialogue).length > 80 ? "…" : ""}"</div>` : ""}
-          ${item.renderOutputUrl ? `
-            <img class="rq-thumb" src="${BASE}${item.renderOutputUrl}" alt="Generated keyframe" onclick="window.location.href='render-viewer.html?id=${item.id}'">
-            <div class="rq-prompt">
-              <strong>Prompt Used:</strong>
-              ${item.promptUsed || "Not recorded"}
-            </div>
-          ` : ""}
-        </div>
-
-            ${item.clipUrl ? `
-            <video class="rq-clip" src="${BASE}${item.clipUrl}" controls style="width:100%;max-height:140px;border-radius:4px;margin-top:8px;background:#000;"></video>
-          ` : ""}
-        </div>
-
-        <div class="rq-job-right">
-          <div class="render-status-pill render-status-${status}">${status}</div>
-          <div class="render-actions">
-            <button onclick="generateKeyframeForQueueItem('${item.id}')">Keyframe</button>
-            <button onclick="assembleShotVideo('${item.id}')" ${!item.renderOutputUrl || !item.voicePath ? 'title="Need keyframe + voice first"' : ""}>Render Clip</button>
-            <button onclick="deleteRenderQueueItem('${item.id}')">Delete</button>
+    return `
+    <div class="rq-job-card">
+      <div>
+        <div class="rq-job-title">${title}${char ? " · " + char : ""}${preset ? " · " + preset : ""}</div>
+        <div class="rq-job-sub">${sub}</div>
+        ${shot.dialogue ? `<div class="tl-dialogue" style="margin-top:8px;">"${String(shot.dialogue).slice(0, 100)}${String(shot.dialogue).length > 100 ? "…" : ""}"</div>` : ""}
+        ${hasKeyframe ? `
+          <img class="rq-thumb" src="${BASE}${item.renderOutputUrl}" alt="Keyframe"
+               onclick="window.location.href='render-viewer.html?id=${item.id}'" title="Click to open render viewer" />
+          <div class="rq-prompt">
+            <strong>Prompt:</strong>
+            ${item.promptUsed || "Not recorded"}
           </div>
+        ` : ""}
+        ${hasClip ? `
+          <video src="${BASE}${item.clipUrl}" controls
+                 style="width:100%;max-height:140px;border-radius:4px;margin-top:10px;background:#000;grid-column:1/-1;"></video>
+        ` : ""}
+      </div>
+
+      <div class="rq-job-right">
+        <div class="render-status-pill render-status-${status}">${status.toUpperCase()}</div>
+        <div class="render-actions">
+          <button onclick="generateKeyframeForQueueItem('${item.id}')"
+                  title="Generate keyframe image via fal.ai FLUX">
+            ${hasKeyframe ? "Re-Keyframe" : "Keyframe"}
+          </button>
+          <button onclick="animateKeyframe('${item.id}')"
+                  ${!hasKeyframe ? 'disabled title="Generate keyframe first"' : 'title="Animate keyframe via Wan 2.1 I2V"'}>
+            Animate →
+          </button>
+          <button onclick="assembleShotVideo('${item.id}')"
+                  ${!hasKeyframe || !hasVoice ? 'disabled title="Need keyframe + voice first"' : 'title="Assemble final shot clip"'}>
+            Assemble Clip
+          </button>
+          <button onclick="updateRenderStatus('${item.id}', 'done')"
+                  title="Mark this shot as complete">
+            Mark Done
+          </button>
+          <button onclick="deleteRenderQueueItem('${item.id}')" style="color:#ff6b6b;border-color:rgba(255,100,100,0.3);">
+            Delete
+          </button>
         </div>
-      </div>`;
-    })
-    .join("");
+      </div>
+    </div>`;
+  }).join("");
 }
 
 async function startRenderQueueItem(itemId) {
   try {
-    const res = await fetch(`${BASE}/render-queue/${itemId}/start`, {
+    const res = await levFetch(`${BASE}/render-queue/${itemId}/start`, {
       method: "POST",
     });
 
@@ -148,7 +145,7 @@ async function startRenderQueueItem(itemId) {
 
 async function generateKeyframeForQueueItem(itemId) {
   try {
-    const res = await fetch(`${BASE}/render-queue/${itemId}/keyframe`, {
+    const res = await levFetch(`${BASE}/render-queue/${itemId}/keyframe`, {
       method: "POST",
     });
 
@@ -167,7 +164,7 @@ async function generateKeyframeForQueueItem(itemId) {
 
 async function updateRenderStatus(itemId, status) {
   try {
-    const res = await fetch(`${BASE}/render-queue/${itemId}/status`, {
+    const res = await levFetch(`${BASE}/render-queue/${itemId}/status`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
@@ -188,7 +185,7 @@ async function updateRenderStatus(itemId, status) {
 
 async function deleteRenderQueueItem(itemId) {
   try {
-    const res = await fetch(`${BASE}/render-queue/${itemId}`, {
+    const res = await levFetch(`${BASE}/render-queue/${itemId}`, {
       method: "DELETE",
     });
 
@@ -224,7 +221,7 @@ async function assembleShotVideo(itemId) {
   if (btn) { btn.disabled = true; btn.textContent = "Rendering…"; }
 
   try {
-    const res = await fetch(`${BASE}/video/assemble-shot`, {
+    const res = await levFetch(`${BASE}/video/assemble-shot`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ item_id: itemId }),
@@ -253,7 +250,7 @@ async function assembleEpisode() {
   if (btn) { btn.disabled = true; btn.textContent = "Exporting…"; }
 
   try {
-    const res = await fetch(`${BASE}/video/assemble-episode`, {
+    const res = await levFetch(`${BASE}/video/assemble-episode`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
@@ -275,10 +272,55 @@ async function assembleEpisode() {
   }
 }
 
-window.loadRenderQueue = loadRenderQueue;
-window.startRenderQueueItem = startRenderQueueItem;
-window.generateKeyframeForQueueItem = generateKeyframeForQueueItem;
-window.updateRenderStatus = updateRenderStatus;
-window.deleteRenderQueueItem = deleteRenderQueueItem;
-window.assembleShotVideo = assembleShotVideo;
-window.assembleEpisode   = assembleEpisode;
+// ─── I2V: Animate keyframe from render queue ─────────────────
+async function animateKeyframe(itemId) {
+  const item = renderQueue.find(i => i.id === itemId);
+  if (!item?.renderOutputUrl) {
+    alert("Generate a keyframe for this shot first.");
+    return;
+  }
+
+  const model = prompt(
+    "I2V model:\n  1 = Wan 2.1 1.3B (fast)\n  2 = Wan 2.1 14B (best quality)\n  3 = HunyuanVideo (face consistency)\n\nEnter 1, 2, or 3:",
+    "1"
+  );
+  const modelMap = { "1": "wan21_i2v", "2": "wan21_14b_i2v", "3": "hunyuan_i2v" };
+  const modelKey = modelMap[model?.trim()] || "wan21_i2v";
+
+  const motionPrompt = prompt("Motion prompt (optional — describe the movement):", "") || "";
+
+  const statusEl = document.getElementById("ep-status");
+  if (statusEl) statusEl.textContent = `Animating ${itemId} via ${modelKey}…`;
+
+  try {
+    const res = await levFetch(`${BASE}/video/image-to-video`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image_url: item.renderOutputUrl,
+        prompt: motionPrompt,
+        model: modelKey,
+        duration: 5,
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "I2V failed");
+
+    if (statusEl) {
+      statusEl.innerHTML = `Video ready — <a href="${BASE + data.outputUrl}" download style="color:var(--gold);">Download ${data.outputUrl?.split("/").pop()}</a>`;
+    }
+    await loadRenderQueue();
+  } catch (err) {
+    alert("Animate error: " + err.message);
+    if (statusEl) statusEl.textContent = "Animate failed: " + err.message;
+  }
+}
+
+window.loadRenderQueue               = loadRenderQueue;
+window.startRenderQueueItem          = startRenderQueueItem;
+window.generateKeyframeForQueueItem  = generateKeyframeForQueueItem;
+window.updateRenderStatus            = updateRenderStatus;
+window.deleteRenderQueueItem         = deleteRenderQueueItem;
+window.assembleShotVideo             = assembleShotVideo;
+window.assembleEpisode               = assembleEpisode;
+window.animateKeyframe               = animateKeyframe;

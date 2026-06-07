@@ -62,7 +62,7 @@ def _openai_json(system: str, user: str, temperature: float = 0.85) -> dict:
     if not os.getenv("OPENAI_API_KEY"):
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set in .env")
     res = client.chat.completions.create(
-        model="gpt-4.1-mini",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system},
             {"role": "user",   "content": user},

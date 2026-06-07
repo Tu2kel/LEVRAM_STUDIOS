@@ -1,5 +1,5 @@
 // ─── Image & Video Gen (Phase 9/10) ──────────────────────
-const IG_BASE = "http://localhost:8000";
+const IG_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 const IG_ENGINE_HINTS = {
   dalle3:   "Uses your OpenAI key — best prompt accuracy.",
@@ -109,7 +109,7 @@ async function igLoadCharacters() {
   const sel = document.getElementById("ig-character");
   if (!sel) return;
   try {
-    const res  = await fetch(`${IG_BASE}/characters`);
+    const res  = await levFetch(`${IG_BASE}/characters`);
     const data = await res.json();
     const chars = data.characters || [];
     sel.innerHTML = '<option value="">None / Standalone</option>' +
@@ -147,7 +147,7 @@ async function igGenerateImage() {
   if (btn) { btn.disabled = true; btn.textContent = "Generating…"; }
 
   try {
-    const res = await fetch(`${IG_BASE}/image-gen/generate`, {
+    const res = await levFetch(`${IG_BASE}/image-gen/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt, character, style, aspect, engine: igActiveEngine }),
@@ -205,7 +205,7 @@ async function igGenerateVideo() {
   if (btn) { btn.disabled = true; btn.textContent = "Generating Video…"; }
 
   try {
-    const res = await fetch(`${IG_BASE}/video/generate-wan`, {
+    const res = await levFetch(`${IG_BASE}/video/generate-wan`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt, character, aspect, steps, cfg, seed }),
@@ -242,7 +242,7 @@ async function igLoadGallery() {
   if (!gallery) return;
 
   try {
-    const res    = await fetch(`${IG_BASE}/image-gen/gallery`);
+    const res    = await levFetch(`${IG_BASE}/image-gen/gallery`);
     const data   = await res.json();
     const images = data.images || [];
 
@@ -269,7 +269,7 @@ async function igLoadVideoGallery() {
   if (!gallery) return;
 
   try {
-    const res  = await fetch(`${IG_BASE}/video/library`);
+    const res  = await levFetch(`${IG_BASE}/video/library`);
     const data = await res.json();
     const vids = data.videos || [];
 
@@ -331,7 +331,7 @@ async function igUpscale() {
   if (statusEl) statusEl.textContent = "Upscaling via RealESRGAN / PIL…";
 
   try {
-    const res = await fetch(`${IG_BASE}/upscale/image`, {
+    const res = await levFetch(`${IG_BASE}/upscale/image`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image_url: igCurrentImageUrl, scale: 4 }),
@@ -352,6 +352,70 @@ async function igUpscale() {
   }
 }
 window.igUpscale = igUpscale;
+
+// ─── Animate (Image-to-Video) ─────────────────────────────
+function igAnimateImage() {
+  if (!igCurrentImageUrl) {
+    const s = document.getElementById("ig-status");
+    if (s) s.textContent = "Generate an image first.";
+    return;
+  }
+  const panel = document.getElementById("ig-i2v-panel");
+  if (panel) panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
+
+async function igRunI2V() {
+  if (!igCurrentImageUrl) return;
+  const model    = document.getElementById("ig-i2v-model")?.value    || "wan21_i2v";
+  const prompt   = document.getElementById("ig-i2v-prompt")?.value   || "";
+  const duration = parseInt(document.getElementById("ig-i2v-duration")?.value || "5");
+  const statusEl = document.getElementById("ig-i2v-status");
+  const btn      = document.getElementById("ig-i2v-go-btn");
+
+  const modelLabels = {
+    wan21_i2v:     "Wan 2.1 1.3B",
+    wan21_14b_i2v: "Wan 2.1 14B",
+    hunyuan_i2v:   "HunyuanVideo",
+  };
+  if (statusEl) statusEl.textContent = `Animating via ${modelLabels[model] || model} — takes 3–10 min…`;
+  if (btn) { btn.disabled = true; btn.textContent = "Animating…"; }
+
+  try {
+    const res = await levFetch(`${IG_BASE}/video/image-to-video`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image_url: igCurrentImageUrl, prompt, model, duration }),
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "I2V failed");
+
+    const videoUrl    = IG_BASE + data.outputUrl;
+    const videoResult = document.getElementById("ig-video-result");
+    const videoPlayer = document.getElementById("ig-video-player");
+    const videoDl     = document.getElementById("ig-video-download");
+    const resultBox   = document.getElementById("ig-result");
+    const i2vPanel    = document.getElementById("ig-i2v-panel");
+
+    if (i2vPanel)    i2vPanel.style.display   = "none";
+    if (resultBox)   resultBox.style.display   = "none";
+    if (videoResult) videoResult.style.display = "block";
+    if (videoPlayer) videoPlayer.src = videoUrl;
+    if (videoDl)     { videoDl.href = videoUrl; videoDl.download = data.outputUrl?.split("/").pop() || "levram_i2v.mp4"; }
+
+    if (statusEl) statusEl.textContent = `Video ready — ${modelLabels[model] || model}`;
+    await igLoadVideoGallery();
+
+  } catch (err) {
+    console.error("IG I2V ERROR:", err);
+    if (statusEl) statusEl.textContent = err.message || "I2V failed.";
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Generate Video"; }
+  }
+}
+
+window.igAnimateImage = igAnimateImage;
+window.igRunI2V       = igRunI2V;
 
 // ─── Voice Lab inject (from Story Engine) ────────────────
 (function checkVoiceInject() {

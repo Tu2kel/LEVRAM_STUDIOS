@@ -1,12 +1,12 @@
 // ─── Idea Vault ───────────────────────────────────────────
-const IV_BASE = "http://localhost:8000";
+const IV_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 async function ivLoadIdeas() {
   const list = document.getElementById("iv-list");
   if (!list) return;
 
   try {
-    const res = await fetch(`${IV_BASE}/ideas`);
+    const res = await levFetch(`${IV_BASE}/ideas`);
     const data = await res.json();
     const ideas = data.ideas || [];
 
@@ -57,7 +57,7 @@ async function ivSaveIdea() {
   };
 
   try {
-    const res = await fetch(`${IV_BASE}/ideas`, {
+    const res = await levFetch(`${IV_BASE}/ideas`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -81,7 +81,7 @@ async function ivSaveIdea() {
 
 async function ivDeleteIdea(id) {
   try {
-    const res = await fetch(`${IV_BASE}/ideas/${id}`, { method: "DELETE" });
+    const res = await levFetch(`${IV_BASE}/ideas/${id}`, { method: "DELETE" });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error("Delete failed");
     await ivLoadIdeas();

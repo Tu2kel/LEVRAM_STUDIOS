@@ -14,7 +14,7 @@
         try {
           renumberShots();
 
-          const res = await fetch(`${BASE}/timeline/save-order`, {
+          const res = await levFetch(`${BASE}/timeline/save-order`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

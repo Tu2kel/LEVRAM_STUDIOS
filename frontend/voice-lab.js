@@ -5,7 +5,7 @@ async function loadVoiceLabCharacters() {
   if (!sel) return;
 
   try {
-    const res  = await fetch(`${BASE}/characters`);
+    const res  = await levFetch(`${BASE}/characters`);
     const data = await res.json();
     const chars = data.characters || [];
 
@@ -95,7 +95,7 @@ document.addEventListener("DOMContentLoaded", loadVoiceLabCharacters);
             fd.append("text", text);
             fd.append("character", character);
 
-            const res = await fetch(`${BASE}/generate`, {
+            const res = await levFetch(`${BASE}/generate`, {
               method: "POST",
               body: fd,
             });
@@ -171,7 +171,7 @@ document.addEventListener("DOMContentLoaded", loadVoiceLabCharacters);
           fd.append("reverb", document.getElementById("fx-reverb")?.value ?? "0");
           fd.append("volume", document.getElementById("fx-volume")?.value ?? "100");
 
-          const res = await fetch(`${BASE}/voice-fx`, {
+          const res = await levFetch(`${BASE}/voice-fx`, {
             method: "POST",
             body: fd,
           });
@@ -224,7 +224,7 @@ async function loadVoiceLibrary() {
   if (!list) return;
 
   try {
-    const res = await fetch(`${BASE}/voices`);
+    const res = await levFetch(`${BASE}/voices`);
     const data = await res.json();
     const voices = data.voices || [];
 
@@ -286,7 +286,7 @@ async function saveVoiceProfile() {
   };
 
   try {
-    const res = await fetch(`${BASE}/voices`, {
+    const res = await levFetch(`${BASE}/voices`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -312,7 +312,7 @@ async function deleteVoiceProfile(id) {
   if (!id) return;
 
   try {
-    const res = await fetch(`${BASE}/voices/${id}`, {
+    const res = await levFetch(`${BASE}/voices/${id}`, {
       method: "DELETE"
     });
 
@@ -345,7 +345,7 @@ async function attachVoiceToShot() {
   }
 
   try {
-    const res = await fetch(`${BASE}/scene/${shotId}`, {
+    const res = await levFetch(`${BASE}/scene/${shotId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rawUrl: rawUrl || "", fxUrl: fxUrl || "" }),

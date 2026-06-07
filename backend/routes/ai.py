@@ -104,7 +104,7 @@ Color Palette: {payload.color_palette}
 
     try:
         res = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system.strip()},
                 {"role": "user", "content": user.strip()},
@@ -194,7 +194,7 @@ Revision Request:
 
     try:
         res = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system.strip()},
                 {"role": "user", "content": user.strip()}

@@ -6,7 +6,8 @@ import uuid
 import urllib.request
 import urllib.parse
 
-COMFY_URL = "http://127.0.0.1:8188"
+import os
+COMFY_URL = os.getenv("COMFY_URL", "http://127.0.0.1:8188")
 IMAGE_DIR = Path("output/renders/images")
 CHECKPOINT = "realisticVisionV60B1_v51HyperVAE.safetensors"
 

@@ -221,7 +221,7 @@ function selectFormat(key, el) {
 // ─── Load track library ───────────────────────────────────────
 async function loadLibrary() {
   try {
-    const res  = await fetch(`${BASE}/music/library`);
+    const res  = await levFetch(`${BASE}/music/library`);
     const data = await res.json();
     allTracks  = data.tracks || [];
 
@@ -267,7 +267,7 @@ function selectTrackForMix(url) {
 // ─── Load videos ──────────────────────────────────────────────
 async function loadVideos() {
   try {
-    const res  = await fetch(`${BASE}/video/library`);
+    const res  = await levFetch(`${BASE}/video/library`);
     const data = await res.json();
     allVideos  = data.videos || [];
 
@@ -298,7 +298,7 @@ async function uploadTrack() {
   fd.append("file",    file);
 
   try {
-    const res  = await fetch(`${BASE}/music/upload`, { method:"POST", body:fd });
+    const res  = await levFetch(`${BASE}/music/upload`, { method:"POST", body:fd });
     const data = await res.json();
     if (!data.success) throw new Error(data.detail);
     statusEl.textContent = `✓ Uploaded: ${data.track.name}`;
@@ -312,7 +312,7 @@ async function uploadTrack() {
 
 // ─── Delete track ──────────────────────────────────────────────
 async function deleteTrack(id) {
-  await fetch(`${BASE}/music/${id}`, { method:"DELETE" });
+  await levFetch(`${BASE}/music/${id}`, { method:"DELETE" });
   loadLibrary();
 }
 
@@ -331,7 +331,7 @@ async function mixMusic() {
   statusEl.textContent = "Mixing… (ffmpeg running)";
 
   try {
-    const res  = await fetch(`${BASE}/music/mix`, {
+    const res  = await levFetch(`${BASE}/music/mix`, {
       method:"POST", headers:{"Content-Type":"application/json"},
       body:JSON.stringify({ video_url:videoUrl, music_url:musicUrl, music_volume:volume, fade_out_sec:fade }),
     });
@@ -361,7 +361,7 @@ async function exportSocial() {
   statusEl.textContent = `Converting to ${FORMATS[selectedFormat]?.label}…`;
 
   try {
-    const res  = await fetch(`${BASE}/music/social-export`, {
+    const res  = await levFetch(`${BASE}/music/social-export`, {
       method:"POST", headers:{"Content-Type":"application/json"},
       body:JSON.stringify({ video_url:videoUrl, format:selectedFormat, title, tags }),
     });

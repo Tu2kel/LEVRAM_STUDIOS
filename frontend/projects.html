@@ -205,7 +205,7 @@ const STATUS_LABEL = {
 async function loadProjects() {
   const grid = document.getElementById("pm-grid");
   try {
-    const res  = await fetch(`${BASE}/projects`);
+    const res  = await levFetch(`${BASE}/projects`);
     const data = await res.json();
     const projects = data.projects || [];
 
@@ -259,7 +259,7 @@ async function createProject() {
   stat.textContent = "Creating…"; stat.className = "pm-status";
 
   try {
-    const res = await fetch(`${BASE}/projects`, {
+    const res = await levFetch(`${BASE}/projects`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, genre, logline, status, color }),
@@ -280,7 +280,7 @@ async function createProject() {
 // ── Activate project ─────────────────────────────────────────
 async function activateProject(pid) {
   try {
-    const res = await fetch(`${BASE}/projects/${pid}/activate`, { method: "POST" });
+    const res = await levFetch(`${BASE}/projects/${pid}/activate`, { method: "POST" });
     if (!res.ok) throw new Error("Activate failed");
     await loadProjects();
   } catch (err) {
@@ -312,7 +312,7 @@ async function saveEdit() {
   const color   = document.getElementById("edit-color").value;
 
   try {
-    const res = await fetch(`${BASE}/projects/${pid}`, {
+    const res = await levFetch(`${BASE}/projects/${pid}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, genre, logline, status, color }),
@@ -329,7 +329,7 @@ async function saveEdit() {
 async function deleteProject(pid, name) {
   if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
   try {
-    await fetch(`${BASE}/projects/${pid}`, { method: "DELETE" });
+    await levFetch(`${BASE}/projects/${pid}`, { method: "DELETE" });
     await loadProjects();
   } catch (err) {
     alert("Delete failed: " + err.message);

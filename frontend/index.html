@@ -495,9 +495,32 @@
                 <button onclick="document.getElementById('ig-result').style.display='none'" style="background:transparent;border:none;color:var(--text-dim);font-size: 19px;cursor:pointer;padding:0 4px;" title="Close">✕</button>
               </div>
               <img id="ig-result-img" style="width:100%;border:1px solid var(--border);border-radius:2px;cursor:zoom-in;" alt="Generated image" onclick="igOpenLightbox(this.src)" />
-              <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
-                <button id="ig-upscale-btn" onclick="igUpscale()" style="background:transparent;border:1px solid rgba(60,120,255,0.4);color:#6fa3ff;font-family:Rajdhani,sans-serif;font-size: 16px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Upscale ×4</button>
-                <a id="ig-download" download style="font-family:Rajdhani,sans-serif;font-size: 16px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download</a>
+              <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;flex-wrap:wrap;">
+                <button id="ig-upscale-btn" onclick="igUpscale()" style="background:transparent;border:1px solid rgba(60,120,255,0.4);color:#6fa3ff;font-family:Rajdhani,sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Upscale ×4</button>
+                <button id="ig-animate-btn" onclick="igAnimateImage()" style="background:transparent;border:1px solid rgba(201,168,76,0.5);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Animate →</button>
+                <a id="ig-download" download style="font-family:Rajdhani,sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download</a>
+              </div>
+              <!-- I2V options (shown when Animate is clicked) -->
+              <div id="ig-i2v-panel" style="display:none;margin-top:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:4px;padding:10px;">
+                <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Animate this image</div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <select id="ig-i2v-model" style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 8px;border-radius:2px;">
+                    <option value="wan21_i2v">Wan 2.1 I2V 1.3B — Fast (Recommended)</option>
+                    <option value="wan21_14b_i2v">Wan 2.1 I2V 14B — Best Quality</option>
+                    <option value="hunyuan_i2v">HunyuanVideo I2V — Strong face consistency</option>
+                  </select>
+                  <input id="ig-i2v-prompt" type="text" placeholder="Motion prompt (optional)…" style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 8px;border-radius:2px;" />
+                  <div style="display:flex;gap:6px;align-items:center;">
+                    <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">Duration</label>
+                    <select id="ig-i2v-duration" style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 8px;border-radius:2px;">
+                      <option value="3">3s</option>
+                      <option value="5" selected>5s</option>
+                      <option value="8">8s</option>
+                    </select>
+                    <button id="ig-i2v-go-btn" onclick="igRunI2V()" style="flex:1;background:linear-gradient(90deg,rgba(139,105,20,0.4),rgba(201,168,76,0.4));border:1px solid rgba(201,168,76,0.5);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Generate Video</button>
+                  </div>
+                  <div id="ig-i2v-status" style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;min-height:16px;"></div>
+                </div>
               </div>
             </div>
 
@@ -939,7 +962,7 @@
 
         async function ping() {
           try {
-            const res = await fetch(`${BASE}/settings/status`, { signal: AbortSignal.timeout(3000) });
+            const res = await levFetch(`${BASE}/settings/status`, { signal: AbortSignal.timeout(3000) });
             if (res.ok) {
               if (dot)  { dot.style.background = "#4caf50"; dot.style.boxShadow = "0 0 6px #4caf50"; }
               if (txt)  txt.textContent = "Backend Live";

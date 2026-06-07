@@ -10,12 +10,6 @@ router = APIRouter()
 INPUT_DIR = Path("input/voices/uploads")
 OUTPUT_DIR = Path("output/voices/processed")
 
-@router.get("/presets")
-def get_voice_presets():
-    return {
-        "available_presets": list(VOICE_PRESETS.keys())
-    }
-
 @router.post("/process")
 async def process_voice(
     file: UploadFile = File(...),

@@ -261,6 +261,7 @@
     }
     @keyframes sweep { 0% { opacity: .5; } 100% { opacity: 1; } }
   </style>
+  <script src="config.js"></script>
   <script src="themes.js"></script>
 </head>
 <body>
@@ -340,12 +341,19 @@
     <!-- Enter Studio -->
     <button class="enter-btn" id="enter-btn" onclick="enterStudio()">Enter Studio →</button>
 
-    <!-- API URL config -->
+    <!-- API URL + Password config -->
     <div style="text-align:center;margin-top:6px;">
       <div class="config-label" style="margin-bottom:6px;">Backend API URL</div>
       <div class="config-row" style="justify-content:center;">
         <input class="config-input" id="api-url-input" type="text" placeholder="http://127.0.0.1:8000" />
         <button class="config-btn" onclick="saveApiUrl()">Save</button>
+      </div>
+      <div style="margin-top:8px;">
+        <div class="config-label" style="margin-bottom:6px;">Studio Password <span style="opacity:.4;font-size:10px;">(leave blank if none set)</span></div>
+        <div class="config-row" style="justify-content:center;">
+          <input class="config-input" id="api-pw-input" type="password" placeholder="••••••••" style="letter-spacing:2px;" />
+          <button class="config-btn" onclick="savePassword()">Save</button>
+        </div>
       </div>
       <div style="font-size:12px;color:rgba(201,168,76,.25);margin-top:6px;letter-spacing:1px;">
         Use Railway URL (e.g. https://your-app.railway.app) for cloud deployment.
@@ -366,8 +374,9 @@
       ? _stored
       : (_isLocal ? DEFAULT_API : window.location.origin);
 
-    // Pre-fill the input
+    // Pre-fill the inputs
     document.getElementById("api-url-input").value = apiBase;
+    document.getElementById("api-pw-input").value = localStorage.getItem("levram-password") || "";
 
     function saveApiUrl() {
       const val = document.getElementById("api-url-input").value.trim().replace(/\/$/, "");
@@ -375,6 +384,13 @@
       apiBase = val;
       localStorage.setItem("levram-api-url", apiBase);
       setMsg("API URL saved. Ready to initialize.");
+    }
+
+    function savePassword() {
+      const pw = document.getElementById("api-pw-input").value.trim();
+      if (pw) localStorage.setItem("levram-password", pw);
+      else localStorage.removeItem("levram-password");
+      setMsg("Password saved.");
     }
 
     function setMsg(msg) {

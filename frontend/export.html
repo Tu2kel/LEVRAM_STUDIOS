@@ -117,7 +117,7 @@ async function loadVideoLibrary() {
   const grid    = document.getElementById("vlib-grid");
   const counter = document.getElementById("ex-lib-count");
   try {
-    const res  = await fetch(`${BASE}/video/library`);
+    const res  = await levFetch(`${BASE}/video/library`);
     const data = await res.json();
     allVideos  = data.videos || [];
 
@@ -150,7 +150,7 @@ async function loadVideoLibrary() {
 async function loadQueueClips() {
   const list = document.getElementById("ep-clip-list");
   try {
-    const res  = await fetch(`${BASE}/render-queue`);
+    const res  = await levFetch(`${BASE}/render-queue`);
     const data = await res.json();
     queueItems = (data.queue || []).filter(i => i.clipUrl);
 
@@ -191,7 +191,7 @@ async function assembleEpisode() {
   if (statusEl) statusEl.textContent = "Running ffmpeg concat…";
 
   try {
-    const res = await fetch(`${BASE}/video/assemble-episode`, {
+    const res = await levFetch(`${BASE}/video/assemble-episode`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ item_ids: checked, title }),
@@ -234,7 +234,7 @@ async function generateWanVideo() {
   if (player) player.style.display = "none";
 
   try {
-    const res = await fetch(`${BASE}/video/generate-wan`, {
+    const res = await levFetch(`${BASE}/video/generate-wan`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt, aspect, steps, seed }),

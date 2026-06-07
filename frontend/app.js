@@ -6,7 +6,7 @@ let fxPath = null;
 let shots = [];
 let selectedSceneId = null;
 let renderQueue = [];
-const BASE = "http://localhost:8000";
+const BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 // ─── DOM refs ────────────────────────────────────────────
 const statusEl = document.getElementById("status-text");
@@ -125,7 +125,7 @@ document.getElementById("voice-char-select")?.addEventListener("change", () => {
 // ─── Load saved scenes from backend ───────────────────────
 async function loadScenes() {
   try {
-    const res = await fetch("http://localhost:8000/scenes");
+    const res = await levFetch(`${BASE}/scenes`);
     const data = await res.json();
 
     if (!data.success) {
@@ -161,7 +161,7 @@ async function loadScenes() {
 // ─── Delete shot ─────────────────────────────────────────
 window.deleteShot = async function (id) {
   try {
-    const res = await fetch(`${BASE}/scene/${id}`, {
+    const res = await levFetch(`${BASE}/scene/${id}`, {
       method: "DELETE",
     });
 

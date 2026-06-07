@@ -400,7 +400,7 @@
 
     async function loadScenes() {
       try {
-        const res  = await fetch(`${BASE}/scenes`);
+        const res  = await levFetch(`${BASE}/scenes`);
         const data = await res.json();
         if (!data.success) throw new Error("Failed to load scenes");
         shots = data.scenes.map(s => ({
@@ -428,7 +428,7 @@
 
     async function deleteShot(id) {
       try {
-        const res  = await fetch(`${BASE}/scene/${id}`, { method: "DELETE" });
+        const res  = await levFetch(`${BASE}/scene/${id}`, { method: "DELETE" });
         const data = await res.json();
         if (!data.success) throw new Error("Delete failed");
         shots = shots.filter(s => s.id !== id);
@@ -453,7 +453,7 @@
     async function saveTimelineOrder() {
       try {
         renumberShots();
-        const res  = await fetch(`${BASE}/timeline/save-order`, {
+        const res  = await levFetch(`${BASE}/timeline/save-order`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ shots })

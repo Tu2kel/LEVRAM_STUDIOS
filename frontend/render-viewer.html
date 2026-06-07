@@ -38,7 +38,7 @@
       }
 
       try {
-        const res = await fetch(`${BASE}/render-queue`);
+        const res = await levFetch(`${BASE}/render-queue`);
         const data = await res.json();
         const queue = data.queue || data.jobs || data.items || [];
 
@@ -96,7 +96,7 @@
 
     async function regenerateViewerRender(itemId){
       try {
-        const res = await fetch(`${BASE}/render-queue/${itemId}/keyframe`, {
+        const res = await levFetch(`${BASE}/render-queue/${itemId}/keyframe`, {
           method: "POST",
         });
 

@@ -270,7 +270,7 @@ let currentEpisodeId = null;
 // ─── Load characters ─────────────────────────────────────────
 async function loadCharacters() {
   try {
-    const res  = await fetch(`${BASE}/characters`);
+    const res  = await levFetch(`${BASE}/characters`);
     const data = await res.json();
     characters = data.characters || [];
 
@@ -336,7 +336,7 @@ async function generateConcept() {
   setStatus("Calling Story Engine…");
 
   try {
-    const res = await fetch(`${BASE}/story/concept`, {
+    const res = await levFetch(`${BASE}/story/concept`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -404,7 +404,7 @@ async function generateBeatSheet() {
   setStatus("Building beat sheet…");
 
   try {
-    const res = await fetch(`${BASE}/story/beat-sheet`, {
+    const res = await levFetch(`${BASE}/story/beat-sheet`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -486,7 +486,7 @@ async function generateDialogue() {
     const primary = charOverride || chars[0] || "Unknown";
     const secondary = chars[1] || "";
 
-    const res = await fetch(`${BASE}/story/dialogue`, {
+    const res = await levFetch(`${BASE}/story/dialogue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -571,7 +571,7 @@ async function quickGenerate() {
   try {
     let res, data;
     if (type === "villain_pov") {
-      res  = await fetch(`${BASE}/story/villain-pov`, {
+      res  = await levFetch(`${BASE}/story/villain-pov`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ character: char, ideology: context, inciting_act: context, project }),
       });
@@ -584,7 +584,7 @@ async function quickGenerate() {
       ]);
     } else {
       const internal = type === "monologue_internal";
-      res  = await fetch(`${BASE}/story/monologue`, {
+      res  = await levFetch(`${BASE}/story/monologue`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ character: char, context, internal, project }),
       });
@@ -631,7 +631,7 @@ async function saveCurrentEpisode() {
   };
 
   try {
-    const res = await fetch(
+    const res = await levFetch(
       currentEpisodeId ? `${BASE}/story/episodes/${currentEpisodeId}` : `${BASE}/story/episodes`,
       {
         method: currentEpisodeId ? "PUT" : "POST",
@@ -650,7 +650,7 @@ async function saveCurrentEpisode() {
 
 async function loadSavedEpisodes() {
   try {
-    const res  = await fetch(`${BASE}/story/episodes`);
+    const res  = await levFetch(`${BASE}/story/episodes`);
     const data = await res.json();
     const list = document.getElementById("saved-list");
     const eps  = data.episodes || [];
@@ -693,7 +693,7 @@ function loadEpisode(ep) {
 }
 
 async function deleteEpisode(id) {
-  await fetch(`${BASE}/story/episodes/${id}`, { method: "DELETE" });
+  await levFetch(`${BASE}/story/episodes/${id}`, { method: "DELETE" });
   loadSavedEpisodes();
 }
 

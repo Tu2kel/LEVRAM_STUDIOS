@@ -189,7 +189,7 @@ let selectedVoiceId = null;
 async function checkElStatus() {
   const pill = document.getElementById("el-pill");
   try {
-    const res  = await fetch(`${BASE}/settings/status`);
+    const res  = await levFetch(`${BASE}/settings/status`);
     const data = await res.json();
     if (pill) {
       pill.textContent = data.elevenlabs ? "Active" : "No Key";
@@ -215,7 +215,7 @@ async function cloneElevenLabs() {
   fd.append("file", file);
 
   try {
-    const res  = await fetch(`${BASE}/voice-clone/elevenlabs`, { method: "POST", body: fd });
+    const res  = await levFetch(`${BASE}/voice-clone/elevenlabs`, { method: "POST", body: fd });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Clone failed");
 
@@ -245,7 +245,7 @@ async function testVoice(voiceId) {
   fd.append("text", text);
 
   try {
-    const res  = await fetch(`${BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
+    const res  = await levFetch(`${BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Test failed");
 
@@ -263,7 +263,7 @@ async function loadVoices() {
   const list   = document.getElementById("el-voice-list");
   const status = document.getElementById("el-voices-status");
   try {
-    const res  = await fetch(`${BASE}/voice-clone/elevenlabs/voices`);
+    const res  = await levFetch(`${BASE}/voice-clone/elevenlabs/voices`);
     const data = await res.json();
     const voices = data.voices || [];
 
@@ -297,7 +297,7 @@ async function loadVoices() {
 async function deleteVoice(voiceId) {
   if (!confirm(`Delete voice ${voiceId}? This cannot be undone.`)) return;
   try {
-    const res = await fetch(`${BASE}/voice-clone/elevenlabs/${voiceId}`, { method: "DELETE" });
+    const res = await levFetch(`${BASE}/voice-clone/elevenlabs/${voiceId}`, { method: "DELETE" });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Delete failed");
     await loadVoices();
@@ -332,7 +332,7 @@ async function uploadRvcModel() {
   if (idxFile) fd.append("index_file", idxFile);
 
   try {
-    const res  = await fetch(`${BASE}/voice-clone/rvc/upload`, { method: "POST", body: fd });
+    const res  = await levFetch(`${BASE}/voice-clone/rvc/upload`, { method: "POST", body: fd });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Upload failed");
 
@@ -349,7 +349,7 @@ async function uploadRvcModel() {
 async function loadRvcModels() {
   const list = document.getElementById("rvc-model-list");
   try {
-    const res  = await fetch(`${BASE}/voice-clone/rvc/models`);
+    const res  = await levFetch(`${BASE}/voice-clone/rvc/models`);
     const data = await res.json();
     const models = data.models || [];
 

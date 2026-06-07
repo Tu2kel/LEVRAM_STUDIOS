@@ -56,7 +56,7 @@ async function generateCharacterPreview() {
   if (img) img.style.display = "none";
 
   try {
-    const res = await fetch(`${BASE}/character-lab/generate`, {
+    const res = await levFetch(`${BASE}/character-lab/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ character, prompt })
@@ -105,7 +105,7 @@ async function generateCharacterPreview() {
         const existing = cache.find(c => c.id === editingCharacterId);
         if (existing) {
           const payload = { ...existing, reference_image_url: finalUrl };
-          await fetch(`${BASE}/characters/${editingCharacterId}`, {
+          await levFetch(`${BASE}/characters/${editingCharacterId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -139,7 +139,7 @@ window.saveCharacter = async function saveCharacter() {
   const method = isEdit ? "PUT" : "POST";
 
   try {
-    const res = await fetch(url, {
+    const res = await levFetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(character)
@@ -197,7 +197,7 @@ async function loadCharacters() {
   if (!list) return;
 
   try {
-    const res = await fetch(`${BASE}/characters`);
+    const res = await levFetch(`${BASE}/characters`);
     const data = await res.json();
     const characters = data.characters || [];
 
@@ -314,7 +314,7 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
 window.deleteCharacter = async function deleteCharacter(id) {
   if (!id) return;
   try {
-    const res = await fetch(`${BASE}/characters/${id}`, { method: "DELETE" });
+    const res = await levFetch(`${BASE}/characters/${id}`, { method: "DELETE" });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Delete failed");
     if (editingCharacterId === id) {
@@ -435,7 +435,7 @@ async function loadVoiceProfilesForCharacters(selectedValue = "") {
   if (!select) return;
 
   try {
-    const res = await fetch(`${BASE}/voices`);
+    const res = await levFetch(`${BASE}/voices`);
     const data = await res.json();
     const voices = data.voices || [];
 
@@ -524,7 +524,7 @@ window.cloneElevenLabsVoice = async function cloneElevenLabsVoice() {
   fd.append("file", fileInput.files[0]);
 
   try {
-    const res = await fetch(`${BASE}/voice-clone/elevenlabs`, { method: "POST", body: fd });
+    const res = await levFetch(`${BASE}/voice-clone/elevenlabs`, { method: "POST", body: fd });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Clone failed");
 
@@ -556,7 +556,7 @@ window.uploadRvcModel = async function uploadRvcModel() {
   if (indexFile?.files?.length) fd.append("index_file", indexFile.files[0]);
 
   try {
-    const res = await fetch(`${BASE}/voice-clone/rvc/upload`, { method: "POST", body: fd });
+    const res = await levFetch(`${BASE}/voice-clone/rvc/upload`, { method: "POST", body: fd });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Upload failed");
 
@@ -573,7 +573,7 @@ async function loadRvcModels(selectPath = null) {
   if (!sel) return;
 
   try {
-    const res = await fetch(`${BASE}/voice-clone/rvc/models`);
+    const res = await levFetch(`${BASE}/voice-clone/rvc/models`);
     const data = await res.json();
     const models = data.models || [];
 
@@ -606,7 +606,7 @@ window.openVoicePicker = async function openVoicePicker() {
   grid.innerHTML = '<div class="vp-loading">Loading voices...</div>';
 
   try {
-    const res  = await fetch(`${BASE}/voice-clone/elevenlabs/voices`);
+    const res  = await levFetch(`${BASE}/voice-clone/elevenlabs/voices`);
     const data = await res.json();
     _vpAllVoices = data.voices || [];
     renderVoiceCards(_vpAllVoices);
@@ -701,11 +701,11 @@ window.testVoiceGenerate = async function testVoiceGenerate(e, voiceId) {
     const fd = new FormData();
     fd.append("voice_id", voiceId);
     fd.append("text", testText);
-    const res  = await fetch(`${BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
+    const res  = await levFetch(`${BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
     const data = await res.json();
     if (data.audio_url) {
       if (_activePreviewAudio) _activePreviewAudio.pause();
-      _activePreviewAudio = new Audio(`http://localhost:8000${data.audio_url}`);
+      _activePreviewAudio = new Audio(`${BASE}${data.audio_url}`);
       _activePreviewAudio.play();
     }
   } catch (err) { console.error("TEST VOICE ERROR:", err); }
@@ -729,10 +729,10 @@ window.testSelectedVoice = async function testSelectedVoice() {
   fd.append("text", text);
 
   try {
-    const res  = await fetch(`${BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
+    const res  = await levFetch(`${BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
     const data = await res.json();
     if (data.audio_url && audio) {
-      audio.src = `http://localhost:8000${data.audio_url}`;
+      audio.src = `${BASE}${data.audio_url}`;
       audio.style.display = "block";
       audio.play();
       if (status) status.textContent = "▶ Playing — adjust FX in Voice Lab after selecting";

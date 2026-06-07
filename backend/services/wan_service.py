@@ -10,7 +10,8 @@ import urllib.parse
 from pathlib import Path
 from datetime import datetime
 
-COMFY_URL = "http://127.0.0.1:8188"
+import os
+COMFY_URL = os.getenv("COMFY_URL", "http://127.0.0.1:8188")
 VIDEO_DIR = Path("output/videos")
 
 # Paths relative to ComfyUI's model directories (as ComfyUI expects them)

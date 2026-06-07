@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+import os
+from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.routes.tts import router as tts_router
 from backend.routes.voice_fx import router as voice_fx_router
@@ -31,6 +33,30 @@ for _d in ["output/renders/images", "output/renders/keyframes",
     Path(_d).mkdir(parents=True, exist_ok=True)
 
 app = FastAPI()
+
+# ── Password gate middleware ───────────────────────────────────
+# Set LEVRAM_PASSWORD in Railway Variables to enable.
+# If not set, studio runs open (local dev / trusted network).
+_PASSWORD = os.getenv("LEVRAM_PASSWORD", "")
+_OPEN_PATHS = {"/settings/status", "/frontend", "/output"}  # always allowed
+
+@app.middleware("http")
+async def auth_gate(request: Request, call_next):
+    if not _PASSWORD:
+        return await call_next(request)
+    path = request.url.path
+    # Allow static assets and the launch/frontend pages through
+    if any(path.startswith(p) for p in _OPEN_PATHS):
+        return await call_next(request)
+    # Check Authorization header: Bearer <password>
+    auth = request.headers.get("Authorization", "")
+    token = auth.removeprefix("Bearer ").strip()
+    # Also accept as query param ?key=<password> for quick testing
+    if not token:
+        token = request.query_params.get("key", "")
+    if token != _PASSWORD:
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    return await call_next(request)
 
 app.add_middleware(
     CORSMiddleware,

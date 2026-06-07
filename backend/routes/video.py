@@ -233,15 +233,40 @@ def _fal_video(prompt: str, model_key: str, aspect: str, duration: int) -> dict:
     filename = f"fal_{model_key}_{ts}_{rid}.mp4"
     out_path = VID_DIR / filename
 
-    req = urllib.request.Request(video_url, headers={"User-Agent": "LEVRAM/1.0"})
-    with urllib.request.urlopen(req, timeout=180) as r:
-        out_path.write_bytes(r.read())
+    # ── Short-term persistence: try local download; fall back to fal.ai CDN URL
+    # fal.ai CDN URLs stay live for ~7 days — enough to survive Railway redeploys
+    # without a Volume. If download fails, remoteUrl is served directly instead.
+    local_url = None
+    try:
+        req = urllib.request.Request(video_url, headers={"User-Agent": "LEVRAM/1.0"})
+        with urllib.request.urlopen(req, timeout=180) as r:
+            out_path.write_bytes(r.read())
+        local_url = "/output/videos/" + filename
+    except Exception as dl_err:
+        print(f"[LEVRAM] Local download failed ({dl_err}); using fal.ai CDN URL as outputUrl")
+
+    # ── Long-term persistence (uncomment when ready to wire up cloud storage) ──
+    # import boto3, io
+    # s3 = boto3.client(
+    #     "s3",
+    #     endpoint_url=os.getenv("R2_ENDPOINT"),       # Cloudflare R2: https://<account>.r2.cloudflarestorage.com
+    #     aws_access_key_id=os.getenv("R2_ACCESS_KEY"),
+    #     aws_secret_access_key=os.getenv("R2_SECRET_KEY"),
+    # )
+    # bucket  = os.getenv("R2_BUCKET", "levram-output")
+    # key     = f"videos/{filename}"
+    # req2    = urllib.request.Request(video_url, headers={"User-Agent": "LEVRAM/1.0"})
+    # with urllib.request.urlopen(req2, timeout=180) as r:
+    #     s3.upload_fileobj(io.BytesIO(r.read()), bucket, key, ExtraArgs={"ContentType": "video/mp4"})
+    # local_url = f"https://pub-<hash>.r2.dev/{key}"   # or your custom domain
+    # ── To enable: pip install boto3, add R2_ENDPOINT/R2_ACCESS_KEY/R2_SECRET_KEY to Railway Variables
 
     return {
-        "videoUrl": "/output/videos/" + filename,
-        "prompt":   prompt,
-        "model":    model_id,
-        "engine":   "fal",
+        "videoUrl":  local_url or video_url,
+        "remoteUrl": video_url,
+        "prompt":    prompt,
+        "model":     model_id,
+        "engine":    "fal",
     }
 
 
@@ -318,15 +343,27 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
     filename = f"i2v_{model_key}_{ts}_{rid}.mp4"
     out_path = VID_DIR / filename
 
-    req = ur.Request(video_url, headers={"User-Agent": "LEVRAM/1.0"})
-    with ur.urlopen(req, timeout=300) as r:
-        out_path.write_bytes(r.read())
+    # ── Short-term: try local download, fall back to fal.ai CDN URL (~7 day lifespan)
+    local_url = None
+    try:
+        req = ur.Request(video_url, headers={"User-Agent": "LEVRAM/1.0"})
+        with ur.urlopen(req, timeout=300) as r:
+            out_path.write_bytes(r.read())
+        local_url = "/output/videos/" + filename
+    except Exception as dl_err:
+        print(f"[LEVRAM] I2V local download failed ({dl_err}); using fal.ai CDN URL")
+
+    # ── Long-term persistence (uncomment + wire R2 env vars when ready) ──
+    # See T2V block above for the full boto3/R2 snippet — same pattern applies here.
+    # key = f"videos/{filename}"  →  upload raw bytes  →  set local_url to R2 public URL
 
     return {
-        "videoUrl": "/output/videos/" + filename,
-        "prompt":   prompt,
-        "model":    model_id,
-        "engine":   "fal_i2v",
+        "videoUrl":     local_url or video_url,
+        "outputUrl":    local_url or video_url,
+        "remoteUrl":    video_url,
+        "prompt":       prompt,
+        "model":        model_id,
+        "engine":       "fal_i2v",
         "source_image": image_url,
     }
 

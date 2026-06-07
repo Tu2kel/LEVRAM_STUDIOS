@@ -92,7 +92,7 @@ function renderRenderQueue() {
           </div>
         ` : ""}
         ${hasClip ? `
-          <video src="${BASE}${item.clipUrl}" controls
+          <video src="${item.clipUrl?.startsWith('http') ? item.clipUrl : BASE + item.clipUrl}" controls
                  style="width:100%;max-height:140px;border-radius:4px;margin-top:10px;background:#000;grid-column:1/-1;"></video>
         ` : ""}
       </div>

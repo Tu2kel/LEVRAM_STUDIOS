@@ -7,6 +7,8 @@ import os
 import uuid
 import urllib.request
 
+from backend.routes.characters import _get_character
+
 router = APIRouter()
 
 IMAGE_DIR = Path("output/renders/images")
@@ -35,22 +37,23 @@ COMFY_SIZES = {
 
 # fal.ai model IDs
 FAL_MODELS = {
-    "fal_flux":         "fal-ai/flux/dev",          # default — best quality/speed balance
-    "fal_flux_schnell": "fal-ai/flux/schnell",       # 4-step turbo, fastest
-    "fal_flux_pro":     "fal-ai/flux-pro",           # highest fidelity
-    "fal_flux_pro11":   "fal-ai/flux-pro/v1.1",      # pro latest
+    "fal_flux":         "fal-ai/flux/dev",                     # default — quality/speed balance
+    "fal_flux_lora":    "fal-ai/flux-lora",                    # LoRA — character-locked output
+    "fal_flux_schnell": "fal-ai/flux/schnell",                 # 4-step turbo
+    "fal_flux_pro":     "fal-ai/flux-pro",                     # highest fidelity
+    "fal_flux_pro11":   "fal-ai/flux-pro/v1.1",
     "fal_sd3":          "fal-ai/stable-diffusion-v3-medium",
 }
 
 
 class ImageGenPayload(BaseModel):
     prompt: str
-    character: str = ""
+    character: str = ""       # character name (for prompt injection)
+    character_id: str = ""    # character UUID — auto-loads LoRA if trained
     style: str = "cinematic photorealistic"
     negative_prompt: str = ""
     aspect: str = "widescreen"
-    # fal_flux is now the default lead engine
-    engine: str = "fal_flux"   # fal_flux | fal_flux_schnell | fal_flux_pro | dalle3 | comfy
+    engine: str = "fal_flux"  # auto-upgrades to fal_flux_lora if character has one
 
 
 def _save_bytes(image_bytes: bytes, prefix: str = "levram") -> tuple[str, str]:
@@ -70,7 +73,8 @@ def _download_url(url: str) -> bytes:
 
 
 # ── fal.ai (FLUX family + SD3) ────────────────────────────────
-def _generate_fal(prompt: str, aspect: str, style: str, engine: str) -> dict:
+def _generate_fal(prompt: str, aspect: str, style: str, engine: str,
+                  lora_url: str = "", lora_trigger: str = "") -> dict:
     try:
         import fal_client
     except ImportError:
@@ -81,25 +85,31 @@ def _generate_fal(prompt: str, aspect: str, style: str, engine: str) -> dict:
         raise RuntimeError("FAL_KEY not set. Add it to Railway Variables.")
     os.environ["FAL_KEY"] = api_key
 
-    model_id = FAL_MODELS.get(engine, FAL_MODELS["fal_flux"])
-    full_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
+    # If a character LoRA is available, always use the LoRA model
+    if lora_url:
+        engine   = "fal_flux_lora"
+        model_id = FAL_MODELS["fal_flux_lora"]
+    else:
+        model_id = FAL_MODELS.get(engine, FAL_MODELS["fal_flux"])
+
+    base_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
+    # Prepend the trigger word so the LoRA fires correctly
+    full_prompt = f"{lora_trigger}, {base_prompt}" if lora_trigger else base_prompt
     image_size  = FAL_SIZES.get(aspect, "landscape_16_9")
+    steps       = 4 if "schnell" in engine else 30
 
-    # schnell uses fewer steps
-    steps = 4 if "schnell" in engine else 28
-    guidance = 3.5
+    args = {
+        "prompt":                full_prompt,
+        "image_size":            image_size,
+        "num_inference_steps":   steps,
+        "guidance_scale":        3.5,
+        "num_images":            1,
+        "enable_safety_checker": False,
+    }
+    if lora_url:
+        args["loras"] = [{"path": lora_url, "scale": 1.0}]
 
-    result = fal_client.run(
-        model_id,
-        arguments={
-            "prompt": full_prompt,
-            "image_size": image_size,
-            "num_inference_steps": steps,
-            "guidance_scale": guidance,
-            "num_images": 1,
-            "enable_safety_checker": False,
-        },
-    )
+    result      = fal_client.run(model_id, arguments=args)
     image_url   = result["images"][0]["url"]
     image_bytes = _download_url(image_url)
     prefix      = engine.replace("fal_", "")
@@ -158,8 +168,17 @@ def _generate_comfy(prompt: str, aspect: str, style: str, character: str) -> dic
 async def generate_image(payload: ImageGenPayload):
     engine = payload.engine
 
-    if engine in FAL_MODELS:
-        fn = lambda: _generate_fal(payload.prompt, payload.aspect, payload.style, engine)
+    # Auto-load character LoRA if character_id is provided
+    lora_url = lora_trigger = ""
+    if payload.character_id:
+        char = await _get_character(payload.character_id)
+        if char and char.get("lora_status") == "ready" and char.get("lora_url"):
+            lora_url    = char["lora_url"]
+            lora_trigger = char.get("lora_trigger", "")
+
+    if engine in FAL_MODELS or (lora_url and engine not in ("dalle3", "comfy")):
+        fn = lambda: _generate_fal(payload.prompt, payload.aspect, payload.style,
+                                   engine, lora_url, lora_trigger)
     elif engine == "dalle3":
         fn = lambda: _generate_dalle3(payload.prompt, payload.aspect, payload.style)
     elif engine == "comfy":
@@ -182,13 +201,14 @@ def list_models():
         "success": True,
         "default": "fal_flux",
         "engines": [
-            {"id": "fal_flux",         "label": "FLUX.1 Dev",        "provider": "fal.ai",  "speed": "fast",    "quality": "high"},
-            {"id": "fal_flux_schnell", "label": "FLUX.1 Schnell",    "provider": "fal.ai",  "speed": "turbo",   "quality": "good"},
-            {"id": "fal_flux_pro",     "label": "FLUX.1 Pro",        "provider": "fal.ai",  "speed": "medium",  "quality": "best"},
-            {"id": "fal_flux_pro11",   "label": "FLUX.1 Pro v1.1",   "provider": "fal.ai",  "speed": "medium",  "quality": "best"},
-            {"id": "fal_sd3",          "label": "Stable Diffusion 3","provider": "fal.ai",  "speed": "medium",  "quality": "high"},
-            {"id": "dalle3",           "label": "DALL-E 3",          "provider": "openai",  "speed": "medium",  "quality": "high"},
-            {"id": "comfy",            "label": "ComfyUI (local)",   "provider": "local",   "speed": "varies",  "quality": "varies"},
+            {"id": "fal_flux_lora",    "label": "FLUX LoRA (character-locked)", "provider": "fal.ai", "speed": "fast",   "quality": "best",   "note": "Requires trained LoRA — auto-selected when character has one"},
+            {"id": "fal_flux",         "label": "FLUX.1 Dev",                   "provider": "fal.ai", "speed": "fast",   "quality": "high"},
+            {"id": "fal_flux_schnell", "label": "FLUX.1 Schnell",               "provider": "fal.ai", "speed": "turbo",  "quality": "good"},
+            {"id": "fal_flux_pro",     "label": "FLUX.1 Pro",                   "provider": "fal.ai", "speed": "medium", "quality": "best"},
+            {"id": "fal_flux_pro11",   "label": "FLUX.1 Pro v1.1",             "provider": "fal.ai", "speed": "medium", "quality": "best"},
+            {"id": "fal_sd3",          "label": "Stable Diffusion 3",           "provider": "fal.ai", "speed": "medium", "quality": "high"},
+            {"id": "dalle3",           "label": "DALL-E 3",                     "provider": "openai", "speed": "medium", "quality": "high"},
+            {"id": "comfy",            "label": "ComfyUI (local)",              "provider": "local",  "speed": "varies", "quality": "varies"},
         ],
     }
 

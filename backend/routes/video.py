@@ -174,13 +174,22 @@ def assemble_episode(payload: AssembleEpisodePayload):
 
 # ─── Lane 2a: fal.ai T2V (lead — cloud GPU) ──────────────────
 
-FAL_VIDEO_MODELS = {
-    "wan21":       "fal-ai/wan/v2.1/1.3b/text-to-video",   # fast, good quality
-    "wan21_14b":   "fal-ai/wan/v2.1/14b/text-to-video",    # highest quality, slower
-    "kling15":     "fal-ai/kling-video/v1.5/pro/text-to-video",
-    "kling2":      "fal-ai/kling-video/v2/master/text-to-video",
-    "hunyuan":     "fal-ai/hunyuan-video",
+# Text-to-Video models (open-source only — no competitor IP)
+FAL_T2V_MODELS = {
+    "wan21":     "fal-ai/wan/v2.1/1.3b/text-to-video",  # fast, open-source
+    "wan21_14b": "fal-ai/wan/v2.1/14b/text-to-video",   # highest quality
+    "hunyuan":   "fal-ai/hunyuan-video",                 # strong consistency
+    "cogvideox": "fal-ai/cogvideox-5b",                  # open-source, good motion
 }
+
+# Image-to-Video models — lock the character's face via a keyframe
+FAL_I2V_MODELS = {
+    "wan21_i2v":     "fal-ai/wan/v2.1/1.3b/image-to-video",  # fast
+    "wan21_14b_i2v": "fal-ai/wan/v2.1/14b/image-to-video",   # best quality
+    "hunyuan_i2v":   "fal-ai/hunyuan-video/image-to-video",
+}
+
+FAL_VIDEO_MODELS = {**FAL_T2V_MODELS, **FAL_I2V_MODELS}  # keep for backward compat
 
 FAL_VIDEO_SIZES = {
     "widescreen": "1280x720",
@@ -236,15 +245,19 @@ def _fal_video(prompt: str, model_key: str, aspect: str, duration: int) -> dict:
     }
 
 
+# ── T2V payload & route ───────────────────────────────────────
+
 class FalVideoPayload(BaseModel):
     prompt: str
-    model: str = "wan21"          # wan21 | wan21_14b | kling15 | kling2 | hunyuan
-    aspect: str = "widescreen"   # widescreen | portrait | square | cinematic
-    duration: int = 5             # seconds (model-dependent)
+    model: str = "wan21"          # wan21 | wan21_14b | hunyuan | cogvideox
+    aspect: str = "widescreen"
+    duration: int = 5
 
 
 @router.post("/video/generate-fal")
 async def generate_fal_video(payload: FalVideoPayload):
+    if payload.model not in FAL_T2V_MODELS:
+        raise HTTPException(status_code=400, detail=f"Unknown T2V model: {payload.model}. Use /video/fal-models to list options.")
     loop = asyncio.get_event_loop()
     try:
         result = await loop.run_in_executor(
@@ -256,18 +269,106 @@ async def generate_fal_video(payload: FalVideoPayload):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── Image-to-Video (character-locked) ────────────────────────
+
+class FalI2VPayload(BaseModel):
+    image_url: str               # local /output/... URL or remote https:// URL
+    prompt: str = ""             # optional motion description
+    model: str = "wan21_i2v"    # wan21_i2v | wan21_14b_i2v | hunyuan_i2v
+    duration: int = 5
+
+
+def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: int) -> dict:
+    import os, urllib.request as ur
+    try:
+        import fal_client
+    except ImportError:
+        raise RuntimeError("fal-client not installed")
+
+    api_key = os.getenv("FAL_KEY")
+    if not api_key:
+        raise RuntimeError("FAL_KEY not set.")
+    os.environ["FAL_KEY"] = api_key
+
+    model_id = FAL_I2V_MODELS.get(model_key, FAL_I2V_MODELS["wan21_i2v"])
+
+    # If local path, upload to fal.ai storage first
+    if image_url.startswith("/output/") or image_url.startswith("output/"):
+        local_path = image_url.lstrip("/")
+        remote_url = fal_client.upload_file(local_path)
+    else:
+        remote_url = image_url
+
+    result = fal_client.run(
+        model_id,
+        arguments={
+            "image_url": remote_url,
+            "prompt":    prompt or "cinematic motion, smooth camera",
+            "duration":  duration,
+            "resolution": "720p",
+        },
+    )
+    video_url = result.get("video", {}).get("url") or result.get("video_url") or ""
+    if not video_url:
+        raise RuntimeError(f"No video URL in response: {result}")
+
+    VID_DIR.mkdir(parents=True, exist_ok=True)
+    ts       = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
+    rid      = __import__("uuid").uuid4().hex[:8]
+    filename = f"i2v_{model_key}_{ts}_{rid}.mp4"
+    out_path = VID_DIR / filename
+
+    req = ur.Request(video_url, headers={"User-Agent": "LEVRAM/1.0"})
+    with ur.urlopen(req, timeout=300) as r:
+        out_path.write_bytes(r.read())
+
+    return {
+        "videoUrl": "/output/videos/" + filename,
+        "prompt":   prompt,
+        "model":    model_id,
+        "engine":   "fal_i2v",
+        "source_image": image_url,
+    }
+
+
+@router.post("/video/image-to-video")
+async def image_to_video(payload: FalI2VPayload):
+    """Animate a keyframe image — locks character appearance in the video."""
+    if payload.model not in FAL_I2V_MODELS:
+        raise HTTPException(status_code=400, detail=f"Unknown I2V model: {payload.model}")
+    loop = asyncio.get_event_loop()
+    try:
+        result = await loop.run_in_executor(
+            None,
+            lambda: _fal_image_to_video(payload.image_url, payload.prompt, payload.model, payload.duration),
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/video/fal-models")
 def list_fal_video_models():
     return {
         "success": True,
-        "default": "wan21",
-        "models": [
-            {"id": "wan21",     "label": "Wan 2.1 (1.3B)",     "speed": "fast",   "note": "Best speed/quality"},
-            {"id": "wan21_14b", "label": "Wan 2.1 (14B)",      "speed": "slow",   "note": "Highest quality"},
-            {"id": "kling15",   "label": "Kling 1.5 Pro",      "speed": "medium", "note": "Cinematic motion"},
-            {"id": "kling2",    "label": "Kling 2 Master",     "speed": "slow",   "note": "State of the art"},
-            {"id": "hunyuan",   "label": "HunyuanVideo",       "speed": "medium", "note": "Strong consistency"},
-        ],
+        "t2v": {
+            "default": "wan21",
+            "models": [
+                {"id": "wan21",     "label": "Wan 2.1 (1.3B)",  "speed": "fast",   "note": "Best speed/quality — open source"},
+                {"id": "wan21_14b", "label": "Wan 2.1 (14B)",   "speed": "slow",   "note": "Highest quality — open source"},
+                {"id": "hunyuan",   "label": "HunyuanVideo",    "speed": "medium", "note": "Strong temporal consistency"},
+                {"id": "cogvideox", "label": "CogVideoX 5B",    "speed": "medium", "note": "Open source, good motion"},
+            ],
+        },
+        "i2v": {
+            "default": "wan21_i2v",
+            "note": "Animate a FLUX+LoRA keyframe — character face is locked",
+            "models": [
+                {"id": "wan21_i2v",     "label": "Wan 2.1 I2V (1.3B)",  "speed": "fast",   "note": "Recommended for character shots"},
+                {"id": "wan21_14b_i2v", "label": "Wan 2.1 I2V (14B)",   "speed": "slow",   "note": "Best quality"},
+                {"id": "hunyuan_i2v",   "label": "HunyuanVideo I2V",    "speed": "medium", "note": "Strong face consistency"},
+            ],
+        },
     }
 
 

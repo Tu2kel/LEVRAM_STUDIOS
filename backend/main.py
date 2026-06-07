@@ -21,7 +21,14 @@ from backend.routes.upscale import router as upscale_router
 from backend.routes.assets import router as assets_router
 from backend.routes.projects import router as projects_router
 from dotenv import load_dotenv
+from pathlib import Path
 load_dotenv()
+
+# Ensure output dirs exist (Railway has no persistent FS pre-created)
+for _d in ["output/renders/images", "output/renders/keyframes",
+           "output/audio/tts", "output/audio/voice",
+           "output/videos", "output/music", "data"]:
+    Path(_d).mkdir(parents=True, exist_ok=True)
 
 app = FastAPI()
 

@@ -172,12 +172,111 @@ def assemble_episode(payload: AssembleEpisodePayload):
     }
 
 
-# ─── Lane 2: Wan2.1 T2V ──────────────────────────────────────
+# ─── Lane 2a: fal.ai T2V (lead — cloud GPU) ──────────────────
+
+FAL_VIDEO_MODELS = {
+    "wan21":       "fal-ai/wan/v2.1/1.3b/text-to-video",   # fast, good quality
+    "wan21_14b":   "fal-ai/wan/v2.1/14b/text-to-video",    # highest quality, slower
+    "kling15":     "fal-ai/kling-video/v1.5/pro/text-to-video",
+    "kling2":      "fal-ai/kling-video/v2/master/text-to-video",
+    "hunyuan":     "fal-ai/hunyuan-video",
+}
+
+FAL_VIDEO_SIZES = {
+    "widescreen": "1280x720",
+    "cinematic":  "1280x544",
+    "portrait":   "720x1280",
+    "square":     "720x720",
+}
+
+
+def _fal_video(prompt: str, model_key: str, aspect: str, duration: int) -> dict:
+    import os, urllib.request
+    try:
+        import fal_client
+    except ImportError:
+        raise RuntimeError("fal-client not installed — pip install fal-client")
+
+    api_key = os.getenv("FAL_KEY")
+    if not api_key:
+        raise RuntimeError("FAL_KEY not set. Add it to Railway Variables.")
+    os.environ["FAL_KEY"] = api_key
+
+    model_id = FAL_VIDEO_MODELS.get(model_key, FAL_VIDEO_MODELS["wan21"])
+    resolution = FAL_VIDEO_SIZES.get(aspect, "1280x720")
+
+    result = fal_client.run(
+        model_id,
+        arguments={
+            "prompt": prompt,
+            "resolution": resolution,
+            "duration": duration,
+            "num_inference_steps": 30,
+        },
+    )
+    video_url = result.get("video", {}).get("url") or result.get("video_url") or ""
+    if not video_url:
+        raise RuntimeError(f"fal.ai returned no video URL. Raw: {result}")
+
+    VID_DIR.mkdir(parents=True, exist_ok=True)
+    ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
+    rid      = __import__("uuid").uuid4().hex[:8]
+    filename = f"fal_{model_key}_{ts}_{rid}.mp4"
+    out_path = VID_DIR / filename
+
+    req = urllib.request.Request(video_url, headers={"User-Agent": "LEVRAM/1.0"})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        out_path.write_bytes(r.read())
+
+    return {
+        "videoUrl": "/output/videos/" + filename,
+        "prompt":   prompt,
+        "model":    model_id,
+        "engine":   "fal",
+    }
+
+
+class FalVideoPayload(BaseModel):
+    prompt: str
+    model: str = "wan21"          # wan21 | wan21_14b | kling15 | kling2 | hunyuan
+    aspect: str = "widescreen"   # widescreen | portrait | square | cinematic
+    duration: int = 5             # seconds (model-dependent)
+
+
+@router.post("/video/generate-fal")
+async def generate_fal_video(payload: FalVideoPayload):
+    loop = asyncio.get_event_loop()
+    try:
+        result = await loop.run_in_executor(
+            None,
+            lambda: _fal_video(payload.prompt, payload.model, payload.aspect, payload.duration),
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/video/fal-models")
+def list_fal_video_models():
+    return {
+        "success": True,
+        "default": "wan21",
+        "models": [
+            {"id": "wan21",     "label": "Wan 2.1 (1.3B)",     "speed": "fast",   "note": "Best speed/quality"},
+            {"id": "wan21_14b", "label": "Wan 2.1 (14B)",      "speed": "slow",   "note": "Highest quality"},
+            {"id": "kling15",   "label": "Kling 1.5 Pro",      "speed": "medium", "note": "Cinematic motion"},
+            {"id": "kling2",    "label": "Kling 2 Master",     "speed": "slow",   "note": "State of the art"},
+            {"id": "hunyuan",   "label": "HunyuanVideo",       "speed": "medium", "note": "Strong consistency"},
+        ],
+    }
+
+
+# ─── Lane 2b: Wan2.1 via local ComfyUI (fallback) ────────────
 
 class WanVideoPayload(BaseModel):
     prompt: str
     character: str = ""
-    aspect: str = "widescreen"   # widescreen | portrait | square
+    aspect: str = "widescreen"
     steps: int = 25
     cfg: float = 6.0
     seed: int | None = None

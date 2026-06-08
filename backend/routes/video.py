@@ -207,6 +207,24 @@ FAL_VIDEO_SIZES = {
 }
 
 
+def _humanize_fal_error(e: Exception) -> str:
+    """Turn raw fal.ai / network exceptions into plain-English messages."""
+    msg = str(e).lower()
+    if "quota" in msg or "rate limit" in msg or "429" in msg:
+        return "fal.ai rate limit hit — wait 60 seconds and retry."
+    if "unauthorized" in msg or "403" in msg or "invalid key" in msg:
+        return "FAL_KEY is invalid or expired — check Railway Variables."
+    if "model" in msg and ("not found" in msg or "unavailable" in msg):
+        return "This fal.ai model is temporarily unavailable — try a different engine."
+    if "timeout" in msg or "timed out" in msg:
+        return "fal.ai took too long to respond — the model may be overloaded. Retry."
+    if "no video" in msg or "no image" in msg or "returned no" in msg:
+        return "fal.ai returned an empty result — your prompt may have triggered a content filter. Try rephrasing."
+    if "fal_key not set" in msg or "fal_key" in msg:
+        return "FAL_KEY not set — add it to Railway Variables."
+    return f"Generation failed: {str(e)}"
+
+
 def _fal_video(prompt: str, model_key: str, aspect: str, duration: int) -> dict:
     import os, urllib.request
     try:
@@ -310,7 +328,7 @@ async def generate_fal_video(payload: FalVideoPayload):
                 _JOBS[job_id]["result"] = result
             except Exception as e:
                 _JOBS[job_id]["status"] = "failed"
-                _JOBS[job_id]["error"] = str(e)
+                _JOBS[job_id]["error"] = _humanize_fal_error(e)
 
     asyncio.create_task(_run())
     return {"success": True, "job_id": job_id, "status": "queued"}
@@ -434,7 +452,7 @@ async def image_to_video(payload: FalI2VPayload):
                 _JOBS[job_id]["result"] = result
             except Exception as e:
                 _JOBS[job_id]["status"] = "failed"
-                _JOBS[job_id]["error"] = str(e)
+                _JOBS[job_id]["error"] = _humanize_fal_error(e)
 
     asyncio.create_task(_run())
     return {"success": True, "job_id": job_id, "status": "queued"}

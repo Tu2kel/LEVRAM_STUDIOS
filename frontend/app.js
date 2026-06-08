@@ -25,14 +25,28 @@ const timelineShots = document.getElementById("timeline-shots");
 const tlTime = document.getElementById("tl-time");
 
 // ─── Helpers ─────────────────────────────────────────────
-function setStatus(msg, isErr = false) {
-  statusEl.textContent = msg;
+let _statusClearTimer = null;
+function setStatus(msg, isErr = false, isOk = false) {
+  if (!statusEl) return;
+  // Icon prefix
+  const icon = isErr ? "✕ " : isOk ? "✓ " : "· ";
+  statusEl.textContent = icon + msg;
   statusEl.style.background = isErr
-    ? "linear-gradient(90deg,#7a0000,#cc0000)"
+    ? "linear-gradient(90deg,#7a0000,#cc2040)"
+    : isOk
+    ? "linear-gradient(90deg,#0a5c32,#22c97a)"
     : "linear-gradient(90deg,#8b6914,#c9a84c,#f5d98b)";
   statusEl.style.webkitBackgroundClip = "text";
-  statusEl.style.webkitTextFillColor = "transparent";
-  statusEl.style.backgroundClip = "text";
+  statusEl.style.webkitTextFillColor  = "transparent";
+  statusEl.style.backgroundClip       = "text";
+  statusEl.style.opacity = "1";
+  // Auto-fade non-errors after 8s
+  clearTimeout(_statusClearTimer);
+  if (!isErr) {
+    _statusClearTimer = setTimeout(() => {
+      statusEl.style.opacity = "0.35";
+    }, 8000);
+  }
 }
 
 function activateWaveform() {

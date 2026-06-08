@@ -597,8 +597,9 @@ select.fx-preset {
 .shot-field input:focus,
 .shot-field select:focus,
 .shot-field textarea:focus {
-  border-color: var(--blue-bright);
-  box-shadow: 0 0 0 1px rgba(46, 111, 212, 0.15);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(201,168,76,0.15), 0 0 8px rgba(201,168,76,0.08);
+  outline: none;
 }
 
 .shot-field select {
@@ -1864,4 +1865,182 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ============================================================
+   LEVRAM POLISH PASS — inputs, buttons, scrollbars, status
+   ============================================================ */
+
+/* ── Global scrollbars ─────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201,168,76,0.3) transparent;
+}
+*::-webkit-scrollbar       { width: 5px; height: 5px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.28); border-radius: 3px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,0.55); }
+
+/* ── Global input / select / textarea focus (gold, not blue) ─ */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 2px rgba(201,168,76,0.14), 0 0 8px rgba(201,168,76,0.07) !important;
+}
+
+/* ── Button disabled state ────────────────────────────────── */
+button:disabled {
+  opacity: 0.38 !important;
+  cursor: not-allowed !important;
+  filter: grayscale(0.4);
+}
+
+/* ── Button hierarchy ─────────────────────────────────────── */
+/* Primary action — gold filled */
+.btn-primary {
+  background: linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.1));
+  border: 1px solid rgba(201,168,76,0.7) !important;
+  color: var(--gold-light) !important;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(201,168,76,0.38), rgba(201,168,76,0.18));
+  box-shadow: 0 0 16px rgba(201,168,76,0.22);
+}
+/* Destructive — red */
+.btn-danger {
+  border-color: rgba(204,26,42,0.45) !important;
+  color: #cc4455 !important;
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(204,26,42,0.12) !important;
+  border-color: rgba(204,26,42,0.7) !important;
+  box-shadow: 0 0 10px rgba(204,26,42,0.15);
+}
+
+/* ── Status bar improvements ──────────────────────────────── */
+#status-text {
+  transition: color 0.3s;
+}
+/* Status toast — replaces raw inline text on individual pages */
+.lev-status-toast {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 3px;
+  border-left: 2px solid var(--gold);
+  background: rgba(201,168,76,0.06);
+  color: var(--gold);
+  animation: toastIn 0.2s ease;
+}
+.lev-status-toast.err {
+  border-left-color: var(--red-bright);
+  background: rgba(204,26,42,0.07);
+  color: #e05060;
+}
+.lev-status-toast.ok {
+  border-left-color: #22c97a;
+  background: rgba(34,201,122,0.06);
+  color: #22c97a;
+}
+.lev-status-toast.running {
+  border-left-color: #4a9eff;
+  background: rgba(74,158,255,0.06);
+  color: #6ab4ff;
+}
+@keyframes toastIn {
+  from { opacity:0; transform:translateY(4px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── Shot builder section dividers ───────────────────────── */
+.shot-section-divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.2), transparent);
+  margin: 6px 0;
+}
+.shot-section-label {
+  grid-column: 1 / -1;
+  font-size: 9px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: rgba(201,168,76,0.4);
+  padding: 2px 0;
+}
+
+/* ── Error/service banner ─────────────────────────────────── */
+#lev-service-banner {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 9999;
+  max-width: 360px;
+  background: linear-gradient(135deg, #1a0a0a, #2a0808);
+  border: 1px solid rgba(204,26,42,0.5);
+  border-left: 3px solid var(--red-bright);
+  border-radius: 4px;
+  padding: 10px 14px 10px 12px;
+  font-family: Rajdhani, sans-serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: #e06070;
+  display: none;
+  animation: toastIn 0.2s ease;
+  cursor: pointer;
+}
+#lev-service-banner .lsb-title {
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #ff6070;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+#lev-service-banner .lsb-retry {
+  margin-top: 8px;
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid rgba(204,26,42,0.4);
+  border-radius: 2px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: #ff8090;
+}
+#lev-service-banner .lsb-retry:hover { background: rgba(204,26,42,0.15); }
+
+/* ── Live elapsed timer badge ─────────────────────────────── */
+.lev-job-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #4a9eff;
+  padding: 3px 8px;
+  border: 1px solid rgba(74,158,255,0.25);
+  border-radius: 3px;
+  background: rgba(74,158,255,0.06);
+}
+.lev-job-timer::before {
+  content: "";
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4a9eff;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.4; transform:scale(0.7); }
 }

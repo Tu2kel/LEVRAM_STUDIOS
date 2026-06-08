@@ -69,20 +69,64 @@
     clearTimeout(_levErrTimer);
     _levErrTimer = setTimeout(() => { banner.style.display = "none"; }, 6000);
   };
-  // ── Job poller — polls /video/job/{id} every 3s, calls callbacks on state change
-  // Usage: levPollJob(jobId, baseUrl, { onRunning, onComplete, onFailed, intervalMs })
+  // ── Service error banner ──────────────────────────────────────────────────
+  window.levShowServiceError = function(msg, onRetry) {
+    let banner = document.getElementById("lev-service-banner");
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "lev-service-banner";
+      document.body.appendChild(banner);
+    }
+    banner.innerHTML = `
+      <div class="lsb-title">⚠ Service Error</div>
+      <div>${msg}</div>
+      ${onRetry ? '<div class="lsb-retry" id="lsb-retry-btn">Retry</div>' : ''}
+      <div style="position:absolute;top:6px;right:10px;font-size:16px;cursor:pointer;color:#888;" onclick="this.closest('#lev-service-banner').style.display='none'">✕</div>
+    `;
+    banner.style.display = "block";
+    if (onRetry) {
+      const btn = banner.querySelector("#lsb-retry-btn");
+      if (btn) btn.onclick = (e) => { e.stopPropagation(); banner.style.display="none"; onRetry(); };
+    }
+    banner.onclick = () => { banner.style.display = "none"; };
+  };
+
+  // ── Job poller ────────────────────────────────────────────────────────────
+  // Polls /video/job/{id} every 3s.
+  // - Tolerates up to 8 consecutive network blips before giving up (~24s outage)
+  // - Treats jobs still "running" after 20 min as failed (fal.ai stuck)
+  // - Surfaces retry button via levShowServiceError on terminal failure
   window.levPollJob = function(jobId, baseUrl, { onRunning, onComplete, onFailed, intervalMs = 3000 } = {}) {
-    const started = Date.now();
-    let timer = null;
+    const started      = Date.now();
+    const MAX_NETWORK  = 8;     // consecutive network failures before giving up
+    const MAX_RUNTIME  = 1200;  // seconds — 20 min hard cap
+    let timer          = null;
+    let networkFails   = 0;
+
+    function abort(msg) {
+      clearInterval(timer);
+      window.levShowServiceError(msg, () => {
+        // Retry: restart the whole poll
+        window.levPollJob(jobId, baseUrl, { onRunning, onComplete, onFailed, intervalMs });
+      });
+      if (onFailed) onFailed(msg);
+    }
 
     async function check() {
+      const elapsed = Math.round((Date.now() - started) / 1000);
+
+      if (elapsed > MAX_RUNTIME) {
+        abort(`Generation timed out after ${MAX_RUNTIME / 60} min — fal.ai may be overloaded. Retry?`);
+        return;
+      }
+
       try {
         const res  = await window.levFetch(`${baseUrl}/video/job/${jobId}`);
         const data = await res.json();
-        const elapsed = Math.round((Date.now() - started) / 1000);
+        networkFails = 0; // reset on success
 
-        if (data.status === "running" && onRunning)  onRunning(elapsed);
-        if (data.status === "queued"  && onRunning)  onRunning(elapsed);
+        if (data.status === "queued"  && onRunning) onRunning(elapsed);
+        if (data.status === "running" && onRunning) onRunning(elapsed);
 
         if (data.status === "complete") {
           clearInterval(timer);
@@ -91,16 +135,24 @@
         }
         if (data.status === "failed") {
           clearInterval(timer);
-          if (onFailed) onFailed(data.error || "Generation failed");
+          const errMsg = data.error || "Generation failed";
+          window.levShowServiceError(errMsg, () => {
+            if (onFailed) onFailed(errMsg);
+          });
+          if (onFailed) onFailed(errMsg);
           return;
         }
       } catch(e) {
-        // network blip — keep polling
+        networkFails++;
+        if (networkFails >= MAX_NETWORK) {
+          abort(`Lost connection to server after ${networkFails} retries. Check your network or Railway status.`);
+        }
+        // else: silent — keep polling through brief blips
       }
     }
 
     check();
     timer = setInterval(check, intervalMs);
-    return () => clearInterval(timer); // returns cancel fn
+    return () => clearInterval(timer);
   };
 })();

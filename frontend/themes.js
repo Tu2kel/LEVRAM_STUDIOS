@@ -18,8 +18,8 @@
 
     dark: {
       label:  "Dark Studio",
-      accent: "#09080f",
-      swatch: "linear-gradient(135deg, #09080f 0%, #1a1838 100%)",
+      accent: "#13112a",
+      swatch: "linear-gradient(135deg, #13112a 0%, #201e3f 100%)",
       vars:   {},  // default — app.css handles everything
       body:   null,
       grid:   null,
@@ -337,7 +337,7 @@
   // ── Picker widget (injected on DOMContentLoaded) ───────────────────────────
 
   function _updateToggleLabel(name) {
-    var btn = document.getElementById("theme-toggle");
+    var btn = document.getElementById("theme-toggle") || document.getElementById("lev-theme-float");
     if (!btn) return;
     var t = THEMES[name] || THEMES.dark;
     btn.innerHTML =
@@ -357,7 +357,26 @@
 
   function _buildPicker() {
     var toggle = document.getElementById("theme-toggle");
-    if (!toggle) return;
+
+    // Standalone pages (no nav toggle) — inject a small floating button
+    if (!toggle) {
+      toggle = document.createElement("button");
+      toggle.id = "lev-theme-float";
+      var cur = window.getTheme();
+      var t0  = THEMES[cur] || THEMES.dark;
+      toggle.innerHTML =
+        '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' +
+        t0.accent + ';border:1px solid rgba(201,168,76,.5);margin-right:5px;vertical-align:middle;"></span>' +
+        t0.label;
+      toggle.style.cssText = [
+        "position:fixed;top:10px;right:14px;z-index:99999;",
+        "background:rgba(201,168,76,0.10);border:1px solid rgba(201,168,76,0.4);",
+        "color:#c9a84c;font-family:Rajdhani,sans-serif;font-size:12px;",
+        "letter-spacing:2px;text-transform:uppercase;padding:5px 12px;",
+        "border-radius:2px;cursor:pointer;",
+      ].join("");
+      document.body.appendChild(toggle);
+    }
 
     // Update button label
     _updateToggleLabel(window.getTheme());

@@ -16,11 +16,11 @@
   --blue-bright:   #2e6fd4;
   --royal-purple:  #2a1a5e;
 
-  /* ── Backgrounds (royal sapphire-black) ── */
-  --black:         #09080f;
-  --surface:       #0d0c1e;
-  --surface2:      #12112a;
-  --surface3:      #1a1838;
+  /* ── Backgrounds (royal sapphire-dark) ── */
+  --black:         #13112a;
+  --surface:       #1a1838;
+  --surface2:      #201e3f;
+  --surface3:      #28254e;
 
   /* ── Borders (more visible) ── */
   --border:        rgba(201, 168, 76, 0.32);

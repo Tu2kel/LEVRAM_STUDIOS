@@ -201,14 +201,15 @@ body::before {
   border: 1px solid var(--border);
   color: var(--text-muted);
   font-family: "Rajdhani", sans-serif;
-  font-size: 19px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 3px;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  padding: 6px 16px;
+  padding: 5px 10px;
   border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .nav-btn:hover,

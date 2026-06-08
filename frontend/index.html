@@ -416,9 +416,10 @@
               <div class="field-group">
                 <div class="field-label">Video Engine</div>
                 <div class="cl-voice-toggle" id="ig-video-engine-toggle" style="flex-wrap:wrap;gap:4px;">
-                  <button class="cl-vtoggle-btn active" data-vengine="wan21">Wan 2.1 — Fast</button>
+                  <button class="cl-vtoggle-btn active" data-vengine="hunyuan">HunyuanVideo — Free</button>
+                  <button class="cl-vtoggle-btn" data-vengine="runway_gen4" title="Paid per clip via fal.ai credits">Runway Gen-4.5 ✦</button>
+                  <button class="cl-vtoggle-btn" data-vengine="wan21">Wan 2.1 — Fast</button>
                   <button class="cl-vtoggle-btn" data-vengine="wan21_14b">Wan 2.1 — Best</button>
-                  <button class="cl-vtoggle-btn" data-vengine="hunyuan">HunyuanVideo</button>
                   <button class="cl-vtoggle-btn" data-vengine="cogvideox">CogVideoX 5B</button>
                   <button class="cl-vtoggle-btn" data-vengine="wan" title="Requires local ComfyUI running">Local (ComfyUI)</button>
                 </div>
@@ -511,9 +512,11 @@
                 <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Animate this image</div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
                   <select id="ig-i2v-model" style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 8px;border-radius:2px;">
-                    <option value="wan21_i2v">Wan 2.1 I2V 1.3B — Fast (Recommended)</option>
-                    <option value="wan21_14b_i2v">Wan 2.1 I2V 14B — Best Quality</option>
-                    <option value="hunyuan_i2v">HunyuanVideo I2V — Strong face consistency</option>
+                    <option value="hunyuan_i2v" selected>HunyuanVideo I2V — Free, strong face consistency</option>
+                    <option value="runway_turbo">Runway Gen-4 Turbo ✦ — Fastest Runway (I2V only)</option>
+                    <option value="runway_gen4_i2v">Runway Gen-4.5 ✦ — Best quality Runway</option>
+                    <option value="wan21_i2v">Wan 2.1 Fast — Free, open-source</option>
+                    <option value="wan21_14b_i2v">Wan 2.1 Best — Free, best open-source</option>
                   </select>
                   <input id="ig-i2v-prompt" type="text" placeholder="Motion prompt (optional)…" style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 8px;border-radius:2px;" />
                   <div style="display:flex;gap:6px;align-items:center;">

@@ -182,19 +182,22 @@ def assemble_episode(payload: AssembleEpisodePayload):
 
 # ─── Lane 2a: fal.ai T2V (lead — cloud GPU) ──────────────────
 
-# Text-to-Video models (open-source only — no competitor IP)
+# Text-to-Video models
 FAL_T2V_MODELS = {
-    "wan21":     "fal-ai/wan/v2.1/1.3b/text-to-video",  # fast, open-source
-    "wan21_14b": "fal-ai/wan/v2.1/14b/text-to-video",   # highest quality
-    "hunyuan":   "fal-ai/hunyuan-video",                 # strong consistency
-    "cogvideox": "fal-ai/cogvideox-5b",                  # open-source, good motion
+    "wan21":        "fal-ai/wan/v2.1/1.3b/text-to-video",   # fast, open-source
+    "wan21_14b":    "fal-ai/wan/v2.1/14b/text-to-video",    # highest quality open-source
+    "hunyuan":      "fal-ai/hunyuan-video",                  # strong consistency, free
+    "cogvideox":    "fal-ai/cogvideox-5b",                   # open-source, good motion
+    "runway_gen4":  "fal-ai/runway-gen4.5/text-to-video",   # Runway Gen-4.5 T2V — paid
 }
 
 # Image-to-Video models — lock the character's face via a keyframe
 FAL_I2V_MODELS = {
-    "wan21_i2v":     "fal-ai/wan/v2.1/1.3b/image-to-video",  # fast
-    "wan21_14b_i2v": "fal-ai/wan/v2.1/14b/image-to-video",   # best quality
-    "hunyuan_i2v":   "fal-ai/hunyuan-video/image-to-video",
+    "wan21_i2v":       "fal-ai/wan/v2.1/1.3b/image-to-video",    # fast, free
+    "wan21_14b_i2v":   "fal-ai/wan/v2.1/14b/image-to-video",     # best open-source
+    "hunyuan_i2v":     "fal-ai/hunyuan-video/image-to-video",     # free, strong face lock
+    "runway_turbo":    "fal-ai/runway-gen4-turbo/image-to-video", # fastest Runway — paid
+    "runway_gen4_i2v": "fal-ai/runway-gen4.5/image-to-video",    # best quality Runway — paid
 }
 
 FAL_VIDEO_MODELS = {**FAL_T2V_MODELS, **FAL_I2V_MODELS}  # keep for backward compat
@@ -240,15 +243,22 @@ def _fal_video(prompt: str, model_key: str, aspect: str, duration: int) -> dict:
     model_id = FAL_VIDEO_MODELS.get(model_key, FAL_VIDEO_MODELS["wan21"])
     resolution = FAL_VIDEO_SIZES.get(aspect, "1280x720")
 
-    result = fal_client.run(
-        model_id,
-        arguments={
-            "prompt": prompt,
-            "resolution": resolution,
-            "duration": duration,
-            "num_inference_steps": 30,
-        },
-    )
+    is_runway = model_key.startswith("runway")
+    if is_runway:
+        # Runway accepts only prompt + duration (5 or 10s); no resolution/steps params
+        args = {
+            "prompt":   prompt,
+            "duration": 10 if duration >= 8 else 5,
+        }
+    else:
+        args = {
+            "prompt":               prompt,
+            "resolution":           resolution,
+            "duration":             duration,
+            "num_inference_steps":  30,
+        }
+
+    result = fal_client.run(model_id, arguments=args)
     video_url = result.get("video", {}).get("url") or result.get("video_url") or ""
     if not video_url:
         raise RuntimeError(f"fal.ai returned no video URL. Raw: {result}")
@@ -372,15 +382,23 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
     else:
         remote_url = image_url
 
-    result = fal_client.run(
-        model_id,
-        arguments={
+    is_runway = model_key.startswith("runway")
+    if is_runway:
+        # Runway: image_url + prompt + duration only; no resolution param
+        args = {
             "image_url": remote_url,
-            "prompt":    prompt or "cinematic motion, smooth camera",
-            "duration":  duration,
+            "prompt":    prompt or "cinematic motion, smooth camera movement",
+            "duration":  10 if duration >= 8 else 5,
+        }
+    else:
+        args = {
+            "image_url":  remote_url,
+            "prompt":     prompt or "cinematic motion, smooth camera",
+            "duration":   duration,
             "resolution": "720p",
-        },
-    )
+        }
+
+    result = fal_client.run(model_id, arguments=args)
     video_url = result.get("video", {}).get("url") or result.get("video_url") or ""
     if not video_url:
         raise RuntimeError(f"No video URL in response: {result}")
@@ -463,21 +481,24 @@ def list_fal_video_models():
     return {
         "success": True,
         "t2v": {
-            "default": "wan21",
+            "default": "hunyuan",
             "models": [
-                {"id": "wan21",     "label": "Wan 2.1 (1.3B)",  "speed": "fast",   "note": "Best speed/quality — open source"},
-                {"id": "wan21_14b", "label": "Wan 2.1 (14B)",   "speed": "slow",   "note": "Highest quality — open source"},
-                {"id": "hunyuan",   "label": "HunyuanVideo",    "speed": "medium", "note": "Strong temporal consistency"},
-                {"id": "cogvideox", "label": "CogVideoX 5B",    "speed": "medium", "note": "Open source, good motion"},
+                {"id": "hunyuan",      "label": "HunyuanVideo",        "speed": "medium", "paid": False,  "note": "Free — strong temporal consistency"},
+                {"id": "runway_gen4",  "label": "Runway Gen-4.5 ✦",    "speed": "fast",   "paid": True,   "note": "Runway flagship — T2V + I2V"},
+                {"id": "wan21",        "label": "Wan 2.1 Fast",         "speed": "fast",   "paid": False,  "note": "Free — best speed/quality open-source"},
+                {"id": "wan21_14b",    "label": "Wan 2.1 Best",         "speed": "slow",   "paid": False,  "note": "Free — highest quality open-source"},
+                {"id": "cogvideox",    "label": "CogVideoX 5B",         "speed": "medium", "paid": False,  "note": "Free — cinematic style"},
             ],
         },
         "i2v": {
-            "default": "wan21_i2v",
+            "default": "hunyuan_i2v",
             "note": "Animate a FLUX+LoRA keyframe — character face is locked",
             "models": [
-                {"id": "wan21_i2v",     "label": "Wan 2.1 I2V (1.3B)",  "speed": "fast",   "note": "Recommended for character shots"},
-                {"id": "wan21_14b_i2v", "label": "Wan 2.1 I2V (14B)",   "speed": "slow",   "note": "Best quality"},
-                {"id": "hunyuan_i2v",   "label": "HunyuanVideo I2V",    "speed": "medium", "note": "Strong face consistency"},
+                {"id": "hunyuan_i2v",     "label": "HunyuanVideo I2V",      "speed": "medium", "paid": False, "note": "Free — strong face consistency"},
+                {"id": "runway_turbo",    "label": "Runway Gen-4 Turbo ✦",  "speed": "fast",   "paid": True,  "note": "Fastest Runway — I2V only"},
+                {"id": "runway_gen4_i2v", "label": "Runway Gen-4.5 ✦",      "speed": "fast",   "paid": True,  "note": "Best quality — Runway flagship I2V"},
+                {"id": "wan21_i2v",       "label": "Wan 2.1 Fast",           "speed": "fast",   "paid": False, "note": "Free — fast character shots"},
+                {"id": "wan21_14b_i2v",   "label": "Wan 2.1 Best",           "speed": "slow",   "paid": False, "note": "Free — best open-source quality"},
             ],
         },
     }

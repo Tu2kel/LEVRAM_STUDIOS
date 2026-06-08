@@ -282,11 +282,17 @@ async function animateKeyframe(itemId) {
   }
 
   const model = prompt(
-    "I2V model:\n  1 = Wan 2.1 1.3B (fast)\n  2 = Wan 2.1 14B (best quality)\n  3 = HunyuanVideo (face consistency)\n\nEnter 1, 2, or 3:",
+    "I2V engine:\n  1 = HunyuanVideo (free — default)\n  2 = Runway Gen-4 Turbo ✦ (paid — fastest)\n  3 = Runway Gen-4.5 ✦ (paid — best quality)\n  4 = Wan 2.1 Fast (free)\n  5 = Wan 2.1 Best (free)\n\nEnter 1–5:",
     "1"
   );
-  const modelMap = { "1": "wan21_i2v", "2": "wan21_14b_i2v", "3": "hunyuan_i2v" };
-  const modelKey = modelMap[model?.trim()] || "wan21_i2v";
+  const modelMap = {
+    "1": "hunyuan_i2v",
+    "2": "runway_turbo",
+    "3": "runway_gen4_i2v",
+    "4": "wan21_i2v",
+    "5": "wan21_14b_i2v",
+  };
+  const modelKey = modelMap[model?.trim()] || "hunyuan_i2v";
 
   const motionPrompt = prompt("Motion prompt (optional — describe the movement):", "") || "";
 

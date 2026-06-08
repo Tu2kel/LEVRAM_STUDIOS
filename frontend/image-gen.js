@@ -8,11 +8,12 @@ const IG_ENGINE_HINTS = {
 };
 
 const IG_VIDEO_ENGINE_HINTS = {
-  wan:        "Wan 2.1 1.3B — local ComfyUI. Free, requires ComfyUI running.",
-  wan21:      "Wan 2.1 1.3B — fal.ai cloud. Fast, ~3 min.",
-  wan21_14b:  "Wan 2.1 14B — fal.ai cloud. Best quality, ~8 min.",
-  hunyuan:    "HunyuanVideo — fal.ai cloud. Strong motion, ~6 min.",
-  cogvideox:  "CogVideoX 5B — fal.ai cloud. Cinematic style, ~5 min.",
+  wan:           "Wan 2.1 1.3B — local ComfyUI. Free, requires ComfyUI running.",
+  wan21:         "Wan 2.1 1.3B — fal.ai cloud. Free, fast, ~3 min.",
+  wan21_14b:     "Wan 2.1 14B — fal.ai cloud. Free, best open-source quality, ~8 min.",
+  hunyuan:       "HunyuanVideo — fal.ai cloud. Free, strong motion consistency, ~6 min.",
+  cogvideox:     "CogVideoX 5B — fal.ai cloud. Free, cinematic style, ~5 min.",
+  runway_gen4:   "Runway Gen-4.5 ✦ — fal.ai cloud. Paid per clip. T2V + I2V. Highest quality.",
 };
 
 let igActiveEngine      = localStorage.getItem("ig-engine")       || "dalle3";
@@ -86,9 +87,10 @@ function igInitVideoEngineToggle() {
   const toggle = document.getElementById("ig-video-engine-toggle");
   if (!toggle) return;
 
-  // Default to wan21 (fal.ai cloud) if stored value is old "wan" non-local
-  if (igActiveVideoEngine === "kling" || igActiveVideoEngine === "runway") {
-    igActiveVideoEngine = "wan21";
+  // Default to hunyuan if stored value is a stale/unknown key
+  const knownEngines = ["wan", "wan21", "wan21_14b", "hunyuan", "cogvideox", "runway_gen4"];
+  if (!knownEngines.includes(igActiveVideoEngine)) {
+    igActiveVideoEngine = "hunyuan";
     localStorage.setItem("ig-video-engine", igActiveVideoEngine);
   }
 
@@ -205,11 +207,11 @@ async function igGenerateVideo() {
     return;
   }
 
-  const falCloudEngines = ["wan21", "wan21_14b", "hunyuan", "cogvideox"];
+  const falCloudEngines = ["wan21", "wan21_14b", "hunyuan", "cogvideox", "runway_gen4"];
   const isFalCloud = falCloudEngines.includes(igActiveVideoEngine);
   const engineLabel = IG_VIDEO_ENGINE_HINTS[igActiveVideoEngine]?.split(" — ")[0] || igActiveVideoEngine;
 
-  const etaMap = { wan21: "~3 min", wan21_14b: "~8 min", hunyuan: "~6 min", cogvideox: "~5 min", wan: "~5 min" };
+  const etaMap = { wan21: "~3 min", wan21_14b: "~8 min", hunyuan: "~6 min", cogvideox: "~5 min", wan: "~5 min", runway_gen4: "~2 min" };
   if (statusEl) statusEl.textContent = `Generating via ${engineLabel} — ${etaMap[igActiveVideoEngine] || "a few minutes"}…`;
   if (btn) { btn.disabled = true; btn.textContent = "Generating Video…"; }
 
@@ -410,7 +412,13 @@ async function igRunI2V() {
   const statusEl = document.getElementById("ig-i2v-status");
   const btn      = document.getElementById("ig-i2v-go-btn");
 
-  const modelLabels = { wan21_i2v: "Wan 2.1 1.3B", wan21_14b_i2v: "Wan 2.1 14B", hunyuan_i2v: "HunyuanVideo" };
+  const modelLabels = {
+    wan21_i2v:       "Wan 2.1 Fast",
+    wan21_14b_i2v:   "Wan 2.1 Best",
+    hunyuan_i2v:     "HunyuanVideo",
+    runway_turbo:    "Runway Gen-4 Turbo ✦",
+    runway_gen4_i2v: "Runway Gen-4.5 ✦",
+  };
   const label = modelLabels[model] || model;
 
   if (statusEl) statusEl.textContent = `Submitting to ${label}…`;

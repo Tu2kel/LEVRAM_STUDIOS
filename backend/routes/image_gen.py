@@ -173,8 +173,14 @@ def _generate_comfy(prompt: str, aspect: str, style: str, character: str) -> dic
     return {"imageUrl": out_url, "prompt": result.get("promptUsed", prompt), "engine": "comfy", "model": "comfyui"}
 
 
-# ── PuLID — single-person face identity via FLUX ─────────────
-def _generate_pulid(prompt: str, face_refs: list[RefImage], aspect: str, style: str) -> dict:
+# ── Upload bytes to fal.ai storage → returns public URL ──────
+def _fal_upload(data: bytes, media_type: str) -> str:
+    import fal_client, io
+    return fal_client.upload(io.BytesIO(data), media_type)
+
+
+# ── InstantID — high-fidelity single-person face identity ────
+def _generate_instantid(prompt: str, face_refs: list[RefImage], aspect: str, style: str) -> dict:
     try:
         import fal_client
     except ImportError:
@@ -187,24 +193,31 @@ def _generate_pulid(prompt: str, face_refs: list[RefImage], aspect: str, style: 
 
     full_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
     image_size  = FAL_SIZES.get(aspect, "landscape_16_9")
-    reference_images = [{"image_url": f"data:{r.mediaType};base64,{r.base64}"} for r in face_refs[:6]]
 
-    result = fal_client.run("fal-ai/pulid", arguments={
+    # Upload the best face reference so InstantID gets a proper URL
+    primary_bytes = _b64.b64decode(face_refs[0].base64)
+    face_url = _fal_upload(primary_bytes, face_refs[0].mediaType)
+
+    result = fal_client.run("fal-ai/instantid", arguments={
+        "face_image_url":       face_url,
         "prompt":               full_prompt,
-        "reference_images":     reference_images,
+        "negative_prompt":      "blurry, distorted face, bad anatomy, cartoon, anime",
         "image_size":           image_size,
-        "num_inference_steps":  12,
-        "guidance_scale":       1.5,
+        "num_inference_steps":  30,
+        "guidance_scale":       5.0,
+        "ip_adapter_scale":     0.8,
+        "controlnet_conditioning_scale": 0.8,
         "num_images":           1,
+        "enable_safety_checker": False,
     })
     image_bytes = _download_url(result["images"][0]["url"])
-    _, output_url = _save_bytes(image_bytes, prefix="pulid")
-    return {"imageUrl": output_url, "prompt": full_prompt, "engine": "pulid", "model": "fal-ai/pulid"}
+    _, output_url = _save_bytes(image_bytes, prefix="instantid")
+    return {"imageUrl": output_url, "prompt": full_prompt, "engine": "instantid", "model": "fal-ai/instantid"}
 
 
 # ── Face Swap (fal.ai) — paste a face onto an existing image ──
-def _face_swap(base_image_path: str, face_ref: RefImage) -> str:
-    """Returns the output_url of the swapped image."""
+def _face_swap(base_image_path: str, face_ref: RefImage) -> tuple:
+    """Returns (saved_path, output_url) of the swapped image."""
     try:
         import fal_client
     except ImportError:
@@ -215,16 +228,18 @@ def _face_swap(base_image_path: str, face_ref: RefImage) -> str:
         raise RuntimeError("FAL_KEY not set")
     os.environ["FAL_KEY"] = api_key
 
-    base_bytes   = Path(base_image_path).read_bytes()
-    base_data    = f"data:image/png;base64,{_b64.b64encode(base_bytes).decode()}"
-    face_data    = f"data:{face_ref.mediaType};base64,{face_ref.base64}"
+    # Upload both images so fal.ai gets proper URLs (not huge data payloads)
+    base_bytes = Path(base_image_path).read_bytes()
+    base_url   = _fal_upload(base_bytes, "image/png")
+    face_bytes = _b64.b64decode(face_ref.base64)
+    face_url   = _fal_upload(face_bytes, face_ref.mediaType)
 
     result = fal_client.run("fal-ai/face-swap", arguments={
-        "base_image_url": base_data,
-        "swap_image_url": face_data,
+        "base_image_url": base_url,
+        "swap_image_url": face_url,
     })
-    img_url      = (result.get("image") or {}).get("url") or result["images"][0]["url"]
-    image_bytes  = _download_url(img_url)
+    img_url     = (result.get("image") or {}).get("url") or result["images"][0]["url"]
+    image_bytes = _download_url(img_url)
     saved_path, output_url = _save_bytes(image_bytes, prefix="faceswap")
     return saved_path, output_url
 
@@ -286,10 +301,10 @@ async def generate_image(payload: ImageGenPayload):
                 None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
             )
         try:
-            # Single person — use PuLID directly
+            # Single person — use InstantID (best face identity preservation)
             if face1 and not face2:
                 result = await loop.run_in_executor(
-                    None, _generate_pulid, prompt, face1, payload.aspect, payload.style
+                    None, _generate_instantid, prompt, face1, payload.aspect, payload.style
                 )
                 return {"success": True, **result}
 

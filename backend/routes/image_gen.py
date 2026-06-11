@@ -59,6 +59,7 @@ class ImageGenPayload(BaseModel):
     aspect: str = "widescreen"
     engine: str = "fal_flux"
     reference_images: list[RefImage] = []
+    face_reference: RefImage | None = None
 
 
 def _save_bytes(image_bytes: bytes, prefix: str = "levram") -> tuple[str, str]:
@@ -168,6 +169,40 @@ def _generate_comfy(prompt: str, aspect: str, style: str, character: str) -> dic
     return {"imageUrl": out_url, "prompt": result.get("promptUsed", prompt), "engine": "comfy", "model": "comfyui"}
 
 
+# ── IP-Adapter Face ID (fal.ai) — direct face conditioning ───
+def _generate_face_id(prompt: str, face_ref: RefImage, aspect: str, style: str) -> dict:
+    try:
+        import fal_client
+    except ImportError:
+        raise RuntimeError("fal-client not installed — pip install fal-client")
+
+    api_key = os.getenv("FAL_KEY")
+    if not api_key:
+        raise RuntimeError("FAL_KEY not set — required for Face ID generation.")
+    os.environ["FAL_KEY"] = api_key
+
+    # Upload face image as data URL so fal can read it
+    face_data_url = f"data:{face_ref.mediaType};base64,{face_ref.base64}"
+    full_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
+    image_size  = FAL_SIZES.get(aspect, "landscape_16_9")
+
+    result = fal_client.run(
+        "fal-ai/ip-adapter-face-id-plus",
+        arguments={
+            "prompt":       full_prompt,
+            "face_image_url": face_data_url,
+            "image_size":   image_size,
+            "num_inference_steps": 30,
+            "guidance_scale": 7.5,
+            "num_images":   1,
+        },
+    )
+    image_url   = result["images"][0]["url"]
+    image_bytes = _download_url(image_url)
+    _, output_url = _save_bytes(image_bytes, prefix="faceid")
+    return {"imageUrl": output_url, "prompt": full_prompt, "engine": "ip-adapter-face-id", "model": "fal-ai/ip-adapter-face-id-plus"}
+
+
 # ── Reference image prompt enhancement (GPT-4o Vision) ───────
 def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> str:
     api_key = os.getenv("OPENAI_API_KEY")
@@ -213,7 +248,26 @@ def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> 
 async def generate_image(payload: ImageGenPayload):
     engine = payload.engine
 
-    # Enhance prompt with reference images if provided
+    # Face reference → IP-Adapter Face ID (bypasses text description entirely)
+    if payload.face_reference:
+        face_ref = payload.face_reference
+        # Still enhance prompt with any scene references for context
+        prompt = payload.prompt
+        if payload.reference_images:
+            loop = asyncio.get_event_loop()
+            prompt = await loop.run_in_executor(
+                None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
+            )
+        loop = asyncio.get_event_loop()
+        try:
+            result = await loop.run_in_executor(
+                None, _generate_face_id, prompt, face_ref, payload.aspect, payload.style
+            )
+            return {"success": True, **result}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # Enhance prompt with scene reference images if provided
     prompt = payload.prompt
     if payload.reference_images:
         loop = asyncio.get_event_loop()

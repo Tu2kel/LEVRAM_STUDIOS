@@ -20,8 +20,48 @@ let igActiveEngine      = localStorage.getItem("ig-engine")       || "dalle3";
 let igActiveVideoEngine = localStorage.getItem("ig-video-engine")  || "wan";
 let igActiveMode        = localStorage.getItem("ig-mode")          || "image";
 let igRefImages         = []; // [{ base64, mediaType, preview }]
+let igFaceRef           = null; // { base64, mediaType, preview }
 
-// ─── Reference photo helpers ──────────────────────────────
+// ─── Face reference helpers ───────────────────────────────
+function igHandleFaceDrop(e) {
+  e.preventDefault();
+  const el = document.getElementById("ig-face-drop");
+  if (el) el.style.borderColor = "rgba(201,168,76,0.2)";
+  const file = e.dataTransfer.files[0];
+  if (file?.type.startsWith("image/")) igSetFaceRef(file);
+}
+
+function igSetFaceRef(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl = ev.target.result;
+    const [header, base64] = dataUrl.split(",");
+    const mediaType = (header.match(/data:(.*);/) || [])[1] || "image/jpeg";
+    igFaceRef = { base64, mediaType, preview: dataUrl };
+    const thumb     = document.getElementById("ig-face-thumb");
+    const thumbWrap = document.getElementById("ig-face-thumb-wrap");
+    const label     = document.getElementById("ig-face-label");
+    const hint      = document.getElementById("ig-face-hint");
+    if (thumb)     thumb.src = dataUrl;
+    if (thumbWrap) thumbWrap.style.display = "block";
+    if (label)     label.textContent = "Face locked — IP-Adapter will preserve identity";
+    if (hint)      hint.style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
+
+function igClearFaceRef() {
+  igFaceRef = null;
+  const thumbWrap = document.getElementById("ig-face-thumb-wrap");
+  const label     = document.getElementById("ig-face-label");
+  const hint      = document.getElementById("ig-face-hint");
+  if (thumbWrap) thumbWrap.style.display = "none";
+  if (label)     label.textContent = "Drop or click — 1 clear face photo";
+  if (hint)      hint.style.display = "none";
+}
+
+// ─── Scene reference photo helpers ───────────────────────
 function igHandleRefDrop(e) {
   e.preventDefault();
   const el = document.getElementById("ig-ref-drop");
@@ -197,11 +237,16 @@ async function igGenerateImage() {
   if (btn) { btn.disabled = true; btn.textContent = "Generating…"; }
 
   try {
-    const refPayload = igRefImages.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+    const refPayload  = igRefImages.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+    const facePayload = igFaceRef ? { base64: igFaceRef.base64, mediaType: igFaceRef.mediaType } : null;
     const res = await levFetch(`${IG_BASE}/image-gen/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, character, style, aspect, engine: igActiveEngine, reference_images: refPayload }),
+      body: JSON.stringify({
+        prompt, character, style, aspect, engine: igActiveEngine,
+        reference_images: refPayload,
+        face_reference: facePayload,
+      }),
     });
 
     const data = await res.json();

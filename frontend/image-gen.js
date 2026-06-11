@@ -19,6 +19,45 @@ const IG_VIDEO_ENGINE_HINTS = {
 let igActiveEngine      = localStorage.getItem("ig-engine")       || "dalle3";
 let igActiveVideoEngine = localStorage.getItem("ig-video-engine")  || "wan";
 let igActiveMode        = localStorage.getItem("ig-mode")          || "image";
+let igRefImages         = []; // [{ base64, mediaType, preview }]
+
+// ─── Reference photo helpers ──────────────────────────────
+function igHandleRefDrop(e) {
+  e.preventDefault();
+  const el = document.getElementById("ig-ref-drop");
+  if (el) el.style.borderColor = "rgba(201,168,76,0.25)";
+  igAddRefImages(e.dataTransfer.files);
+}
+
+function igAddRefImages(files) {
+  [...files].forEach(file => {
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      const [header, base64] = dataUrl.split(",");
+      const mediaType = (header.match(/data:(.*);/) || [])[1] || "image/jpeg";
+      igRefImages.push({ base64, mediaType, preview: dataUrl });
+      igRenderRefThumbs();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function igRemoveRef(idx) {
+  igRefImages.splice(idx, 1);
+  igRenderRefThumbs();
+}
+
+function igRenderRefThumbs() {
+  const box = document.getElementById("ig-ref-thumbs");
+  if (!box) return;
+  box.innerHTML = igRefImages.map((img, i) => `
+    <div style="position:relative;width:56px;height:56px;">
+      <img src="${img.preview}" style="width:56px;height:56px;object-fit:cover;border-radius:3px;border:1px solid rgba(201,168,76,0.3);" />
+      <button onclick="igRemoveRef(${i})" style="position:absolute;top:-5px;right:-5px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;">✕</button>
+    </div>`).join("");
+}
 
 // ─── Mode toggle (Image / Video) ─────────────────────────
 function igInitModeToggle() {
@@ -158,10 +197,11 @@ async function igGenerateImage() {
   if (btn) { btn.disabled = true; btn.textContent = "Generating…"; }
 
   try {
+    const refPayload = igRefImages.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
     const res = await levFetch(`${IG_BASE}/image-gen/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, character, style, aspect, engine: igActiveEngine }),
+      body: JSON.stringify({ prompt, character, style, aspect, engine: igActiveEngine, reference_images: refPayload }),
     });
 
     const data = await res.json();

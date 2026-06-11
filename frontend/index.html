@@ -457,6 +457,24 @@
                 <option value="">None / Standalone</option>
               </select>
             </div>
+
+            <!-- Optional reference photos -->
+            <div class="field-group">
+              <div class="field-label" style="display:flex;align-items:center;justify-content:space-between;">
+                Reference Photos <span style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:none;font-weight:400;">optional · AI reads them for context</span>
+              </div>
+              <div id="ig-ref-drop"
+                style="border:2px dashed rgba(201,168,76,0.25);border-radius:4px;padding:14px 12px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;"
+                ondragover="event.preventDefault();this.style.borderColor='rgba(201,168,76,0.6)'"
+                ondragleave="this.style.borderColor='rgba(201,168,76,0.25)'"
+                ondrop="igHandleRefDrop(event)"
+                onclick="document.getElementById('ig-ref-input').click()">
+                <input type="file" id="ig-ref-input" accept="image/*" multiple style="display:none" onchange="igAddRefImages(this.files)" />
+                <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);">Drop or click to add photos</div>
+              </div>
+              <div id="ig-ref-thumbs" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+            </div>
+
             <div class="field-group" id="ig-style-group">
               <div class="field-label">Style</div>
               <select id="ig-style">

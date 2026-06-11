@@ -46,14 +46,19 @@ FAL_MODELS = {
 }
 
 
+class RefImage(BaseModel):
+    base64: str
+    mediaType: str = "image/jpeg"
+
 class ImageGenPayload(BaseModel):
     prompt: str
-    character: str = ""       # character name (for prompt injection)
-    character_id: str = ""    # character UUID — auto-loads LoRA if trained
+    character: str = ""
+    character_id: str = ""
     style: str = "cinematic photorealistic"
     negative_prompt: str = ""
     aspect: str = "widescreen"
-    engine: str = "fal_flux"  # auto-upgrades to fal_flux_lora if character has one
+    engine: str = "fal_flux"
+    reference_images: list[RefImage] = []
 
 
 def _save_bytes(image_bytes: bytes, prefix: str = "levram") -> tuple[str, str]:
@@ -163,10 +168,58 @@ def _generate_comfy(prompt: str, aspect: str, style: str, character: str) -> dic
     return {"imageUrl": out_url, "prompt": result.get("promptUsed", prompt), "engine": "comfy", "model": "comfyui"}
 
 
+# ── Reference image prompt enhancement (GPT-4o Vision) ───────
+def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> str:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or not refs:
+        return prompt
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        content = [
+            {
+                "type": "text",
+                "text": (
+                    f"The user wants to generate an image with this prompt: \"{prompt}\"\n"
+                    f"Style: {style}\n\n"
+                    "They have provided reference photo(s) below for visual context. "
+                    "Analyze the reference(s) — note relevant details like subject appearance, "
+                    "colors, lighting, environment, mood, clothing, textures, and composition. "
+                    "Return ONLY an enhanced image generation prompt (1-3 sentences) that incorporates "
+                    "the key visual details from the references into the user's original intent. "
+                    "Do not mention 'the reference photo'. Just output the improved prompt."
+                ),
+            }
+        ]
+        for ref in refs[:4]:  # cap at 4 reference images
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:{ref.mediaType};base64,{ref.base64}", "detail": "low"},
+            })
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            max_tokens=300,
+            messages=[{"role": "user", "content": content}],
+        )
+        enhanced = resp.choices[0].message.content.strip()
+        return enhanced if enhanced else prompt
+    except Exception as e:
+        print(f"[image-gen] ref enhancement failed: {e}")
+        return prompt
+
+
 # ── Route ─────────────────────────────────────────────────────
 @router.post("/image-gen/generate")
 async def generate_image(payload: ImageGenPayload):
     engine = payload.engine
+
+    # Enhance prompt with reference images if provided
+    prompt = payload.prompt
+    if payload.reference_images:
+        loop = asyncio.get_event_loop()
+        prompt = await loop.run_in_executor(
+            None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
+        )
 
     # Auto-load character LoRA if character_id is provided
     lora_url = lora_trigger = ""
@@ -177,12 +230,12 @@ async def generate_image(payload: ImageGenPayload):
             lora_trigger = char.get("lora_trigger", "")
 
     if engine in FAL_MODELS or (lora_url and engine not in ("dalle3", "comfy")):
-        fn = lambda: _generate_fal(payload.prompt, payload.aspect, payload.style,
+        fn = lambda: _generate_fal(prompt, payload.aspect, payload.style,
                                    engine, lora_url, lora_trigger)
     elif engine == "dalle3":
-        fn = lambda: _generate_dalle3(payload.prompt, payload.aspect, payload.style)
+        fn = lambda: _generate_dalle3(prompt, payload.aspect, payload.style)
     elif engine == "comfy":
-        fn = lambda: _generate_comfy(payload.prompt, payload.aspect, payload.style, payload.character)
+        fn = lambda: _generate_comfy(prompt, payload.aspect, payload.style, payload.character)
     else:
         raise HTTPException(status_code=400, detail=f"Unknown engine: {engine}")
 

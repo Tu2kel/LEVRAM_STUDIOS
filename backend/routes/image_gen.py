@@ -38,13 +38,16 @@ COMFY_SIZES = {
 
 # fal.ai model IDs
 FAL_MODELS = {
-    "fal_flux":         "fal-ai/flux/dev",                     # default — quality/speed balance
-    "fal_flux_lora":    "fal-ai/flux-lora",                    # LoRA — character-locked output
-    "fal_flux_schnell": "fal-ai/flux/schnell",                 # 4-step turbo
-    "fal_flux_pro":     "fal-ai/flux-pro",                     # highest fidelity
+    "fal_flux":         "fal-ai/flux/dev",
+    "fal_flux_lora":    "fal-ai/flux-lora",
+    "fal_flux_schnell": "fal-ai/flux/schnell",
+    "fal_flux_pro":     "fal-ai/flux-pro",
     "fal_flux_pro11":   "fal-ai/flux-pro/v1.1",
     "fal_sd3":          "fal-ai/stable-diffusion-v3-medium",
 }
+
+# Engines that need a reference image (not in FAL_MODELS standard path)
+REFERENCE_ENGINES = {"consistent_character", "instantid"}
 
 
 class RefImage(BaseModel):
@@ -179,6 +182,35 @@ def _fal_upload(data: bytes, media_type: str) -> str:
     return fal_client.upload(data, media_type)
 
 
+# ── Consistent Character — locks appearance across scenes ────
+def _generate_consistent_character(prompt: str, face_refs: list[RefImage], aspect: str) -> dict:
+    try:
+        import fal_client
+    except ImportError:
+        raise RuntimeError("fal-client not installed")
+
+    api_key = os.getenv("FAL_KEY")
+    if not api_key:
+        raise RuntimeError("FAL_KEY not set")
+    os.environ["FAL_KEY"] = api_key
+
+    # Upload the reference image
+    primary_bytes = _b64.b64decode(face_refs[0].base64)
+    subject_url   = _fal_upload(primary_bytes, face_refs[0].mediaType)
+
+    result = fal_client.run("fal-ai/consistent-character", arguments={
+        "subject":           subject_url,
+        "prompt":            prompt,
+        "num_images":        1,
+        "randomize_poses":   False,
+        "output_format":     "jpeg",
+    })
+    img_url     = result["images"][0]["url"]
+    image_bytes = _download_url(img_url)
+    _, output_url = _save_bytes(image_bytes, prefix="consistent")
+    return {"imageUrl": output_url, "prompt": prompt, "engine": "consistent_character", "model": "fal-ai/consistent-character"}
+
+
 # ── InstantID — high-fidelity single-person face identity ────
 def _generate_instantid(prompt: str, face_refs: list[RefImage], aspect: str, style: str) -> dict:
     try:
@@ -301,7 +333,14 @@ async def generate_image(payload: ImageGenPayload):
                 None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
             )
         try:
-            # Single person — use InstantID (best face identity preservation)
+            # Consistent Character — engine-selected, locks appearance across scenes
+            if engine == "consistent_character" and face1:
+                result = await loop.run_in_executor(
+                    None, _generate_consistent_character, prompt, face1, payload.aspect
+                )
+                return {"success": True, **result}
+
+            # Single person — InstantID (strong face identity)
             if face1 and not face2:
                 result = await loop.run_in_executor(
                     None, _generate_instantid, prompt, face1, payload.aspect, payload.style
@@ -375,14 +414,15 @@ def list_models():
         "success": True,
         "default": "fal_flux",
         "engines": [
-            {"id": "fal_flux_lora",    "label": "FLUX LoRA (character-locked)", "provider": "fal.ai", "speed": "fast",   "quality": "best",   "note": "Requires trained LoRA — auto-selected when character has one"},
-            {"id": "fal_flux",         "label": "FLUX.1 Dev",                   "provider": "fal.ai", "speed": "fast",   "quality": "high"},
-            {"id": "fal_flux_schnell", "label": "FLUX.1 Schnell",               "provider": "fal.ai", "speed": "turbo",  "quality": "good"},
-            {"id": "fal_flux_pro",     "label": "FLUX.1 Pro",                   "provider": "fal.ai", "speed": "medium", "quality": "best"},
-            {"id": "fal_flux_pro11",   "label": "FLUX.1 Pro v1.1",             "provider": "fal.ai", "speed": "medium", "quality": "best"},
-            {"id": "fal_sd3",          "label": "Stable Diffusion 3",           "provider": "fal.ai", "speed": "medium", "quality": "high"},
-            {"id": "dalle3",           "label": "DALL-E 3",                     "provider": "openai", "speed": "medium", "quality": "high"},
-            {"id": "comfy",            "label": "ComfyUI (local)",              "provider": "local",  "speed": "varies", "quality": "varies"},
+            {"id": "consistent_character", "label": "★ Consistent Character",      "provider": "fal.ai", "speed": "fast",   "quality": "best",   "note": "Requires Person 1 face photo — same character every generation"},
+            {"id": "fal_flux_lora",        "label": "FLUX LoRA (character-locked)", "provider": "fal.ai", "speed": "fast",   "quality": "best",   "note": "Requires trained LoRA — auto-selected when character has one"},
+            {"id": "fal_flux",             "label": "FLUX.1 Dev",                   "provider": "fal.ai", "speed": "fast",   "quality": "high"},
+            {"id": "fal_flux_schnell",     "label": "FLUX.1 Schnell",               "provider": "fal.ai", "speed": "turbo",  "quality": "good"},
+            {"id": "fal_flux_pro",         "label": "FLUX.1 Pro",                   "provider": "fal.ai", "speed": "medium", "quality": "best"},
+            {"id": "fal_flux_pro11",       "label": "FLUX.1 Pro v1.1",             "provider": "fal.ai", "speed": "medium", "quality": "best"},
+            {"id": "fal_sd3",              "label": "Stable Diffusion 3",           "provider": "fal.ai", "speed": "medium", "quality": "high"},
+            {"id": "dalle3",               "label": "DALL-E 3",                     "provider": "openai", "speed": "medium", "quality": "high"},
+            {"id": "comfy",                "label": "ComfyUI (local)",              "provider": "local",  "speed": "varies", "quality": "varies"},
         ],
     }
 

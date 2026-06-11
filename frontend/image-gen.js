@@ -2,9 +2,10 @@
 const IG_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 const IG_ENGINE_HINTS = {
-  dalle3:   "Uses your OpenAI key — best prompt accuracy.",
-  fal_flux: "Needs FAL_KEY in .env (sign up at fal.ai). Best photorealism.",
-  comfy:    "Requires ComfyUI running at localhost:8188.",
+  dalle3:               "Uses your OpenAI key — best prompt accuracy.",
+  fal_flux:             "fal.ai FLUX Dev — photorealism.",
+  comfy:                "Requires ComfyUI running at localhost:8188.",
+  consistent_character: "★ BEST FOR CHARACTERS — Load 1 face photo in Person 1, describe the scene. Same character every generation.",
 };
 
 const IG_VIDEO_ENGINE_HINTS = {

@@ -383,14 +383,28 @@ async function igLoadGallery() {
     }
 
     gallery.innerHTML = images.map(img => `
-      <div class="ig-thumb" onclick="igOpenLightbox('${IG_BASE + img.url}')">
-        <img src="${IG_BASE + img.url}" loading="lazy" alt="${img.filename}" />
+      <div class="ig-thumb" id="ig-thumb-${img.filename}">
+        <img src="${IG_BASE + img.url}" loading="lazy" alt="${img.filename}" onclick="igOpenLightbox('${IG_BASE + img.url}')" style="cursor:pointer;" />
         <div class="ig-thumb-meta">${img.created}</div>
+        <button class="ig-thumb-del" onclick="igDeleteImage('${img.filename}')" title="Delete">✕</button>
       </div>
     `).join("");
   } catch (err) {
     console.error("IG GALLERY ERROR:", err);
     if (gallery) gallery.innerHTML = `<div style="color:var(--text-dim);font-size:11px;grid-column:1/-1;">Could not load gallery.</div>`;
+  }
+}
+
+async function igDeleteImage(filename) {
+  if (!confirm(`Delete ${filename}?`)) return;
+  try {
+    const res = await levFetch(`${IG_BASE}/image-gen/gallery/${encodeURIComponent(filename)}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Delete failed");
+    const el = document.getElementById(`ig-thumb-${filename}`);
+    if (el) el.remove();
+  } catch (err) {
+    console.error("Delete error:", err);
+    alert("Could not delete image.");
   }
 }
 

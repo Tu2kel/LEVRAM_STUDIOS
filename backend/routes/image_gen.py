@@ -388,3 +388,15 @@ def get_gallery():
             for f in images[:60]
         ],
     }
+
+
+@router.delete("/image-gen/gallery/{filename}")
+def delete_gallery_image(filename: str):
+    # Reject any path traversal attempts
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    target = IMAGE_DIR / filename
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    target.unlink()
+    return {"success": True, "deleted": filename}

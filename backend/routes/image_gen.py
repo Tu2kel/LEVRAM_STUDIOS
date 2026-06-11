@@ -190,7 +190,7 @@ def _generate_face_id(prompt: str, face_refs: list[RefImage], aspect: str, style
     extra   = face_refs[1:6]  # up to 5 additional angles
 
     # PuLID — FLUX-based face identity model, accepts multiple reference images
-    reference_images = [{"url": f"data:{r.mediaType};base64,{r.base64}"} for r in face_refs[:6]]
+    reference_images = [{"image_url": f"data:{r.mediaType};base64,{r.base64}"} for r in face_refs[:6]]
 
     args = {
         "prompt":               full_prompt,

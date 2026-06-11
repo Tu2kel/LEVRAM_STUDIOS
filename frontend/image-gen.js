@@ -208,7 +208,7 @@ async function igLoadCharacters() {
     const data = await res.json();
     const chars = data.characters || [];
     sel.innerHTML = '<option value="">None / Standalone</option>' +
-      chars.map(c => `<option value="${c.name}">${c.name}</option>`).join("");
+      chars.map(c => `<option value="${c.id}" data-name="${c.name}">${c.name}${c.lora_status === "ready" ? " ★" : ""}</option>`).join("");
   } catch (err) {
     console.error("IG CHAR LOAD ERROR:", err);
   }
@@ -225,10 +225,12 @@ async function igGenerate() {
 
 // ─── Generate Image ────────────────────────────────────────
 async function igGenerateImage() {
-  const prompt    = document.getElementById("ig-prompt")?.value.trim() || "";
-  const character = document.getElementById("ig-character")?.value || "";
-  const style     = document.getElementById("ig-style")?.value || "cinematic photorealistic";
-  const aspect    = document.getElementById("ig-aspect")?.value || "widescreen";
+  const prompt       = document.getElementById("ig-prompt")?.value.trim() || "";
+  const charSel      = document.getElementById("ig-character");
+  const character_id = charSel?.value || "";
+  const character    = charSel?.selectedOptions[0]?.dataset.name || "";
+  const style        = document.getElementById("ig-style")?.value || "cinematic photorealistic";
+  const aspect       = document.getElementById("ig-aspect")?.value || "widescreen";
   const statusEl  = document.getElementById("ig-status");
   const btn       = document.getElementById("ig-generate-btn");
 
@@ -249,7 +251,7 @@ async function igGenerateImage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        prompt, character, style, aspect, engine: igActiveEngine,
+        prompt, character, character_id, style, aspect, engine: igActiveEngine,
         reference_images:   refPayload,
         face_references_1:  facePayload1,
         face_references_2:  facePayload2,
@@ -633,9 +635,11 @@ const IG_COMPARE_ENGINES = [
 ];
 
 async function igCompareAll() {
-  const prompt    = document.getElementById("ig-prompt")?.value.trim() || "";
-  const character = document.getElementById("ig-character")?.value || "";
-  const style     = document.getElementById("ig-style")?.value || "cinematic photorealistic";
+  const prompt       = document.getElementById("ig-prompt")?.value.trim() || "";
+  const charSel      = document.getElementById("ig-character");
+  const character_id = charSel?.value || "";
+  const character    = charSel?.selectedOptions[0]?.dataset.name || "";
+  const style        = document.getElementById("ig-style")?.value || "cinematic photorealistic";
   const aspect    = document.getElementById("ig-aspect")?.value || "widescreen";
   const statusEl  = document.getElementById("ig-status");
   const compareBtn = document.getElementById("ig-compare-btn");
@@ -663,7 +667,7 @@ async function igCompareAll() {
 
   const run = async (engine) => {
     const body = { prompt, character, style, aspect, engine,
-      reference_images: refPayload, face_references_1: facePayload1, face_references_2: facePayload2 };
+      character_id, character, reference_images: refPayload, face_references_1: facePayload1, face_references_2: facePayload2 };
     try {
       const res  = await levFetch(`${IG_BASE}/image-gen/generate`, {
         method: "POST", headers: { "Content-Type": "application/json" },

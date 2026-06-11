@@ -191,7 +191,7 @@ def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> 
                 ),
             }
         ]
-        for ref in refs[:4]:  # cap at 4 reference images
+        for ref in refs[:10]:  # cap at 10 reference images
             content.append({
                 "type": "image_url",
                 "image_url": {"url": f"data:{ref.mediaType};base64,{ref.base64}", "detail": "low"},

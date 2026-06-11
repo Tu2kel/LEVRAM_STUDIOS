@@ -59,7 +59,7 @@ class ImageGenPayload(BaseModel):
     aspect: str = "widescreen"
     engine: str = "fal_flux"
     reference_images: list[RefImage] = []
-    face_reference: RefImage | None = None
+    face_references: list[RefImage] = []
 
 
 def _save_bytes(image_bytes: bytes, prefix: str = "levram") -> tuple[str, str]:
@@ -170,7 +170,7 @@ def _generate_comfy(prompt: str, aspect: str, style: str, character: str) -> dic
 
 
 # ── IP-Adapter Face ID (fal.ai) — direct face conditioning ───
-def _generate_face_id(prompt: str, face_ref: RefImage, aspect: str, style: str) -> dict:
+def _generate_face_id(prompt: str, face_refs: list[RefImage], aspect: str, style: str) -> dict:
     try:
         import fal_client
     except ImportError:
@@ -181,22 +181,26 @@ def _generate_face_id(prompt: str, face_ref: RefImage, aspect: str, style: str) 
         raise RuntimeError("FAL_KEY not set — required for Face ID generation.")
     os.environ["FAL_KEY"] = api_key
 
-    # Upload face image as data URL so fal can read it
-    face_data_url = f"data:{face_ref.mediaType};base64,{face_ref.base64}"
     full_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
     image_size  = FAL_SIZES.get(aspect, "landscape_16_9")
 
-    result = fal_client.run(
-        "fal-ai/ip-adapter-face-id-plus",
-        arguments={
-            "prompt":       full_prompt,
-            "face_image_url": face_data_url,
-            "image_size":   image_size,
-            "num_inference_steps": 30,
-            "guidance_scale": 7.5,
-            "num_images":   1,
-        },
-    )
+    # Pass all face images — fal.ai ip-adapter-face-id-plus accepts
+    # face_image_url (primary) + optionally face_image_urls (array) for multi-angle
+    primary = face_refs[0]
+    extra   = face_refs[1:6]  # up to 5 additional angles
+
+    args = {
+        "prompt":         full_prompt,
+        "face_image_url": f"data:{primary.mediaType};base64,{primary.base64}",
+        "image_size":     image_size,
+        "num_inference_steps": 30,
+        "guidance_scale": 7.5,
+        "num_images":     1,
+    }
+    if extra:
+        args["face_image_urls"] = [f"data:{r.mediaType};base64,{r.base64}" for r in extra]
+
+    result = fal_client.run("fal-ai/ip-adapter-face-id-plus", arguments=args)
     image_url   = result["images"][0]["url"]
     image_bytes = _download_url(image_url)
     _, output_url = _save_bytes(image_bytes, prefix="faceid")
@@ -248,11 +252,10 @@ def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> 
 async def generate_image(payload: ImageGenPayload):
     engine = payload.engine
 
-    # Face reference → IP-Adapter Face ID (bypasses text description entirely)
-    if payload.face_reference:
-        face_ref = payload.face_reference
-        # Still enhance prompt with any scene references for context
+    # Face references → IP-Adapter Face ID (bypasses text description entirely)
+    if payload.face_references:
         prompt = payload.prompt
+        # Still enhance prompt with scene references for environment/style context
         if payload.reference_images:
             loop = asyncio.get_event_loop()
             prompt = await loop.run_in_executor(
@@ -261,7 +264,7 @@ async def generate_image(payload: ImageGenPayload):
         loop = asyncio.get_event_loop()
         try:
             result = await loop.run_in_executor(
-                None, _generate_face_id, prompt, face_ref, payload.aspect, payload.style
+                None, _generate_face_id, prompt, payload.face_references, payload.aspect, payload.style
             )
             return {"success": True, **result}
         except Exception as e:

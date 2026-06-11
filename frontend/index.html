@@ -461,22 +461,19 @@
             <!-- Face Reference (IP-Adapter — direct face conditioning) -->
             <div class="field-group">
               <div class="field-label" style="display:flex;align-items:center;justify-content:space-between;">
-                Face Reference <span style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:none;font-weight:400;">optional · locks face identity</span>
+                Face References <span style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:none;font-weight:400;">optional · multiple angles = stronger lock</span>
               </div>
               <div id="ig-face-drop"
-                style="border:2px dashed rgba(201,168,76,0.2);border-radius:4px;padding:10px 12px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;display:flex;align-items:center;gap:10px;"
+                style="border:2px dashed rgba(201,168,76,0.2);border-radius:4px;padding:12px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;"
                 ondragover="event.preventDefault();this.style.borderColor='rgba(201,168,76,0.6)'"
                 ondragleave="this.style.borderColor='rgba(201,168,76,0.2)'"
                 ondrop="igHandleFaceDrop(event)"
                 onclick="document.getElementById('ig-face-input').click()">
-                <input type="file" id="ig-face-input" accept="image/*" style="display:none" onchange="igSetFaceRef(this.files[0])" />
-                <div id="ig-face-thumb-wrap" style="display:none;position:relative;flex-shrink:0;">
-                  <img id="ig-face-thumb" style="width:48px;height:48px;object-fit:cover;border-radius:3px;border:1px solid rgba(201,168,76,0.4);" />
-                  <button onclick="event.stopPropagation();igClearFaceRef()" style="position:absolute;top:-5px;right:-5px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;line-height:1;padding:0;">✕</button>
-                </div>
-                <div id="ig-face-label" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);">Drop or click — 1 clear face photo</div>
+                <input type="file" id="ig-face-input" accept="image/*" multiple style="display:none" onchange="igAddFaceRefs(this.files)" />
+                <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);">Drop or click — front, side, 3/4 angles</div>
               </div>
-              <div id="ig-face-hint" style="font-size:10px;color:var(--text-dim);margin-top:4px;display:none;">Uses IP-Adapter Face ID — bypasses text description, locks the actual face.</div>
+              <div id="ig-face-thumbs" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+              <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">IP-Adapter Face ID — face pixels go directly to the model, not described in text.</div>
             </div>
 
             <!-- Scene / Style Reference Photos (GPT-4o context) -->

@@ -20,45 +20,44 @@ let igActiveEngine      = localStorage.getItem("ig-engine")       || "dalle3";
 let igActiveVideoEngine = localStorage.getItem("ig-video-engine")  || "wan";
 let igActiveMode        = localStorage.getItem("ig-mode")          || "image";
 let igRefImages         = []; // [{ base64, mediaType, preview }]
-let igFaceRef           = null; // { base64, mediaType, preview }
+let igFaceRefs          = []; // [{ base64, mediaType, preview }]
 
 // ─── Face reference helpers ───────────────────────────────
 function igHandleFaceDrop(e) {
   e.preventDefault();
   const el = document.getElementById("ig-face-drop");
   if (el) el.style.borderColor = "rgba(201,168,76,0.2)";
-  const file = e.dataTransfer.files[0];
-  if (file?.type.startsWith("image/")) igSetFaceRef(file);
+  igAddFaceRefs(e.dataTransfer.files);
 }
 
-function igSetFaceRef(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const dataUrl = ev.target.result;
-    const [header, base64] = dataUrl.split(",");
-    const mediaType = (header.match(/data:(.*);/) || [])[1] || "image/jpeg";
-    igFaceRef = { base64, mediaType, preview: dataUrl };
-    const thumb     = document.getElementById("ig-face-thumb");
-    const thumbWrap = document.getElementById("ig-face-thumb-wrap");
-    const label     = document.getElementById("ig-face-label");
-    const hint      = document.getElementById("ig-face-hint");
-    if (thumb)     thumb.src = dataUrl;
-    if (thumbWrap) thumbWrap.style.display = "block";
-    if (label)     label.textContent = "Face locked — IP-Adapter will preserve identity";
-    if (hint)      hint.style.display = "block";
-  };
-  reader.readAsDataURL(file);
+function igAddFaceRefs(files) {
+  [...files].forEach(file => {
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      const [header, base64] = dataUrl.split(",");
+      const mediaType = (header.match(/data:(.*);/) || [])[1] || "image/jpeg";
+      igFaceRefs.push({ base64, mediaType, preview: dataUrl });
+      igRenderFaceThumbs();
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
-function igClearFaceRef() {
-  igFaceRef = null;
-  const thumbWrap = document.getElementById("ig-face-thumb-wrap");
-  const label     = document.getElementById("ig-face-label");
-  const hint      = document.getElementById("ig-face-hint");
-  if (thumbWrap) thumbWrap.style.display = "none";
-  if (label)     label.textContent = "Drop or click — 1 clear face photo";
-  if (hint)      hint.style.display = "none";
+function igRemoveFaceRef(idx) {
+  igFaceRefs.splice(idx, 1);
+  igRenderFaceThumbs();
+}
+
+function igRenderFaceThumbs() {
+  const box = document.getElementById("ig-face-thumbs");
+  if (!box) return;
+  box.innerHTML = igFaceRefs.map((img, i) => `
+    <div style="position:relative;width:56px;height:56px;">
+      <img src="${img.preview}" style="width:56px;height:56px;object-fit:cover;border-radius:3px;border:1px solid rgba(201,168,76,0.4);" />
+      <button onclick="igRemoveFaceRef(${i})" style="position:absolute;top:-5px;right:-5px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;">✕</button>
+    </div>`).join("");
 }
 
 // ─── Scene reference photo helpers ───────────────────────
@@ -238,14 +237,14 @@ async function igGenerateImage() {
 
   try {
     const refPayload  = igRefImages.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
-    const facePayload = igFaceRef ? { base64: igFaceRef.base64, mediaType: igFaceRef.mediaType } : null;
+    const facePayload = igFaceRefs.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
     const res = await levFetch(`${IG_BASE}/image-gen/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt, character, style, aspect, engine: igActiveEngine,
         reference_images: refPayload,
-        face_reference: facePayload,
+        face_references: facePayload,
       }),
     });
 

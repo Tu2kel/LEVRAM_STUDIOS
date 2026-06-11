@@ -175,8 +175,8 @@ def _generate_comfy(prompt: str, aspect: str, style: str, character: str) -> dic
 
 # ── Upload bytes to fal.ai storage → returns public URL ──────
 def _fal_upload(data: bytes, media_type: str) -> str:
-    import fal_client, io
-    return fal_client.upload(io.BytesIO(data), media_type)
+    import fal_client
+    return fal_client.upload(data, media_type)
 
 
 # ── InstantID — high-fidelity single-person face identity ────

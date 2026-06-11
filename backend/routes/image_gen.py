@@ -196,8 +196,8 @@ def _generate_face_id(prompt: str, face_refs: list[RefImage], aspect: str, style
         "prompt":               full_prompt,
         "reference_images":     reference_images,
         "image_size":           image_size,
-        "num_inference_steps":  20,
-        "guidance_scale":       7.5,
+        "num_inference_steps":  12,
+        "guidance_scale":       1.5,
         "num_images":           1,
     }
 

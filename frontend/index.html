@@ -458,22 +458,41 @@
               </select>
             </div>
 
-            <!-- Face Reference (IP-Adapter — direct face conditioning) -->
+            <!-- Face References — Person 1 + Person 2 -->
             <div class="field-group">
-              <div class="field-label" style="display:flex;align-items:center;justify-content:space-between;">
-                Face References <span style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:none;font-weight:400;">optional · multiple angles = stronger lock</span>
+              <div class="field-label">Face References</div>
+
+              <!-- Person 1 -->
+              <div style="margin-bottom:10px;">
+                <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:5px;">Person 1</div>
+                <div id="ig-face-drop-1"
+                  style="border:2px dashed rgba(201,168,76,0.2);border-radius:4px;padding:10px;text-align:center;cursor:pointer;transition:border-color .2s;"
+                  ondragover="event.preventDefault();this.style.borderColor='rgba(201,168,76,0.6)'"
+                  ondragleave="this.style.borderColor='rgba(201,168,76,0.2)'"
+                  ondrop="igHandleFaceDrop(event,1)"
+                  onclick="document.getElementById('ig-face-input-1').click()">
+                  <input type="file" id="ig-face-input-1" accept="image/*" multiple style="display:none" onchange="igAddFaceRefs(this.files,1)" />
+                  <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);">Drop or click — multiple angles</div>
+                </div>
+                <div id="ig-face-thumbs-1" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
               </div>
-              <div id="ig-face-drop"
-                style="border:2px dashed rgba(201,168,76,0.2);border-radius:4px;padding:12px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;"
-                ondragover="event.preventDefault();this.style.borderColor='rgba(201,168,76,0.6)'"
-                ondragleave="this.style.borderColor='rgba(201,168,76,0.2)'"
-                ondrop="igHandleFaceDrop(event)"
-                onclick="document.getElementById('ig-face-input').click()">
-                <input type="file" id="ig-face-input" accept="image/*" multiple style="display:none" onchange="igAddFaceRefs(this.files)" />
-                <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);">Drop or click — front, side, 3/4 angles</div>
+
+              <!-- Person 2 -->
+              <div>
+                <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.6);margin-bottom:5px;">Person 2 <span style="font-size:9px;color:var(--text-dim);text-transform:none;letter-spacing:0;">(optional)</span></div>
+                <div id="ig-face-drop-2"
+                  style="border:2px dashed rgba(201,168,76,0.12);border-radius:4px;padding:10px;text-align:center;cursor:pointer;transition:border-color .2s;"
+                  ondragover="event.preventDefault();this.style.borderColor='rgba(201,168,76,0.5)'"
+                  ondragleave="this.style.borderColor='rgba(201,168,76,0.12)'"
+                  ondrop="igHandleFaceDrop(event,2)"
+                  onclick="document.getElementById('ig-face-input-2').click()">
+                  <input type="file" id="ig-face-input-2" accept="image/*" multiple style="display:none" onchange="igAddFaceRefs(this.files,2)" />
+                  <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);">Drop or click — multiple angles</div>
+                </div>
+                <div id="ig-face-thumbs-2" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
               </div>
-              <div id="ig-face-thumbs" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
-              <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">IP-Adapter Face ID — face pixels go directly to the model, not described in text.</div>
+
+              <div style="font-size:10px;color:var(--text-dim);margin-top:6px;">Face pixels go directly to the model — not described in text. Two-person: generates composition then swaps both faces in.</div>
             </div>
 
             <!-- Scene / Style Reference Photos (GPT-4o context) -->

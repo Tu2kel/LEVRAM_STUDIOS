@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
 import asyncio
+import base64 as _b64
 import os
 import uuid
 import urllib.request
@@ -58,8 +59,11 @@ class ImageGenPayload(BaseModel):
     negative_prompt: str = ""
     aspect: str = "widescreen"
     engine: str = "fal_flux"
-    reference_images: list[RefImage] = []
-    face_references: list[RefImage] = []
+    reference_images:   list[RefImage] = []
+    face_references_1:  list[RefImage] = []  # Person 1 face photos
+    face_references_2:  list[RefImage] = []  # Person 2 face photos
+    # legacy — kept for backward compat; ignored if _1/_2 present
+    face_references:    list[RefImage] = []
 
 
 def _save_bytes(image_bytes: bytes, prefix: str = "levram") -> tuple[str, str]:
@@ -169,8 +173,8 @@ def _generate_comfy(prompt: str, aspect: str, style: str, character: str) -> dic
     return {"imageUrl": out_url, "prompt": result.get("promptUsed", prompt), "engine": "comfy", "model": "comfyui"}
 
 
-# ── IP-Adapter Face ID (fal.ai) — direct face conditioning ───
-def _generate_face_id(prompt: str, face_refs: list[RefImage], aspect: str, style: str) -> dict:
+# ── PuLID — single-person face identity via FLUX ─────────────
+def _generate_pulid(prompt: str, face_refs: list[RefImage], aspect: str, style: str) -> dict:
     try:
         import fal_client
     except ImportError:
@@ -178,34 +182,51 @@ def _generate_face_id(prompt: str, face_refs: list[RefImage], aspect: str, style
 
     api_key = os.getenv("FAL_KEY")
     if not api_key:
-        raise RuntimeError("FAL_KEY not set — required for Face ID generation.")
+        raise RuntimeError("FAL_KEY not set")
     os.environ["FAL_KEY"] = api_key
 
     full_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
     image_size  = FAL_SIZES.get(aspect, "landscape_16_9")
-
-    # Pass all face images — fal.ai ip-adapter-face-id-plus accepts
-    # face_image_url (primary) + optionally face_image_urls (array) for multi-angle
-    primary = face_refs[0]
-    extra   = face_refs[1:6]  # up to 5 additional angles
-
-    # PuLID — FLUX-based face identity model, accepts multiple reference images
     reference_images = [{"image_url": f"data:{r.mediaType};base64,{r.base64}"} for r in face_refs[:6]]
 
-    args = {
+    result = fal_client.run("fal-ai/pulid", arguments={
         "prompt":               full_prompt,
         "reference_images":     reference_images,
         "image_size":           image_size,
         "num_inference_steps":  12,
         "guidance_scale":       1.5,
         "num_images":           1,
-    }
-
-    result = fal_client.run("fal-ai/pulid", arguments=args)
-    image_url   = result["images"][0]["url"]
-    image_bytes = _download_url(image_url)
+    })
+    image_bytes = _download_url(result["images"][0]["url"])
     _, output_url = _save_bytes(image_bytes, prefix="pulid")
     return {"imageUrl": output_url, "prompt": full_prompt, "engine": "pulid", "model": "fal-ai/pulid"}
+
+
+# ── Face Swap (fal.ai) — paste a face onto an existing image ──
+def _face_swap(base_image_path: str, face_ref: RefImage) -> str:
+    """Returns the output_url of the swapped image."""
+    try:
+        import fal_client
+    except ImportError:
+        raise RuntimeError("fal-client not installed — pip install fal-client")
+
+    api_key = os.getenv("FAL_KEY")
+    if not api_key:
+        raise RuntimeError("FAL_KEY not set")
+    os.environ["FAL_KEY"] = api_key
+
+    base_bytes   = Path(base_image_path).read_bytes()
+    base_data    = f"data:image/png;base64,{_b64.b64encode(base_bytes).decode()}"
+    face_data    = f"data:{face_ref.mediaType};base64,{face_ref.base64}"
+
+    result = fal_client.run("fal-ai/face-swap", arguments={
+        "base_image_url": base_data,
+        "swap_image_url": face_data,
+    })
+    img_url      = (result.get("image") or {}).get("url") or result["images"][0]["url"]
+    image_bytes  = _download_url(img_url)
+    saved_path, output_url = _save_bytes(image_bytes, prefix="faceswap")
+    return saved_path, output_url
 
 
 # ── Reference image prompt enhancement (GPT-4o Vision) ───────
@@ -252,22 +273,49 @@ def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> 
 @router.post("/image-gen/generate")
 async def generate_image(payload: ImageGenPayload):
     engine = payload.engine
+    loop   = asyncio.get_event_loop()
 
-    # Face references → IP-Adapter Face ID (bypasses text description entirely)
-    if payload.face_references:
+    face1  = payload.face_references_1
+    face2  = payload.face_references_2
+
+    # ── Face reference path ───────────────────────────────────
+    if face1 or face2:
         prompt = payload.prompt
-        # Still enhance prompt with scene references for environment/style context
         if payload.reference_images:
-            loop = asyncio.get_event_loop()
             prompt = await loop.run_in_executor(
                 None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
             )
-        loop = asyncio.get_event_loop()
         try:
-            result = await loop.run_in_executor(
-                None, _generate_face_id, prompt, payload.face_references, payload.aspect, payload.style
+            # Single person — use PuLID directly
+            if face1 and not face2:
+                result = await loop.run_in_executor(
+                    None, _generate_pulid, prompt, face1, payload.aspect, payload.style
+                )
+                return {"success": True, **result}
+
+            # Two people — generate composition then face-swap each person in
+            base_engine = engine if engine in FAL_MODELS else "fal_flux"
+            base_result = await loop.run_in_executor(
+                None, _generate_fal, prompt, payload.aspect, payload.style, base_engine, "", ""
             )
-            return {"success": True, **result}
+            # base_result["imageUrl"] is like /output/renders/images/flux_....png
+            base_path = str(IMAGE_DIR / Path(base_result["imageUrl"]).name)
+
+            # Face swap Person 1 (use first/best reference photo)
+            saved_path, swap1_url = await loop.run_in_executor(
+                None, _face_swap, base_path, face1[0]
+            )
+
+            # Face swap Person 2 on top of Person 1 result
+            if face2:
+                _, final_url = await loop.run_in_executor(
+                    None, _face_swap, saved_path, face2[0]
+                )
+            else:
+                final_url = swap1_url
+
+            return {"success": True, "imageUrl": final_url, "prompt": prompt,
+                    "engine": "faceswap-2p", "model": "fal-ai/face-swap"}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 

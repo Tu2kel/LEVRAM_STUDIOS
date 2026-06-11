@@ -20,17 +20,20 @@ let igActiveEngine      = localStorage.getItem("ig-engine")       || "dalle3";
 let igActiveVideoEngine = localStorage.getItem("ig-video-engine")  || "wan";
 let igActiveMode        = localStorage.getItem("ig-mode")          || "image";
 let igRefImages         = []; // [{ base64, mediaType, preview }]
-let igFaceRefs          = []; // [{ base64, mediaType, preview }]
+let igFaceRefs1 = []; // Person 1 face photos
+let igFaceRefs2 = []; // Person 2 face photos
 
 // ─── Face reference helpers ───────────────────────────────
-function igHandleFaceDrop(e) {
+function igHandleFaceDrop(e, person) {
   e.preventDefault();
-  const el = document.getElementById("ig-face-drop");
-  if (el) el.style.borderColor = "rgba(201,168,76,0.2)";
-  igAddFaceRefs(e.dataTransfer.files);
+  const el = document.getElementById(`ig-face-drop-${person}`);
+  const def = person === 1 ? "rgba(201,168,76,0.2)" : "rgba(201,168,76,0.12)";
+  if (el) el.style.borderColor = def;
+  igAddFaceRefs(e.dataTransfer.files, person);
 }
 
-function igAddFaceRefs(files) {
+function igAddFaceRefs(files, person) {
+  const arr = person === 1 ? igFaceRefs1 : igFaceRefs2;
   [...files].forEach(file => {
     if (!file.type.startsWith("image/")) return;
     const reader = new FileReader();
@@ -38,25 +41,27 @@ function igAddFaceRefs(files) {
       const dataUrl = ev.target.result;
       const [header, base64] = dataUrl.split(",");
       const mediaType = (header.match(/data:(.*);/) || [])[1] || "image/jpeg";
-      igFaceRefs.push({ base64, mediaType, preview: dataUrl });
-      igRenderFaceThumbs();
+      arr.push({ base64, mediaType, preview: dataUrl });
+      igRenderFaceThumbs(person);
     };
     reader.readAsDataURL(file);
   });
 }
 
-function igRemoveFaceRef(idx) {
-  igFaceRefs.splice(idx, 1);
-  igRenderFaceThumbs();
+function igRemoveFaceRef(person, idx) {
+  if (person === 1) igFaceRefs1.splice(idx, 1);
+  else              igFaceRefs2.splice(idx, 1);
+  igRenderFaceThumbs(person);
 }
 
-function igRenderFaceThumbs() {
-  const box = document.getElementById("ig-face-thumbs");
+function igRenderFaceThumbs(person) {
+  const arr = person === 1 ? igFaceRefs1 : igFaceRefs2;
+  const box = document.getElementById(`ig-face-thumbs-${person}`);
   if (!box) return;
-  box.innerHTML = igFaceRefs.map((img, i) => `
-    <div style="position:relative;width:56px;height:56px;">
-      <img src="${img.preview}" style="width:56px;height:56px;object-fit:cover;border-radius:3px;border:1px solid rgba(201,168,76,0.4);" />
-      <button onclick="igRemoveFaceRef(${i})" style="position:absolute;top:-5px;right:-5px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;">✕</button>
+  box.innerHTML = arr.map((img, i) => `
+    <div style="position:relative;width:52px;height:52px;">
+      <img src="${img.preview}" style="width:52px;height:52px;object-fit:cover;border-radius:3px;border:1px solid rgba(201,168,76,0.4);" />
+      <button onclick="igRemoveFaceRef(${person},${i})" style="position:absolute;top:-5px;right:-5px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;">✕</button>
     </div>`).join("");
 }
 
@@ -236,15 +241,17 @@ async function igGenerateImage() {
   if (btn) { btn.disabled = true; btn.textContent = "Generating…"; }
 
   try {
-    const refPayload  = igRefImages.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
-    const facePayload = igFaceRefs.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+    const refPayload   = igRefImages.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+    const facePayload1 = igFaceRefs1.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+    const facePayload2 = igFaceRefs2.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
     const res = await levFetch(`${IG_BASE}/image-gen/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt, character, style, aspect, engine: igActiveEngine,
-        reference_images: refPayload,
-        face_references: facePayload,
+        reference_images:   refPayload,
+        face_references_1:  facePayload1,
+        face_references_2:  facePayload2,
       }),
     });
 
@@ -572,8 +579,9 @@ async function igCompareAll() {
 
   if (!prompt) { if (statusEl) statusEl.textContent = "Enter a prompt first."; return; }
 
-  const refPayload  = igRefImages.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
-  const facePayload = igFaceRefs.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+  const refPayload   = igRefImages.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+  const facePayload1 = igFaceRefs1.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+  const facePayload2 = igFaceRefs2.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
 
   const section = document.getElementById("ig-compare-section");
   const grid    = document.getElementById("ig-compare-grid");
@@ -592,7 +600,7 @@ async function igCompareAll() {
 
   const run = async (engine) => {
     const body = { prompt, character, style, aspect, engine,
-      reference_images: refPayload, face_references: facePayload };
+      reference_images: refPayload, face_references_1: facePayload1, face_references_2: facePayload2 };
     try {
       const res  = await levFetch(`${IG_BASE}/image-gen/generate`, {
         method: "POST", headers: { "Content-Type": "application/json" },

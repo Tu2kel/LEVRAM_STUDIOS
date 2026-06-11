@@ -189,22 +189,23 @@ def _generate_face_id(prompt: str, face_refs: list[RefImage], aspect: str, style
     primary = face_refs[0]
     extra   = face_refs[1:6]  # up to 5 additional angles
 
-    args = {
-        "prompt":         full_prompt,
-        "face_image_url": f"data:{primary.mediaType};base64,{primary.base64}",
-        "image_size":     image_size,
-        "num_inference_steps": 30,
-        "guidance_scale": 7.5,
-        "num_images":     1,
-    }
-    if extra:
-        args["face_image_urls"] = [f"data:{r.mediaType};base64,{r.base64}" for r in extra]
+    # PuLID — FLUX-based face identity model, accepts multiple reference images
+    reference_images = [{"url": f"data:{r.mediaType};base64,{r.base64}"} for r in face_refs[:6]]
 
-    result = fal_client.run("fal-ai/ip-adapter-face-id-plus", arguments=args)
+    args = {
+        "prompt":               full_prompt,
+        "reference_images":     reference_images,
+        "image_size":           image_size,
+        "num_inference_steps":  20,
+        "guidance_scale":       7.5,
+        "num_images":           1,
+    }
+
+    result = fal_client.run("fal-ai/pulid", arguments=args)
     image_url   = result["images"][0]["url"]
     image_bytes = _download_url(image_url)
-    _, output_url = _save_bytes(image_bytes, prefix="faceid")
-    return {"imageUrl": output_url, "prompt": full_prompt, "engine": "ip-adapter-face-id", "model": "fal-ai/ip-adapter-face-id-plus"}
+    _, output_url = _save_bytes(image_bytes, prefix="pulid")
+    return {"imageUrl": output_url, "prompt": full_prompt, "engine": "pulid", "model": "fal-ai/pulid"}
 
 
 # ── Reference image prompt enhancement (GPT-4o Vision) ───────

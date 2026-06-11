@@ -415,3 +415,46 @@ def delete_gallery_image(filename: str):
         raise HTTPException(status_code=404, detail="File not found")
     target.unlink()
     return {"success": True, "deleted": filename}
+
+
+class FaceSwapPayload(BaseModel):
+    image_url:         str               # existing output path e.g. /output/renders/images/flux_....png
+    face_references_1: list[RefImage] = []
+    face_references_2: list[RefImage] = []
+
+
+@router.post("/image-gen/face-swap")
+async def face_swap_on_image(payload: FaceSwapPayload):
+    """Apply face swap to an already-generated image without regenerating it."""
+    face1 = payload.face_references_1
+    face2 = payload.face_references_2
+
+    if not face1 and not face2:
+        raise HTTPException(status_code=400, detail="No face references provided")
+
+    # Resolve local file path from URL like /output/renders/images/flux_....png
+    filename = Path(payload.image_url).name
+    if "/" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid image path")
+    base_path = str(IMAGE_DIR / filename)
+    if not Path(base_path).exists():
+        raise HTTPException(status_code=404, detail="Source image not found")
+
+    loop = asyncio.get_event_loop()
+    try:
+        current_path = base_path
+
+        if face1:
+            saved_path, swap_url = await loop.run_in_executor(
+                None, _face_swap, current_path, face1[0]
+            )
+            current_path = saved_path
+
+        if face2:
+            _, swap_url = await loop.run_in_executor(
+                None, _face_swap, current_path, face2[0]
+            )
+
+        return {"success": True, "imageUrl": swap_url, "engine": "faceswap", "model": "fal-ai/face-swap"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

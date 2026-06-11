@@ -395,6 +395,54 @@ async function igLoadGallery() {
   }
 }
 
+// ─── Swap Faces on current output ────────────────────────────
+async function igSwapFaces() {
+  const facePayload1 = igFaceRefs1.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+  const facePayload2 = igFaceRefs2.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+
+  if (!facePayload1.length && !facePayload2.length) {
+    alert("Load face photos into Person 1 (and optionally Person 2) first.");
+    return;
+  }
+  if (!igCurrentImageUrl) {
+    alert("No output image to swap faces on. Generate an image first.");
+    return;
+  }
+
+  const btn      = document.getElementById("ig-swap-btn");
+  const statusEl = document.getElementById("ig-status");
+  if (btn) { btn.disabled = true; btn.textContent = "Swapping…"; }
+  if (statusEl) statusEl.textContent = "Swapping faces onto current output…";
+
+  try {
+    const res = await levFetch(`${IG_BASE}/image-gen/face-swap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image_url:        igCurrentImageUrl,
+        face_references_1: facePayload1,
+        face_references_2: facePayload2,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Face swap failed");
+
+    const imgUrl    = IG_BASE + data.imageUrl;
+    const resultImg = document.getElementById("ig-result-img");
+    const dlLink    = document.getElementById("ig-download");
+    igCurrentImageUrl = data.imageUrl;
+    if (resultImg) resultImg.src = imgUrl;
+    if (dlLink)    { dlLink.href = imgUrl; dlLink.download = data.imageUrl?.split("/").pop() || "faceswap.png"; }
+    if (statusEl)  statusEl.textContent = "Face swap done.";
+    await igLoadGallery();
+  } catch (err) {
+    console.error("SWAP FACES ERROR:", err);
+    if (statusEl) statusEl.textContent = err.message || "Face swap failed.";
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Swap Faces"; }
+  }
+}
+
 async function igDeleteImage(filename) {
   if (!confirm(`Delete ${filename}?`)) return;
   try {

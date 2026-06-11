@@ -516,7 +516,10 @@
                 <option value="square">Square 1:1</option>
               </select>
             </div>
-            <button id="ig-generate-btn" class="gen-btn" style="margin-top:8px;">Generate Image</button>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button id="ig-generate-btn" class="gen-btn" style="flex:1;">Generate Image</button>
+              <button id="ig-compare-btn" onclick="igCompareAll()" style="flex:1;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.35);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:3px;padding:10px;">⚡ Compare All</button>
+            </div>
             <p id="ig-status" class="status"></p>
           </div>
         </div>
@@ -579,6 +582,15 @@
               <div style="display:flex;justify-content:flex-end;margin-top:6px;">
                 <a id="ig-video-download" download style="font-family:Rajdhani,sans-serif;font-size: 16px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download Video</a>
               </div>
+            </div>
+
+            <!-- Compare grid -->
+            <div id="ig-compare-section" style="display:none;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span class="field-label" style="margin:0;">⚡ Engine Comparison</span>
+                <button onclick="document.getElementById('ig-compare-section').style.display='none'" style="background:transparent;border:none;color:var(--text-dim);font-size:19px;cursor:pointer;padding:0 4px;">✕</button>
+              </div>
+              <div id="ig-compare-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;"></div>
             </div>
 
             <!-- Gallery -->

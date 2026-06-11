@@ -553,6 +553,97 @@ async function igRunI2V() {
 window.igAnimateImage = igAnimateImage;
 window.igRunI2V       = igRunI2V;
 
+// ─── Compare All Engines ──────────────────────────────────
+const IG_COMPARE_ENGINES = [
+  { id: "dalle3",         label: "DALL-E 3" },
+  { id: "fal_flux",       label: "FLUX Dev" },
+  { id: "fal_flux_schnell", label: "FLUX Schnell" },
+  { id: "fal_flux_pro",   label: "FLUX Pro" },
+  { id: "fal_flux_pro11", label: "FLUX Pro 1.1" },
+];
+
+async function igCompareAll() {
+  const prompt    = document.getElementById("ig-prompt")?.value.trim() || "";
+  const character = document.getElementById("ig-character")?.value || "";
+  const style     = document.getElementById("ig-style")?.value || "cinematic photorealistic";
+  const aspect    = document.getElementById("ig-aspect")?.value || "widescreen";
+  const statusEl  = document.getElementById("ig-status");
+  const compareBtn = document.getElementById("ig-compare-btn");
+
+  if (!prompt) { if (statusEl) statusEl.textContent = "Enter a prompt first."; return; }
+
+  const refPayload  = igRefImages.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+  const facePayload = igFaceRefs.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+
+  const section = document.getElementById("ig-compare-section");
+  const grid    = document.getElementById("ig-compare-grid");
+  if (!section || !grid) return;
+
+  // Build placeholder cards
+  section.style.display = "block";
+  grid.innerHTML = IG_COMPARE_ENGINES.map(e => `
+    <div id="ig-cmp-${e.id}" style="background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:4px;overflow:hidden;">
+      <div style="padding:6px 8px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid rgba(201,168,76,0.1);">${e.label}</div>
+      <div class="ig-cmp-body" style="min-height:140px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:10px;letter-spacing:1px;text-transform:uppercase;">Generating…</div>
+    </div>`).join("");
+
+  if (compareBtn) { compareBtn.disabled = true; compareBtn.textContent = "Running…"; }
+  if (statusEl)   statusEl.textContent = `Running ${IG_COMPARE_ENGINES.length} engines in parallel…`;
+
+  const run = async (engine) => {
+    const body = { prompt, character, style, aspect, engine,
+      reference_images: refPayload, face_references: facePayload };
+    try {
+      const res  = await levFetch(`${IG_BASE}/image-gen/generate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.detail || "Failed");
+      return { engine, url: IG_BASE + data.imageUrl, ok: true };
+    } catch (e) {
+      return { engine, error: e.message, ok: false };
+    }
+  };
+
+  // Fire all in parallel, update cards as each resolves
+  const promises = IG_COMPARE_ENGINES.map(e =>
+    run(e.id).then(result => {
+      const card = document.getElementById(`ig-cmp-${e.id}`);
+      if (!card) return result;
+      const body = card.querySelector(".ig-cmp-body");
+      if (result.ok) {
+        body.innerHTML = `
+          <div style="position:relative;">
+            <img src="${result.url}" style="width:100%;display:block;cursor:zoom-in;" onclick="igOpenLightbox('${result.url}')" />
+            <div style="display:flex;gap:4px;padding:6px;">
+              <button onclick="igSelectCompareResult('${result.url}')" style="flex:1;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px;border-radius:2px;">✓ Use This</button>
+              <a href="${result.url}" download style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:var(--text-dim);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 8px;border-radius:2px;text-decoration:none;">DL</a>
+            </div>
+          </div>`;
+      } else {
+        body.innerHTML = `<div style="padding:10px;font-size:10px;color:#ef5350;text-align:center;">${result.error}</div>`;
+      }
+      return result;
+    })
+  );
+
+  await Promise.allSettled(promises);
+  if (compareBtn) { compareBtn.disabled = false; compareBtn.textContent = "⚡ Compare All"; }
+  if (statusEl)   statusEl.textContent = "Comparison complete.";
+  await igLoadGallery();
+}
+
+function igSelectCompareResult(url) {
+  const resultBox = document.getElementById("ig-result");
+  const resultImg = document.getElementById("ig-result-img");
+  const dlLink    = document.getElementById("ig-download");
+  igCurrentImageUrl = url.replace(IG_BASE, "");
+  if (resultBox) resultBox.style.display = "block";
+  if (resultImg) resultImg.src = url;
+  if (dlLink)    { dlLink.href = url; dlLink.download = url.split("/").pop(); }
+}
+
 // ─── Voice Lab inject (from Story Engine) ────────────────
 (function checkVoiceInject() {
   const raw = localStorage.getItem("levram-voice-inject");

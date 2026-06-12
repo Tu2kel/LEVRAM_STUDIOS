@@ -43,18 +43,23 @@ function buildCharacterImagePrompt(character) {
 }
 
 async function generateCharacterPreview() {
-  const status = document.getElementById("character-preview-status");
+  const status    = document.getElementById("character-preview-status");
   const promptBox = document.getElementById("character-preview-prompt");
-  const img = document.getElementById("character-preview-img");
+  const img       = document.getElementById("character-preview-img");
+  const btn       = document.getElementById("generate-character-preview-btn");
 
   const character = getCharacterFormData();
-  // Pass id so backend can look up lora_url and lora_status from DB
   if (editingCharacterId) character.id = editingCharacterId;
   const prompt = buildCharacterImagePrompt(character);
 
   if (promptBox) promptBox.value = prompt;
-  if (status) status.textContent = "GENERATING — this may take 30–120 seconds...";
   if (img) img.style.display = "none";
+  if (status) status.innerHTML = `Generating<span class="lora-dot">.</span><span class="lora-dot">.</span><span class="lora-dot">.</span>`;
+  if (btn) { btn.disabled = true; btn.classList.add("lora-scanning"); btn.textContent = "GENERATING..."; }
+
+  const _done = () => {
+    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); btn.textContent = "Generate Character Preview"; }
+  };
 
   try {
     const res = await levFetch(`${BASE}/character-lab/generate`, {
@@ -65,9 +70,15 @@ async function generateCharacterPreview() {
 
     const data = await res.json();
 
-    // LoRA still training — don't generate a random face
     if (data.training) {
-      if (status) status.textContent = "⏳ " + (data.message || "LoRA training in progress — wait for it to complete before previewing.");
+      _done();
+      if (status) status.textContent = "⏳ " + (data.message || "LoRA training in progress — wait for it to complete.");
+      return;
+    }
+
+    if (!data.success || data.error) {
+      _done();
+      if (status) status.textContent = "ERROR: " + (data.error || "Backend failed — check Railway logs.");
       return;
     }
 
@@ -82,6 +93,7 @@ async function generateCharacterPreview() {
       data?.data?.url;
 
     if (!res.ok || !imageUrl) {
+      _done();
       if (status) status.textContent = "NO IMAGE URL RETURNED — CHECK BACKEND RESPONSE";
       return;
     }
@@ -94,10 +106,12 @@ async function generateCharacterPreview() {
     }
 
     img.onerror = () => {
+      _done();
       if (status) status.textContent = `IMAGE URL RETURNED BUT FILE NOT SERVED: ${finalUrl}`;
     };
 
     img.onload = () => {
+      _done();
       if (status) status.textContent = "CHARACTER PREVIEW LOADED ✔";
     };
 
@@ -126,8 +140,9 @@ async function generateCharacterPreview() {
       }
     }
   } catch (err) {
+    _done();
     console.error("CHARACTER PREVIEW ERROR:", err);
-    if (status) status.textContent = "FRONTEND ERROR — CHECK CONSOLE";
+    if (status) status.textContent = "ERROR — " + (err?.message || "check console");
   }
 }
 

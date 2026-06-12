@@ -445,23 +445,5 @@ async def generate_character_preview(payload: dict):
             "engine":    engine,
         }
 
-    except Exception:
-        pass  # fall through to ComfyUI
-
-    from backend.services.comfy_service import generate_comfy_keyframe
-    item = {
-        "id": "character-preview", "shotId": "character-preview",
-        "shot": {
-            "character":   char_data.get("name", "Character Preview"),
-            "shotDesc":    prompt, "shotPrompt": prompt,
-            "renderStyle": "cinematic photorealistic",
-            "scene":       "Character Lab", "shot_number": "CHARACTER-PREVIEW",
-        },
-    }
-    render_result = generate_comfy_keyframe(item, width=512, height=768)
-    image_url = (render_result.get("outputUrl") or render_result.get("renderOutputUrl")
-                 or render_result.get("image_url") or render_result.get("url"))
-    return {
-        "success": True, "image_url": image_url,
-        "prompt": prompt, "engine": "comfyui", "data": render_result,
-    }
+    except Exception as e:
+        return {"success": False, "error": str(e)[:200]}

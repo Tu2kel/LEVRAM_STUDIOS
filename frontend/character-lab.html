@@ -193,8 +193,15 @@
             </button>
           </div>
 
+          <!-- LoRA progress bar (visible during training) -->
+          <div id="cl-lora-progress"><div id="cl-lora-progress-fill"></div></div>
+
           <!-- LoRA status -->
           <div id="cl-lora-status" style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-top:6px;min-height:16px;"></div>
+          <button id="cl-lora-reset-btn" type="button" onclick="clResetLora()"
+                  style="display:none;margin-top:6px;background:rgba(180,30,30,0.25);border:1px solid rgba(255,80,80,0.4);color:#ff6b6b;font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer;">
+            Reset Stuck Training
+          </button>
         </div>
       </section>
 

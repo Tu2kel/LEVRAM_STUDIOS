@@ -85,6 +85,10 @@ app.add_middleware(
 app.mount("/output", StaticFiles(directory="output"), name="output")
 app.mount("/frontend", StaticFiles(directory="frontend", html=True), name="frontend")
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
+
 app.include_router(tts_router)
 app.include_router(voice_fx_router)
 app.include_router(scenes_router)

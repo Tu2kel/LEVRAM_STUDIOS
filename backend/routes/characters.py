@@ -42,6 +42,7 @@ class CharacterPayload(BaseModel):
     lora_url: str = ""                # fal.ai diffusers LoRA URL after training
     lora_trigger: str = ""            # trigger word prepended to every prompt
     lora_status: str = ""             # none | training | ready | failed
+    lora_request_id: str = ""         # fal.ai request ID for in-progress training
 
 
 # ── JSON fallback helpers ─────────────────────────────────────
@@ -195,7 +196,9 @@ async def delete_reference(character_id: str, filename: str):
 
 # ── LoRA training (background) ────────────────────────────────
 
-async def _run_lora_training(character_id: str, char: dict):
+async def _submit_lora_training(character_id: str, char: dict):
+    """Submit training job to fal.ai and store request_id. No polling — status
+    endpoint checks fal.ai on demand so server restarts can't break recovery."""
     try:
         import fal_client
 
@@ -214,13 +217,15 @@ async def _run_lora_training(character_id: str, char: dict):
                     zf.write(local_path, local_path.name)
         buf.seek(0)
 
-        zip_url = fal_client.upload(buf.read(), content_type="application/zip")
+        loop    = asyncio.get_event_loop()
+        zip_url = await loop.run_in_executor(
+            None, lambda: fal_client.upload(buf.read(), content_type="application/zip")
+        )
         trigger = char.get("lora_trigger") or char["name"].upper().replace(" ", "_")
 
-        loop   = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
+        handle = await loop.run_in_executor(
             None,
-            lambda: fal_client.run(
+            lambda: fal_client.submit(
                 "fal-ai/flux-lora-fast-training",
                 arguments={
                     "images_data_url": zip_url,
@@ -231,19 +236,13 @@ async def _run_lora_training(character_id: str, char: dict):
                 },
             ),
         )
-
-        lora_url = result.get("diffusers_lora_file", {}).get("url", "")
-        if lora_url:
-            await _patch_character(character_id, {
-                "lora_url":     lora_url,
-                "lora_trigger": trigger,
-                "lora_status":  "ready",
-            })
-        else:
-            await _patch_character(character_id, {"lora_status": "failed: no lora URL returned"})
+        await _patch_character(character_id, {
+            "lora_request_id": handle.request_id,
+            "lora_status":     "training",
+        })
 
     except Exception as e:
-        await _patch_character(character_id, {"lora_status": f"failed: {str(e)[:120]}"})
+        await _patch_character(character_id, {"lora_status": f"failed: {str(e)[:120]}", "lora_request_id": ""})
 
 
 @router.post("/characters/{character_id}/train-lora")
@@ -258,7 +257,7 @@ async def train_lora(character_id: str, background_tasks: BackgroundTasks):
             detail=f"Need at least 5 reference images. You have {len(refs)}. Upload more via /characters/{character_id}/upload-reference"
         )
     await _patch_character(character_id, {"lora_status": "training"})
-    background_tasks.add_task(_run_lora_training, character_id, char)
+    background_tasks.add_task(_submit_lora_training, character_id, char)
     return {
         "success": True,
         "status":  "training",
@@ -272,14 +271,66 @@ async def lora_status(character_id: str):
     char = await _get_character(character_id)
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
+
+    # If training with a stored request_id, check fal.ai directly for recovery
+    if char.get("lora_status") == "training" and char.get("lora_request_id"):
+        try:
+            import fal_client
+            api_key = os.getenv("FAL_KEY")
+            if api_key:
+                os.environ["FAL_KEY"] = api_key
+                loop       = asyncio.get_event_loop()
+                request_id = char["lora_request_id"]
+                status_obj = await loop.run_in_executor(
+                    None,
+                    lambda: fal_client.status("fal-ai/flux-lora-fast-training", request_id, with_logs=False),
+                )
+                if status_obj.status == "COMPLETED":
+                    result   = await loop.run_in_executor(
+                        None, lambda: fal_client.result("fal-ai/flux-lora-fast-training", request_id)
+                    )
+                    lora_url = result.get("diffusers_lora_file", {}).get("url", "")
+                    if lora_url:
+                        await _patch_character(character_id, {
+                            "lora_url":        lora_url,
+                            "lora_trigger":    char.get("lora_trigger", ""),
+                            "lora_status":     "ready",
+                            "lora_request_id": "",
+                        })
+                    else:
+                        await _patch_character(character_id, {"lora_status": "failed: no lora URL", "lora_request_id": ""})
+                    char = await _get_character(character_id)
+                elif status_obj.status in ("FAILED", "CANCELLED"):
+                    await _patch_character(character_id, {
+                        "lora_status":     f"failed: job {status_obj.status.lower()}",
+                        "lora_request_id": "",
+                    })
+                    char = await _get_character(character_id)
+        except Exception:
+            pass  # return existing status if fal.ai check fails
+
     return {
-        "success":        True,
-        "name":           char.get("name"),
-        "lora_status":    char.get("lora_status") or "none",
-        "lora_url":       char.get("lora_url") or "",
-        "lora_trigger":   char.get("lora_trigger") or "",
+        "success":         True,
+        "name":            char.get("name"),
+        "lora_status":     char.get("lora_status") or "none",
+        "lora_url":        char.get("lora_url") or "",
+        "lora_trigger":    char.get("lora_trigger") or "",
         "reference_count": len(char.get("reference_images") or []),
     }
+
+
+@router.post("/characters/{character_id}/reset-lora")
+async def reset_lora(character_id: str):
+    """Clear a stuck training status so the character can be retrained."""
+    char = await _get_character(character_id)
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
+    await _patch_character(character_id, {
+        "lora_status":     "none",
+        "lora_request_id": "",
+        "lora_url":        "",
+    })
+    return {"success": True, "message": "LoRA status reset. You can now retrain."}
 
 
 # ── Character-lab preview ─────────────────────────────────────
@@ -289,8 +340,22 @@ async def generate_character_preview(payload: dict):
     prompt    = payload.get("prompt") or ""
     char_data = payload.get("character") or {}
     char_id   = char_data.get("id") or ""
-    lora_url  = char_data.get("lora_url") or ""
-    trigger   = char_data.get("lora_trigger") or ""
+
+    # Always pull lora fields from DB — form payload never includes them
+    db_char = None
+    if char_id:
+        db_char = await _get_character(char_id)
+
+    lora_status_val = (db_char or char_data).get("lora_status") or ""
+    lora_url        = (db_char or char_data).get("lora_url") or ""
+    trigger         = (db_char or char_data).get("lora_trigger") or ""
+
+    if lora_status_val == "training":
+        return {
+            "success":  False,
+            "training": True,
+            "message":  "LoRA training in progress. Preview will be available once training completes.",
+        }
 
     try:
         import fal_client
@@ -299,33 +364,66 @@ async def generate_character_preview(payload: dict):
             raise RuntimeError("no FAL_KEY")
         os.environ["FAL_KEY"] = api_key
 
-        if lora_url:
-            full_prompt = f"{trigger}, {prompt}" if trigger else prompt
-            model_id    = "fal-ai/flux-lora"
-            args = {
-                "prompt":                full_prompt,
-                "loras":                 [{"path": lora_url, "scale": 1.0}],
-                "image_size":            "portrait_16_9",
-                "num_inference_steps":   30,
-                "guidance_scale":        3.5,
-                "enable_safety_checker": False,
-            }
-        else:
-            full_prompt = prompt
-            model_id    = "fal-ai/flux/dev"
-            args = {
-                "prompt":                full_prompt,
-                "image_size":            "portrait_16_9",
-                "num_inference_steps":   28,
-                "guidance_scale":        3.5,
-                "num_images":            1,
-                "enable_safety_checker": False,
-            }
+        loop = asyncio.get_event_loop()
 
-        loop   = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, lambda: fal_client.run(model_id, arguments=args)
-        )
+        if lora_url:
+            # LoRA trained — most accurate likeness
+            full_prompt = f"{trigger}, {prompt}" if trigger else prompt
+            result = await loop.run_in_executor(
+                None, lambda: fal_client.run("fal-ai/flux-lora", arguments={
+                    "prompt":                full_prompt,
+                    "loras":                 [{"path": lora_url, "scale": 1.0}],
+                    "image_size":            "portrait_16_9",
+                    "num_inference_steps":   30,
+                    "guidance_scale":        3.5,
+                    "enable_safety_checker": False,
+                })
+            )
+            engine = "fal_flux_lora"
+
+        else:
+            # No LoRA — use InstantID with reference photos if available
+            import base64 as _b64
+            refs     = (db_char or {}).get("reference_images") or []
+            ref_path = next(
+                (Path(r.lstrip("/")) for r in refs if Path(r.lstrip("/")).exists()),
+                None
+            )
+
+            if ref_path:
+                ref_bytes = ref_path.read_bytes()
+                face_url  = await loop.run_in_executor(
+                    None, lambda: fal_client.upload(ref_bytes, "image/jpeg")
+                )
+                result = await loop.run_in_executor(
+                    None, lambda: fal_client.run("fal-ai/instantid", arguments={
+                        "face_image_url":                 face_url,
+                        "prompt":                         prompt,
+                        "negative_prompt":                "blurry, distorted face, bad anatomy, cartoon, anime, extra limbs",
+                        "image_size":                     "portrait_16_9",
+                        "num_inference_steps":            30,
+                        "guidance_scale":                 5.0,
+                        "ip_adapter_scale":               0.8,
+                        "controlnet_conditioning_scale":  0.8,
+                        "num_images":                     1,
+                        "enable_safety_checker":          False,
+                    })
+                )
+                engine = "instantid"
+            else:
+                # No refs at all — plain Flux
+                result = await loop.run_in_executor(
+                    None, lambda: fal_client.run("fal-ai/flux/dev", arguments={
+                        "prompt":                prompt,
+                        "image_size":            "portrait_16_9",
+                        "num_inference_steps":   28,
+                        "guidance_scale":        3.5,
+                        "num_images":            1,
+                        "enable_safety_checker": False,
+                    })
+                )
+                engine = "fal_flux"
+
         remote_url = result["images"][0]["url"]
 
         out_dir  = Path("output/renders/images")
@@ -343,8 +441,8 @@ async def generate_character_preview(payload: dict):
         return {
             "success":   True,
             "image_url": local_url,
-            "prompt":    full_prompt,
-            "engine":    "fal_flux_lora" if lora_url else "fal_flux",
+            "prompt":    prompt,
+            "engine":    engine,
         }
 
     except Exception:

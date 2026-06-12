@@ -801,6 +801,81 @@
   text-transform: uppercase;
 }
 
+/* ─── LoRA Training Animation ───────────────────────────────── */
+@keyframes lora-beam {
+  0%   { left: -65%; }
+  100% { left: 120%; }
+}
+
+@keyframes lora-pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(201,168,76,0.15); }
+  50%       { box-shadow: 0 0 28px rgba(201,168,76,0.55), 0 0 56px rgba(201,168,76,0.12); }
+}
+
+@keyframes lora-bar-sweep {
+  0%         { transform: scaleX(0); transform-origin: left; opacity: 1; }
+  48%        { transform: scaleX(1); transform-origin: left; opacity: 1; }
+  50%        { transform: scaleX(1); transform-origin: right; opacity: 1; }
+  98%        { transform: scaleX(0); transform-origin: right; opacity: 0.6; }
+  100%       { transform: scaleX(0); transform-origin: left; opacity: 1; }
+}
+
+@keyframes lora-dot {
+  0%, 60%, 100% { opacity: 0; }
+  30%            { opacity: 1; }
+}
+
+#cl-train-btn.lora-scanning {
+  position: relative;
+  overflow: hidden;
+  animation: lora-pulse-glow 2s ease-in-out infinite;
+}
+
+#cl-train-btn.lora-scanning::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -65%;
+  width: 65%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.55), transparent);
+  animation: lora-beam 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+#cl-lora-progress {
+  height: 3px;
+  background: rgba(201,168,76,0.07);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+  display: none;
+}
+
+#cl-lora-progress.active {
+  display: block;
+}
+
+#cl-lora-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--imperial-gold), rgba(201,168,76,0.3));
+  border-radius: 2px;
+  animation: lora-bar-sweep 2.4s ease-in-out infinite;
+}
+
+#cl-lora-section.lora-active {
+  border: 1px solid rgba(201,168,76,0.25) !important;
+  border-radius: 6px;
+  animation: lora-pulse-glow 2.5s ease-in-out infinite;
+}
+
+.lora-dot {
+  display: inline-block;
+  animation: lora-dot 1.4s ease-in-out infinite;
+}
+.lora-dot:nth-child(2) { animation-delay: 0.25s; }
+.lora-dot:nth-child(3) { animation-delay: 0.5s; }
+
 /* ─── Responsive ────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .cl-grid {

@@ -48,10 +48,11 @@ async function generateCharacterPreview() {
   const img = document.getElementById("character-preview-img");
 
   const character = getCharacterFormData();
+  // Pass id so backend can look up lora_url and lora_status from DB
+  if (editingCharacterId) character.id = editingCharacterId;
   const prompt = buildCharacterImagePrompt(character);
 
   if (promptBox) promptBox.value = prompt;
-  // PHASE 8G — timing expectation: ComfyUI takes 30–120s
   if (status) status.textContent = "GENERATING — this may take 30–120 seconds...";
   if (img) img.style.display = "none";
 
@@ -63,6 +64,12 @@ async function generateCharacterPreview() {
     });
 
     const data = await res.json();
+
+    // LoRA still training — don't generate a random face
+    if (data.training) {
+      if (status) status.textContent = "⏳ " + (data.message || "LoRA training in progress — wait for it to complete before previewing.");
+      return;
+    }
 
     const imageUrl =
       data.image_url ||
@@ -388,9 +395,17 @@ function clRefreshLoraPanel(character) {
 
   if (thumbGrid) {
     thumbGrid.innerHTML = refs.map(url => {
-      const src = url.startsWith("http") ? url : BASE + url;
-      return `<img src="${src}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:2px;border:1px solid rgba(201,168,76,0.2);" />`;
+      const src      = url.startsWith("http") ? url : BASE + url;
+      const filename = url.split("/").pop();
+      return `<div style="position:relative;width:72px;height:72px;flex-shrink:0;">
+        <img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:2px;border:1px solid rgba(201,168,76,0.2);display:block;" />
+        <button onclick="clDeleteReference('${filename}')" title="Remove"
+                style="position:absolute;top:2px;right:2px;width:20px;height:20px;background:rgba(160,10,10,0.92);border:1px solid rgba(255,80,80,0.6);border-radius:2px;color:#fff;font-size:13px;font-weight:bold;line-height:20px;text-align:center;cursor:pointer;padding:0;z-index:10;">×</button>
+      </div>`;
     }).join("");
+    thumbGrid.style.display  = "flex";
+    thumbGrid.style.flexWrap = "wrap";
+    thumbGrid.style.gap      = "4px";
   }
 
   const count = refs.length;
@@ -406,10 +421,70 @@ function clRefreshLoraPanel(character) {
   }
 
   if (statusEl && character?.lora_status) {
-    const labels = { ready: "LoRA READY ✔", training: "Training in progress…", failed: "Training failed — try again" };
-    statusEl.textContent = labels[character.lora_status] || "";
-    statusEl.style.color = character.lora_status === "ready" ? "var(--gold)" : "var(--text-dim)";
+    if (character.lora_status === "training") {
+      statusEl.innerHTML = `Training in progress<span class="lora-dot">.</span><span class="lora-dot">.</span><span class="lora-dot">.</span>`;
+      statusEl.style.color = "var(--text-dim)";
+      clStartTrainingAnimation();
+      clPollLoraStatus();
+    } else if (character.lora_status === "ready") {
+      statusEl.innerHTML = "LoRA READY ✔";
+      statusEl.style.color = "var(--gold)";
+      clStopTrainingAnimation();
+    } else if (character.lora_status?.startsWith("failed")) {
+      statusEl.innerHTML = "Training failed — try again";
+      statusEl.style.color = "#ff6b6b";
+      clStopTrainingAnimation();
+    } else {
+      statusEl.textContent = "";
+      clStopTrainingAnimation();
+    }
   }
+
+  // Show reset button whenever there's a lora_status to clear
+  const resetBtn = document.getElementById("cl-lora-reset-btn");
+  if (resetBtn) {
+    const hasStatus = character?.lora_status && character.lora_status !== "none" && character.lora_status !== "";
+    resetBtn.style.display = hasStatus ? "inline-block" : "none";
+  }
+}
+
+window.clResetLora = async function clResetLora() {
+  if (!editingCharacterId) return;
+  const statusEl = document.getElementById("cl-lora-status");
+  const resetBtn = document.getElementById("cl-lora-reset-btn");
+  if (resetBtn) resetBtn.disabled = true;
+  try {
+    const res  = await levFetch(`${BASE}/characters/${editingCharacterId}/reset-lora`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Reset failed");
+    clStopTrainingAnimation();
+    if (_loraStatusInterval) { clearInterval(_loraStatusInterval); _loraStatusInterval = null; }
+    if (statusEl) { statusEl.textContent = "Status reset — ready to retrain."; statusEl.style.color = "var(--text-dim)"; }
+    await loadCharacters();
+    const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
+    clRefreshLoraPanel(cached);
+  } catch (err) {
+    if (statusEl) statusEl.textContent = `Reset failed: ${err.message}`;
+    if (resetBtn) resetBtn.disabled = false;
+  }
+};
+
+function clStartTrainingAnimation() {
+  const trainBtn   = document.getElementById("cl-train-btn");
+  const section    = document.getElementById("cl-lora-section");
+  const progressEl = document.getElementById("cl-lora-progress");
+  if (trainBtn)   { trainBtn.classList.add("lora-scanning"); }
+  if (section)    { section.classList.add("lora-active"); }
+  if (progressEl) { progressEl.classList.add("active"); }
+}
+
+function clStopTrainingAnimation() {
+  const trainBtn   = document.getElementById("cl-train-btn");
+  const section    = document.getElementById("cl-lora-section");
+  const progressEl = document.getElementById("cl-lora-progress");
+  if (trainBtn)   { trainBtn.classList.remove("lora-scanning"); }
+  if (section)    { section.classList.remove("lora-active"); }
+  if (progressEl) { progressEl.classList.remove("active"); }
 }
 
 async function clTrainLora() {
@@ -420,6 +495,7 @@ async function clTrainLora() {
 
   if (trainBtn) { trainBtn.disabled = true; trainBtn.textContent = "Starting training…"; }
   if (statusEl) statusEl.textContent = "Submitting to fal.ai — training takes ~10 min…";
+  clStartTrainingAnimation();
 
   try {
     const res = await levFetch(`${BASE}/characters/${editingCharacterId}/train-lora`, {
@@ -428,9 +504,10 @@ async function clTrainLora() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Training failed to start");
 
-    if (statusEl) statusEl.textContent = "Training started — poll status every 30s…";
+    if (statusEl) statusEl.innerHTML = `Training in progress<span class="lora-dot">.</span><span class="lora-dot">.</span><span class="lora-dot">.</span>`;
     clPollLoraStatus();
   } catch (err) {
+    clStopTrainingAnimation();
     if (statusEl) { statusEl.textContent = err.message; statusEl.style.color = "#ff6b6b"; }
     if (trainBtn) { trainBtn.disabled = false; trainBtn.textContent = "Retry Train LoRA"; }
   }
@@ -447,19 +524,35 @@ function clPollLoraStatus() {
       const statusEl = document.getElementById("cl-lora-status");
       if (data.lora_status === "ready") {
         clearInterval(_loraStatusInterval);
-        if (statusEl) { statusEl.textContent = "LoRA READY ✔ — all future generations are character-locked"; statusEl.style.color = "var(--gold)"; }
+        clStopTrainingAnimation();
+        if (statusEl) { statusEl.innerHTML = "LoRA READY ✔ — all future generations are character-locked"; statusEl.style.color = "var(--gold)"; }
         await loadCharacters();
         const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
         clRefreshLoraPanel(cached);
-      } else if (data.lora_status === "failed") {
+      } else if (data.lora_status?.startsWith("failed")) {
         clearInterval(_loraStatusInterval);
-        if (statusEl) { statusEl.textContent = "Training failed — check logs and retry"; statusEl.style.color = "#ff6b6b"; }
+        clStopTrainingAnimation();
+        if (statusEl) { statusEl.innerHTML = "Training failed — check logs and retry"; statusEl.style.color = "#ff6b6b"; }
       } else {
-        if (statusEl) statusEl.textContent = `Training in progress… (${new Date().toLocaleTimeString()})`;
+        if (statusEl) statusEl.innerHTML = `Training in progress<span class="lora-dot">.</span><span class="lora-dot">.</span><span class="lora-dot">.</span> (${new Date().toLocaleTimeString()})`;
       }
     } catch (_) {}
   }, 30000);
 }
+
+window.clDeleteReference = async function clDeleteReference(filename) {
+  if (!editingCharacterId) return;
+  try {
+    const res  = await levFetch(`${BASE}/characters/${editingCharacterId}/reference/${filename}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Delete failed");
+    await loadCharacters();
+    const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
+    clRefreshLoraPanel(cached);
+  } catch (err) {
+    console.error("DELETE REFERENCE ERROR:", err);
+  }
+};
 
 window.clUploadReferences = clUploadReferences;
 window.clTrainLora        = clTrainLora;

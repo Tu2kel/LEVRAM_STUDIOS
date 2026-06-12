@@ -424,7 +424,13 @@ async def generate_character_preview(payload: dict):
                 )
                 engine = "fal_flux"
 
-        remote_url = result["images"][0]["url"]
+        remote_url = (
+            result.get("images", [{}])[0].get("url")
+            or result.get("image", {}).get("url")
+            or result.get("url")
+        )
+        if not remote_url:
+            raise RuntimeError(f"No image URL in response: {list(result.keys())}")
 
         out_dir  = Path("output/renders/images")
         out_dir.mkdir(parents=True, exist_ok=True)

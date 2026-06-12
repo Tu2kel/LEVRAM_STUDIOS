@@ -396,20 +396,15 @@ async def generate_character_preview(payload: dict):
                     None, lambda: fal_client.upload(ref_bytes, "image/jpeg")
                 )
                 result = await loop.run_in_executor(
-                    None, lambda: fal_client.run("fal-ai/instantid", arguments={
-                        "face_image_url":                 face_url,
-                        "prompt":                         prompt,
-                        "negative_prompt":                "blurry, distorted face, bad anatomy, cartoon, anime, extra limbs",
-                        "image_size":                     "portrait_16_9",
-                        "num_inference_steps":            30,
-                        "guidance_scale":                 5.0,
-                        "ip_adapter_scale":               0.8,
-                        "controlnet_conditioning_scale":  0.8,
-                        "num_images":                     1,
-                        "enable_safety_checker":          False,
+                    None, lambda: fal_client.run("fal-ai/consistent-character", arguments={
+                        "subject":        face_url,
+                        "prompt":         prompt,
+                        "num_images":     1,
+                        "randomize_poses": False,
+                        "output_format":  "jpeg",
                     })
                 )
-                engine = "instantid"
+                engine = "consistent_character"
             else:
                 # No refs at all — plain Flux
                 result = await loop.run_in_executor(
@@ -424,13 +419,12 @@ async def generate_character_preview(payload: dict):
                 )
                 engine = "fal_flux"
 
+        imgs = result.get("images") or []
         remote_url = (
-            result.get("images", [{}])[0].get("url")
-            or result.get("image", {}).get("url")
-            or result.get("url")
-        )
+            imgs[0].get("url") if imgs else None
+        ) or result.get("image", {}).get("url") or result.get("url")
         if not remote_url:
-            raise RuntimeError(f"No image URL in response: {list(result.keys())}")
+            raise RuntimeError(f"No image URL in response keys: {list(result.keys())}")
 
         out_dir  = Path("output/renders/images")
         out_dir.mkdir(parents=True, exist_ok=True)

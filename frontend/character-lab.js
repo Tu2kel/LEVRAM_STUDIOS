@@ -409,11 +409,14 @@ function clRefreshLoraPanel(character) {
   const statusEl  = document.getElementById("cl-lora-status");
 
   if (thumbGrid) {
-    thumbGrid.innerHTML = refs.map(url => {
+    thumbGrid.innerHTML = refs.map((url, i) => {
       const src      = url.startsWith("http") ? url : BASE + url;
       const filename = url.split("/").pop();
-      return `<div style="position:relative;width:72px;height:72px;flex-shrink:0;">
-        <img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:2px;border:1px solid rgba(201,168,76,0.2);display:block;" />
+      const isFirst  = i === 0;
+      return `<div draggable="true" data-index="${i}" data-url="${url}"
+                   style="position:relative;width:72px;height:72px;flex-shrink:0;cursor:grab;${isFirst ? 'outline:2px solid rgba(201,168,76,0.7);outline-offset:1px;border-radius:3px;' : ''}">
+        <img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:2px;border:1px solid rgba(201,168,76,0.2);display:block;pointer-events:none;" />
+        ${isFirst ? `<div style="position:absolute;bottom:2px;left:2px;background:rgba(201,168,76,0.9);color:#000;font-size:8px;font-weight:bold;letter-spacing:1px;padding:1px 4px;border-radius:2px;pointer-events:none;">1ST</div>` : ''}
         <button onclick="clDeleteReference('${filename}')" title="Remove"
                 style="position:absolute;top:2px;right:2px;width:20px;height:20px;background:rgba(160,10,10,0.92);border:1px solid rgba(255,80,80,0.6);border-radius:2px;color:#fff;font-size:13px;font-weight:bold;line-height:20px;text-align:center;cursor:pointer;padding:0;z-index:10;">×</button>
       </div>`;
@@ -421,6 +424,7 @@ function clRefreshLoraPanel(character) {
     thumbGrid.style.display  = "flex";
     thumbGrid.style.flexWrap = "wrap";
     thumbGrid.style.gap      = "4px";
+    clWireDragToReorder(thumbGrid, character);
   }
 
   const count = refs.length;
@@ -557,6 +561,62 @@ function clPollLoraStatus() {
       }
     } catch (_) {}
   }, 30000);
+}
+
+function clWireDragToReorder(grid, character) {
+  let dragSrcIndex = null;
+
+  grid.querySelectorAll("[draggable]").forEach(el => {
+    el.addEventListener("dragstart", e => {
+      dragSrcIndex = parseInt(el.dataset.index);
+      el.style.opacity = "0.4";
+      e.dataTransfer.effectAllowed = "move";
+    });
+
+    el.addEventListener("dragend", () => {
+      el.style.opacity = "1";
+      grid.querySelectorAll("[draggable]").forEach(t => t.classList.remove("drag-over"));
+    });
+
+    el.addEventListener("dragover", e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      grid.querySelectorAll("[draggable]").forEach(t => t.classList.remove("drag-over"));
+      el.style.outline = "2px solid rgba(201,168,76,0.9)";
+    });
+
+    el.addEventListener("dragleave", () => {
+      const i = parseInt(el.dataset.index);
+      el.style.outline = i === 0 ? "2px solid rgba(201,168,76,0.7)" : "";
+    });
+
+    el.addEventListener("drop", async e => {
+      e.preventDefault();
+      const dropIndex = parseInt(el.dataset.index);
+      if (dragSrcIndex === null || dragSrcIndex === dropIndex) return;
+
+      const refs = [...(character?.reference_images || [])];
+      const [moved] = refs.splice(dragSrcIndex, 1);
+      refs.splice(dropIndex, 0, moved);
+
+      // Optimistic UI update
+      const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
+      if (cached) cached.reference_images = refs;
+      clRefreshLoraPanel({ ...character, reference_images: refs });
+
+      // Persist to DB
+      try {
+        const payload = { ...(cached || character), reference_images: refs };
+        await levFetch(`${BASE}/characters/${editingCharacterId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        console.error("REORDER SAVE ERROR:", err);
+      }
+    });
+  });
 }
 
 window.clDeleteReference = async function clDeleteReference(filename) {

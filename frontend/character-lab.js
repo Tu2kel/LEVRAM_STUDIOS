@@ -510,6 +510,8 @@ async function clTrainLora() {
     clStopTrainingAnimation();
     if (statusEl) { statusEl.textContent = err.message; statusEl.style.color = "#ff6b6b"; }
     if (trainBtn) { trainBtn.disabled = false; trainBtn.textContent = "Retry Train LoRA"; }
+    const resetBtn = document.getElementById("cl-lora-reset-btn");
+    if (resetBtn) resetBtn.style.display = "inline-block";
   }
 }
 
@@ -533,6 +535,8 @@ function clPollLoraStatus() {
         clearInterval(_loraStatusInterval);
         clStopTrainingAnimation();
         if (statusEl) { statusEl.innerHTML = "Training failed — check logs and retry"; statusEl.style.color = "#ff6b6b"; }
+        const resetBtn = document.getElementById("cl-lora-reset-btn");
+        if (resetBtn) resetBtn.style.display = "inline-block";
       } else {
         if (statusEl) statusEl.innerHTML = `Training in progress<span class="lora-dot">.</span><span class="lora-dot">.</span><span class="lora-dot">.</span> (${new Date().toLocaleTimeString()})`;
       }

@@ -5,16 +5,16 @@
     "idea-vault":   { id: "tab-idea-vault",  display: "flex" },
     "shot-builder": { id: "tab-main",        display: "grid" },
     "image-gen":    { id: "tab-image-gen",   display: "flex" },
+    "music":        { id: "tab-music",       display: "flex" },
   };
 
   // External pages opened in a new tab
   const EXTERNAL_TABS = {
-    "timeline": "timeline.html",
-    "projects": "projects.html",
-    "settings": "settings.html",
+    "timeline":  "timeline.html",
+    "projects":  "projects.html",
+    "settings":  "settings.html",
     "title-seq":   "title-sequence.html",
     "voice-clone": "voice-clone.html",
-    "music":       "music.html",
     "export":      "export.html",
     "assets":      "assets.html",
     "story":       "story-engine.html",

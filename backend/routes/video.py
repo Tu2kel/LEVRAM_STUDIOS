@@ -306,6 +306,7 @@ class ExportTimelinePayload(BaseModel):
     color_grade:    str   = ""      # "" | cinematic | warm | cool | noir
     captions:       bool  = False   # burn dialogue as subtitles
     speed:          float = 1.0     # 1.0=normal 0.5=slow-mo 2.0=fast
+    title_clip:     str   = ""      # /output/... path to prepend as title card
 
 
 def _probe_duration(path: Path) -> float:
@@ -444,6 +445,13 @@ async def export_timeline(payload: ExportTimelinePayload):
     if not clip_paths:
         raise HTTPException(400, "Could not resolve any video files.")
 
+    # ── Prepend title card if provided ────────────────────────
+    if payload.title_clip:
+        tc_path = _resolve_path(payload.title_clip)
+        if tc_path.exists():
+            clip_paths.insert(0, tc_path)
+            shot_map.insert(0, -1)   # sentinel: not a real shot
+
     ts        = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_title = payload.title.replace(" ", "_")
 
@@ -460,11 +468,12 @@ async def export_timeline(payload: ExportTimelinePayload):
         caption_list = []
         cursor = 0.0
         for clip_idx, shot_idx in enumerate(shot_map):
-            shot = shots[shot_idx]
-            dur  = clip_durs[clip_idx] / max(payload.speed, 0.1)
-            text = shot.get("dialogue") or shot.get("voiceText") or ""
-            if text:
-                caption_list.append({"text": text, "start": cursor, "end": cursor + dur - 0.3})
+            dur = clip_durs[clip_idx] / max(payload.speed, 0.1)
+            if shot_idx >= 0:   # skip title card sentinel
+                shot = shots[shot_idx]
+                text = shot.get("dialogue") or shot.get("voiceText") or ""
+                if text:
+                    caption_list.append({"text": text, "start": cursor, "end": cursor + dur - 0.3})
             cursor += dur
 
     # ── 4. Build base video (effects pass) ────────────────────
@@ -486,8 +495,11 @@ async def export_timeline(payload: ExportTimelinePayload):
     if payload.include_voice:
         cursor = 0.0
         for clip_idx, shot_idx in enumerate(shot_map):
+            clip_dur = clip_durs[clip_idx] / max(payload.speed, 0.1)
+            if shot_idx < 0:    # title card — no voice
+                cursor += clip_dur
+                continue
             shot      = shots[shot_idx]
-            clip_dur  = clip_durs[clip_idx] / max(payload.speed, 0.1)
             audio_url = shot.get("fxUrl") or shot.get("rawUrl") or ""
             audio_path = _resolve_audio(audio_url)
             if audio_path:

@@ -246,6 +246,7 @@ async def _run_pipeline(job_id: str, payload: dict):
     model         = payload.get("model", "wan21_i2v")
     include_tts   = payload.get("include_tts", True)   # default ON
     project       = payload.get("project", char_name or "Default")
+    keyframes_only = payload.get("keyframes_only", False)
 
     try:
         # ── 1. Get shots — use pre-built scenes or GPT planning
@@ -276,19 +277,20 @@ async def _run_pipeline(job_id: str, payload: dict):
                 _update(job_id, step=f"{label} ⚠ Keyframe failed, skipping — {str(e)[:80]}")
                 continue
 
-            # ── 3. I2V animation
-            motion = (shot.get("motion_prompt") or
-                      f"cinematic motion, {shot.get('emotion','dramatic')}, smooth camera")
-            _update(job_id, step=f"{label} Animating with {model}…")
-            try:
-                video_url = await _animate(image_url, motion, model, duration)
-            except Exception as e:
-                print(f"[ORCH] I2V failed shot {i+1}: {e}")
-                video_url = ""   # shot still lands in timeline with keyframe only
+            # ── 3. I2V animation (skipped in keyframes_only mode)
+            video_url = ""
+            if not keyframes_only:
+                motion = (shot.get("motion_prompt") or
+                          f"cinematic motion, {shot.get('emotion','dramatic')}, smooth camera")
+                _update(job_id, step=f"{label} Animating with {model}…")
+                try:
+                    video_url = await _animate(image_url, motion, model, duration)
+                except Exception as e:
+                    print(f"[ORCH] I2V failed shot {i+1}: {e}")
 
-            # ── 4. TTS voice
+            # ── 4. TTS voice (skipped in keyframes_only mode)
             audio_url = ""
-            if include_tts and shot.get("dialogue"):
+            if include_tts and shot.get("dialogue") and not keyframes_only:
                 _update(job_id, step=f"{label} Generating voice…")
                 try:
                     audio_url = await _gen_tts(shot["dialogue"], character_id, char_name)
@@ -319,16 +321,18 @@ async def _run_pipeline(job_id: str, payload: dict):
             # ── 6. Land in timeline immediately (live progress)
             await _append_to_timeline(shot_doc)
             _JOBS[job_id].setdefault("shots", []).append(shot_doc)
+            mode_tag = "keyframe" if keyframes_only else ('animated' if video_url else 'keyframe only')
             _update(job_id,
-                    step=f"{label} ✔ Shot {i+1} in Timeline — "
-                         f"{'animated' if video_url else 'keyframe only'}"
+                    step=f"{label} ✔ Shot {i+1} — {mode_tag}"
                          f"{', voiced' if audio_url else ''}")
 
         total_done = len(_JOBS[job_id].get("shots", []))
-        _update(job_id,
-                status="complete",
-                progress=len(shots),
-                step=f"✔ Done — {total_done}/{len(shots)} shots in Timeline. Open Timeline ↗")
+        if keyframes_only:
+            _update(job_id, status="keyframes_ready", progress=len(shots),
+                    step=f"✔ {total_done} keyframes ready — review and approve to animate")
+        else:
+            _update(job_id, status="complete", progress=len(shots),
+                    step=f"✔ Done — {total_done}/{len(shots)} shots in Timeline. Open Timeline ↗")
 
     except Exception as e:
         import traceback
@@ -371,3 +375,77 @@ async def list_jobs():
             for k, j in _JOBS.items()
         ]
     }
+
+
+# ── Re-animate approved keyframes with a new model (Wan → Kling upgrade) ─────
+
+async def _run_reanimate(job_id: str, payload: dict):
+    shots        = payload.get("shots", [])        # [{id, image_url, motion_prompt, dialogue, ...}]
+    model        = payload.get("model", "kling_26")
+    duration     = int(payload.get("duration", 5))
+    include_tts  = payload.get("include_tts", True)
+    character_id = payload.get("character_id", "")
+    char_name    = payload.get("character_name", "")
+    project      = payload.get("project", "")
+
+    _update(job_id, status="running", total=len(shots),
+            step=f"Re-animating {len(shots)} shots with {model}…")
+
+    try:
+        for i, shot in enumerate(shots):
+            label = f"[{i+1}/{len(shots)}]"
+            image_url = shot.get("image_url") or shot.get("renderOutputUrl") or shot.get("imageUrl") or ""
+            if not image_url:
+                _update(job_id, step=f"{label} ⚠ No image URL, skipping")
+                continue
+
+            motion = shot.get("motion_prompt") or "cinematic motion, smooth camera"
+            _update(job_id, progress=i, step=f"{label} Animating with {model}…")
+            try:
+                video_url = await _animate(image_url, motion, model, duration)
+            except Exception as e:
+                print(f"[REANIMATE] I2V failed shot {i+1}: {e}")
+                video_url = ""
+
+            audio_url = ""
+            if include_tts and shot.get("dialogue"):
+                _update(job_id, step=f"{label} Generating voice…")
+                try:
+                    audio_url = await _gen_tts(shot["dialogue"], character_id, char_name)
+                except Exception as e:
+                    print(f"[REANIMATE] TTS failed shot {i+1}: {e}")
+
+            # Update existing timeline record (preserves id, adds video)
+            updated = {
+                **shot,
+                "videoUrl":    video_url,
+                "fxUrl":       audio_url or shot.get("fxUrl", ""),
+                "rawUrl":      audio_url or shot.get("rawUrl", ""),
+                "model_used":  model,
+                "project":     project or shot.get("project", ""),
+            }
+            await _append_to_timeline(updated)
+            _JOBS[job_id].setdefault("shots", []).append(updated)
+            _update(job_id, step=f"{label} ✔ Upgraded — {'animated' if video_url else 'failed'}")
+
+        total_done = len(_JOBS[job_id].get("shots", []))
+        _update(job_id, status="complete", progress=len(shots),
+                step=f"✔ {total_done}/{len(shots)} shots upgraded to {model}. Open Timeline ↗")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        _update(job_id, status="failed", error=str(e)[:400],
+                step=f"Re-animate failed: {str(e)[:120]}")
+
+
+@router.post("/orchestrate/reanimate")
+async def reanimate_shots(payload: dict, background_tasks: BackgroundTasks):
+    job_id = str(uuid.uuid4())
+    _JOBS[job_id] = {
+        "status": "starting", "progress": 0, "total": 0,
+        "step": "Starting re-animation…", "shots": [], "error": None,
+        "started_at": datetime.now().isoformat(),
+    }
+    background_tasks.add_task(_run_reanimate, job_id, payload)
+    return {"success": True, "job_id": job_id}

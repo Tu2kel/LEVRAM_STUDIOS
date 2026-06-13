@@ -214,6 +214,9 @@
 
     <div class="tl-status-bar" id="tl-status">Loading shots...</div>
 
+    <!-- Live orchestrator banner -->
+    <div id="tl-live-banner" style="display:none;align-items:center;gap:10px;padding:6px 16px;background:rgba(201,168,76,0.08);border-bottom:1px solid rgba(201,168,76,0.2);font-family:Rajdhani,sans-serif;"></div>
+
     <!-- Time ruler + multi-track view -->
     <div class="tl-tracks-section" id="tl-tracks-section">
       <div class="tl-ruler-row" id="tl-ruler"></div>
@@ -469,6 +472,52 @@
     }
 
     document.addEventListener("DOMContentLoaded", loadScenes);
+
+    // ── Auto-refresh when orchestrator is running ─────────────
+    let _orchPollActive = false;
+
+    async function checkOrchJobs() {
+      try {
+        const res  = await levFetch(`${BASE}/orchestrate/jobs`);
+        const data = await res.json();
+        const active = (data.jobs || []).filter(j =>
+          j.status === "running" || j.status === "planning" || j.status === "starting"
+        );
+        const banner = document.getElementById("tl-live-banner");
+        if (active.length > 0) {
+          if (banner) {
+            const job = active[0];
+            const done  = job.progress || 0;
+            const total = job.total    || "?";
+            const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+            banner.style.display = "flex";
+            banner.innerHTML = `
+              <div style="flex:1;">
+                <span style="color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-size:11px;">● Live — shots arriving</span>
+                <span style="color:rgba(255,255,255,0.4);font-size:10px;margin-left:10px;">${job.step || ""}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="background:rgba(255,255,255,0.1);border-radius:2px;height:3px;width:80px;">
+                  <div style="background:var(--gold);height:3px;border-radius:2px;width:${pct}%;transition:width 0.4s;"></div>
+                </div>
+                <span style="font-size:10px;color:rgba(255,255,255,0.4);">${done}/${total}</span>
+                <button onclick="loadScenes()" style="background:transparent;border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-size:10px;letter-spacing:1px;padding:2px 8px;cursor:pointer;border-radius:2px;">Refresh</button>
+              </div>`;
+          }
+          await loadScenes();
+          if (!_orchPollActive) {
+            _orchPollActive = true;
+            setTimeout(checkOrchJobs, 8000);
+          }
+        } else {
+          if (banner) banner.style.display = "none";
+          _orchPollActive = false;
+        }
+      } catch (_) {}
+    }
+
+    // Start polling after initial load
+    setTimeout(checkOrchJobs, 4000);
   </script>
 <script src="themes.js"></script>
 </body>

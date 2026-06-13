@@ -354,11 +354,229 @@ async function ivPollJob(jobId, totalScenes, statusEl) {
   setTimeout(poll, 3000);
 }
 
+// ── Cost estimator ─────────────────────────────────────────────
+const IV_MODEL_COSTS = {
+  "wan21_i2v":     { label: "Wan 2.1",       cost: 0,    note: "free" },
+  "wan21_14b_i2v": { label: "Wan 2.1 Best",  cost: 0,    note: "free (slow)" },
+  "seedance":      { label: "Seedance 2.0",   cost: 0.05, note: "$0.05/shot" },
+  "kling_21_pro":  { label: "Kling 2.1 Pro",  cost: 0.14, note: "$0.14/shot" },
+  "kling_26":      { label: "Kling 2.6 Pro",  cost: 0.28, note: "$0.28/shot" },
+};
+
+window.ivUpdateCostEst = function ivUpdateCostEst() {
+  const model   = document.getElementById("iv-model")?.value || "wan21_i2v";
+  const estEl   = document.getElementById("iv-cost-est");
+  const sceneEl = document.getElementById("iv-scene-list");
+  if (!estEl) return;
+  const info      = IV_MODEL_COSTS[model] || { cost: 0, note: "unknown" };
+  const numScenes = sceneEl ? sceneEl.children.length : 0;
+  const total     = numScenes && info.cost ? `~$${(numScenes * info.cost).toFixed(2)} for ${numScenes} shots` : (info.cost === 0 ? "Free" : info.note);
+  estEl.textContent = `${IV_MODEL_COSTS[model]?.label || model} — ${total}`;
+};
+
+// ── Keyframes-first flow ───────────────────────────────────────
+let _ivKeyframeShots = [];   // stored after keyframes job completes
+
+window.ivGenerateKeyframes = async function ivGenerateKeyframes() {
+  if (!ivCurrentIdeaId) return;
+  const btn      = document.getElementById("iv-keyframe-btn");
+  const statusEl = document.getElementById("iv-approve-status");
+  const charSel  = document.getElementById("iv-dev-character");
+  const charId   = charSel?.value || "";
+  const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
+  const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
+
+  if (btn) { btn.disabled = true; btn.classList.add("lora-scanning"); }
+
+  try {
+    const approveRes = await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/approve`, { method: "POST" });
+    if (!approveRes.ok) throw new Error("Approve failed");
+
+    const ideasRes  = await levFetch(`${IV_BASE}/ideas`);
+    const ideasData = await ideasRes.json();
+    const idea      = (ideasData.ideas || []).find(i => i.id === ivCurrentIdeaId);
+    const rawScenes = idea?.story?.scenes || [];
+    if (!rawScenes.length) throw new Error("No scenes — develop story first.");
+
+    const scenes = rawScenes.map(sc => ({
+      description:   sc.description || "",
+      image_prompt:  sc.image_prompt || sc.description || "",
+      motion_prompt: sc.motion_prompt || `${sc.emotion || "cinematic"} atmosphere, smooth camera`,
+      dialogue:      sc.dialogue || "",
+      emotion:       sc.emotion || "",
+    }));
+
+    const orchRes  = await levFetch(`${IV_BASE}/orchestrate/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        scenes, character_id: charId, character_name: charName,
+        duration: sceneSec, model: "wan21_i2v", keyframes_only: true,
+        project: charName || idea?.title || "Default",
+      }),
+    });
+    const orchData = await orchRes.json();
+    if (!orchData.success) throw new Error(orchData.error || "Failed to start");
+
+    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
+
+    // Poll — when keyframes_ready, show review UI
+    ivPollKeyframeJob(orchData.job_id, scenes.length, statusEl, rawScenes);
+  } catch (err) {
+    if (statusEl) statusEl.textContent = "Error: " + err.message;
+    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
+  }
+};
+
+async function ivPollKeyframeJob(jobId, totalScenes, statusEl, rawScenes) {
+  if (!statusEl) return;
+  let polls = 0;
+
+  const poll = async () => {
+    try {
+      const res  = await levFetch(`${IV_BASE}/orchestrate/status/${jobId}`);
+      const data = await res.json();
+      const done  = data.progress || 0;
+      const total = data.total   || totalScenes;
+      const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+
+      statusEl.innerHTML = `
+        <div style="margin-bottom:4px;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.45);margin-bottom:2px;">
+            <span>${done}/${total} keyframes</span><span>${pct}%</span>
+          </div>
+          <div style="background:rgba(255,255,255,0.1);border-radius:2px;height:3px;">
+            <div style="background:var(--gold);border-radius:2px;height:3px;width:${pct}%;transition:width 0.4s;"></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);">${data.step || "Generating keyframes…"}</div>
+      `;
+
+      if (data.status === "keyframes_ready") {
+        _ivKeyframeShots = data.shots || [];
+        ivShowKeyframeReview(_ivKeyframeShots, rawScenes);
+        statusEl.innerHTML = `<span style="color:#4caf50;">✔ ${_ivKeyframeShots.length} keyframes ready — review and select which to animate</span>`;
+        return;
+      }
+      if (data.status === "failed") {
+        statusEl.innerHTML = `<span style="color:var(--imperial-red);">⚠ ${data.step}</span>`;
+        return;
+      }
+      if (polls < 360) { polls++; setTimeout(poll, 5000); }
+    } catch (_) {
+      if (polls < 360) { polls++; setTimeout(poll, 8000); }
+    }
+  };
+  setTimeout(poll, 3000);
+}
+
+function ivShowKeyframeReview(shots, rawScenes) {
+  const sceneEl   = document.getElementById("iv-scene-list");
+  const animateBar = document.getElementById("iv-animate-bar");
+  if (!sceneEl) return;
+
+  // Rebuild scene list with actual keyframe images + approve checkboxes
+  sceneEl.innerHTML = shots.map((shot, i) => {
+    const imgUrl = shot.renderOutputUrl || shot.imageUrl || "";
+    const raw    = rawScenes[i] || {};
+    const actColor = { 1: "rgba(255,100,100,0.5)", 2: "rgba(201,168,76,0.5)", 3: "rgba(100,200,100,0.5)" }[raw.act] || "rgba(255,255,255,0.15)";
+    return `
+      <div id="iv-kf-${i}" data-approved="true" onclick="ivToggleKeyframe(${i})"
+        style="cursor:pointer;background:rgba(0,0,0,0.4);border:2px solid var(--gold);border-left:4px solid ${actColor};border-radius:3px;padding:8px;display:flex;gap:10px;align-items:flex-start;transition:border-color 0.15s;">
+        ${imgUrl ? `<img src="${imgUrl}" style="width:80px;height:50px;object-fit:cover;border-radius:2px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);" />` : `<div style="width:80px;height:50px;background:rgba(255,255,255,0.05);border-radius:2px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:rgba(255,255,255,0.3);">No image</div>`}
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+            <span style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;">S${i+1}</span>
+            <span class="iv-kf-check-${i}" style="font-size:11px;color:#4caf50;">✔ Selected</span>
+          </div>
+          <div style="font-size:11px;color:var(--text);line-height:1.4;">${raw.description || shot.shotDesc || ""}</div>
+          ${raw.dialogue ? `<div style="font-size:10px;color:var(--gold);font-style:italic;margin-top:3px;">"${raw.dialogue}"</div>` : ""}
+        </div>
+      </div>`;
+  }).join("");
+
+  if (animateBar) animateBar.style.display = "block";
+  // Update animate button label with model
+  const animBtn = document.getElementById("iv-animate-selected-btn");
+  const model   = document.getElementById("iv-model")?.value || "kling_26";
+  const minfo   = IV_MODEL_COSTS[model] || {};
+  if (animBtn) animBtn.textContent = `🎬 Animate Selected with ${minfo.label || model}`;
+}
+
+window.ivToggleKeyframe = function ivToggleKeyframe(i) {
+  const card = document.getElementById(`iv-kf-${i}`);
+  if (!card) return;
+  const approved = card.dataset.approved === "true";
+  card.dataset.approved = approved ? "false" : "true";
+  card.style.borderColor = approved ? "rgba(255,255,255,0.15)" : "var(--gold)";
+  card.style.opacity     = approved ? "0.45" : "1";
+  const label = card.querySelector(`.iv-kf-check-${i}`);
+  if (label) { label.textContent = approved ? "✕ Skipped" : "✔ Selected"; label.style.color = approved ? "rgba(255,255,255,0.3)" : "#4caf50"; }
+};
+
+window.ivSelectAllKeyframes = function ivSelectAllKeyframes(select) {
+  _ivKeyframeShots.forEach((_, i) => {
+    const card = document.getElementById(`iv-kf-${i}`);
+    if (!card) return;
+    card.dataset.approved = select ? "true" : "false";
+    card.style.borderColor = select ? "var(--gold)" : "rgba(255,255,255,0.15)";
+    card.style.opacity     = select ? "1" : "0.45";
+    const label = card.querySelector(`.iv-kf-check-${i}`);
+    if (label) { label.textContent = select ? "✔ Selected" : "✕ Skipped"; label.style.color = select ? "#4caf50" : "rgba(255,255,255,0.3)"; }
+  });
+};
+
+window.ivAnimateSelected = async function ivAnimateSelected() {
+  const btn      = document.getElementById("iv-animate-selected-btn");
+  const statusEl = document.getElementById("iv-approve-status");
+  const charSel  = document.getElementById("iv-dev-character");
+  const charId   = charSel?.value || "";
+  const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
+  const model    = document.getElementById("iv-model")?.value || "kling_26";
+  const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
+
+  const approved = _ivKeyframeShots.filter((_, i) => {
+    const card = document.getElementById(`iv-kf-${i}`);
+    return card?.dataset.approved !== "false";
+  });
+
+  if (!approved.length) { if (statusEl) statusEl.textContent = "No shots selected."; return; }
+  if (btn) { btn.disabled = true; btn.classList.add("lora-scanning"); }
+  if (statusEl) statusEl.innerHTML = `<span style="color:var(--gold);">Sending ${approved.length} shots to ${model}…</span>`;
+
+  try {
+    const res  = await levFetch(`${IV_BASE}/orchestrate/reanimate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        shots: approved.map(s => ({
+          id:            s.id,
+          image_url:     s.renderOutputUrl || s.imageUrl || "",
+          motion_prompt: s.motion_prompt || `cinematic motion, smooth camera`,
+          dialogue:      s.dialogue || "",
+          project:       s.project || charName || "",
+        })),
+        model, duration: sceneSec,
+        character_id: charId, character_name: charName,
+        include_tts: true,
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || "Reanimate failed");
+    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
+    ivPollJob(data.job_id, approved.length, statusEl);
+  } catch (err) {
+    if (statusEl) statusEl.textContent = "Error: " + err.message;
+    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
+  }
+};
+
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("iv-save-btn")?.addEventListener("click", ivSaveIdea);
   ivLoadCharacters();
   ivLoadIdeas();
+  ivUpdateCostEst();
 });
 
 window.ivDeleteIdea = ivDeleteIdea;

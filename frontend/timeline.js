@@ -226,6 +226,7 @@
         const colorGrade   = document.getElementById("tl-export-grade")?.value            || "";
         const speed        = parseFloat(document.getElementById("tl-export-speed")?.value ?? "1.0");
         const captions     = document.getElementById("tl-export-captions")?.checked       ?? false;
+        const titleClip    = document.getElementById("tl-export-title-clip")?.value.trim() || "";
 
         const btn    = document.getElementById("tl-export-run-btn");
         const status = document.getElementById("tl-export-status");
@@ -241,22 +242,35 @@
             body: JSON.stringify({
               title, music_url: musicUrl, music_volume: musicVolume, include_voice: includeVoice,
               transition, transition_dur: 0.5, color_grade: colorGrade, captions, speed,
+              title_clip: titleClip,
             }),
           });
           const data = await res.json();
           if (!res.ok || !data.success) throw new Error(data.detail || "Export failed");
 
-          const fullUrl = (window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000") + data.exportUrl;
+          const apiBase = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
+          const fullUrl = apiBase + data.exportUrl;
 
           const parts = [`${data.clips} clips`];
           if (data.voice_tracks) parts.push(`${data.voice_tracks} voice tracks`);
           if (data.music)        parts.push("music mixed");
           if (status) status.textContent = `✔ Done — ${parts.join(" · ")}`;
-
           if (btn) { btn.disabled = false; btn.textContent = "Export Again"; btn.classList.remove("lora-scanning"); }
 
-          const a = document.createElement("a");
-          a.href = fullUrl; a.download = data.exportUrl.split("/").pop(); a.click();
+          // Show in-app preview
+          const preview = document.getElementById("tl-export-preview");
+          const vidEl   = document.getElementById("tl-export-video");
+          const dlLink  = document.getElementById("tl-export-dl-link");
+          if (preview && vidEl) {
+            vidEl.src = fullUrl;
+            if (dlLink) { dlLink.href = fullUrl; dlLink.download = data.exportUrl.split("/").pop(); }
+            preview.style.display = "block";
+            vidEl.play().catch(() => {});
+          } else {
+            // Fallback: auto-download
+            const a = document.createElement("a");
+            a.href = fullUrl; a.download = data.exportUrl.split("/").pop(); a.click();
+          }
         } catch (err) {
           if (status) status.textContent = "Export failed: " + err.message;
           if (btn)    { btn.disabled = false; btn.textContent = "⬇ Export Final Video"; btn.classList.remove("lora-scanning"); }

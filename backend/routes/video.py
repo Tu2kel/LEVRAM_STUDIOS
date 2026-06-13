@@ -401,11 +401,14 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
             "aspect_ratio": "16:9",
         }
     else:
+        # HunyuanVideo uses num_frames, not duration (129 ≈ 5s at 24fps)
+        frames = {3: 81, 5: 129, 8: 193}.get(duration, 129)
         args = {
-            "image_url":  remote_url,
-            "prompt":     prompt or "cinematic motion, smooth camera",
-            "duration":   duration,
-            "resolution": "720p",
+            "image_url":    remote_url,
+            "prompt":       prompt or "cinematic motion, smooth camera",
+            "num_frames":   frames,
+            "resolution":   "720p",
+            "aspect_ratio": "16:9",
         }
 
     result = fal_client.run(model_id, arguments=args)

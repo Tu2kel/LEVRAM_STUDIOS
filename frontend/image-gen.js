@@ -241,7 +241,7 @@ async function igGenerateImage() {
 
   const engineLabel = { dalle3: "DALL-E 3", fal_flux: "fal.ai FLUX", comfy: "ComfyUI" }[igActiveEngine] || igActiveEngine;
   if (statusEl) statusEl.textContent = `Generating via ${engineLabel}…`;
-  if (btn) { btn.disabled = true; btn.textContent = "Generating…"; }
+  if (btn) { btn.disabled = true; btn.textContent = "Generating…"; btn.classList.add("lora-scanning"); }
 
   try {
     const refPayload   = igRefImages.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
@@ -280,7 +280,7 @@ async function igGenerateImage() {
     console.error("IG GENERATE ERROR:", err);
     if (statusEl) statusEl.textContent = err.message || "Generation failed.";
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "Generate Image"; }
+    if (btn) { btn.disabled = false; btn.textContent = "Generate Image"; btn.classList.remove("lora-scanning"); }
   }
 }
 

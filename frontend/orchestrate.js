@@ -42,7 +42,7 @@ window.orchRun = async function orchRun() {
   const barEl      = document.getElementById("orch-bar");
   const resultEl   = document.getElementById("orch-result");
 
-  if (btn)    { btn.disabled = true; btn.textContent = "Running…"; }
+  if (btn)    { btn.disabled = true; btn.textContent = "Running…"; btn.classList.add("lora-scanning"); }
   if (wrapEl) wrapEl.style.display = "block";
   if (resultEl) resultEl.textContent = "";
   if (barEl)  barEl.style.width = "5%";
@@ -83,15 +83,14 @@ function _orchPoll(jobId, totalShots, btn, stepEl, barEl, resultEl) {
         clearInterval(_orchPollInterval);
         if (barEl)    barEl.style.width = "100%";
         if (resultEl) resultEl.textContent = `✔ ${data.shots?.length || totalShots} clips added to Timeline`;
-        if (btn)      { btn.disabled = false; btn.textContent = "⚡ Auto-Create Scene"; }
-        // Reload video gallery so new clips appear
+        if (btn)      { btn.disabled = false; btn.textContent = "⚡ Auto-Create Scene"; btn.classList.remove("lora-scanning"); }
         if (typeof igLoadVideoGallery === "function") igLoadVideoGallery();
       } else if (data.status === "failed") {
         clearInterval(_orchPollInterval);
         if (barEl)    barEl.style.background = "#ff4444";
         if (resultEl) resultEl.style.color = "#ff6b6b";
         if (resultEl) resultEl.textContent = "Failed: " + (data.error || "unknown error");
-        if (btn)      { btn.disabled = false; btn.textContent = "⚡ Auto-Create Scene"; }
+        if (btn)      { btn.disabled = false; btn.textContent = "⚡ Auto-Create Scene"; btn.classList.remove("lora-scanning"); }
       }
     } catch (_) {}
   }, 15000); // poll every 15s — jobs take minutes

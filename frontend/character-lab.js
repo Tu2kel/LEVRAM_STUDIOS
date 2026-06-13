@@ -29,16 +29,11 @@ function getCharacterFormData() {
 }
 
 function buildCharacterImagePrompt(character) {
+  // flux-pulid locks the face from the reference photo — prompt handles outfit + scene only
   return [
-    "cinematic character portrait",
-    character.name ? `character named ${character.name}` : "",
-    character.gender,
-    character.age,
-    character.appearance,
     character.wardrobe,
-    character.personality ? `personality: ${character.personality}` : "",
     character.notes,
-    "photorealistic, high detail, dramatic lighting, cinematic"
+    "photorealistic, dramatic lighting, cinematic"
   ].filter(Boolean).join(", ");
 }
 

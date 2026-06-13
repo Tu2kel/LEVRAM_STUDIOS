@@ -195,7 +195,7 @@ FAL_T2V_MODELS = {
 FAL_I2V_MODELS = {
     "wan21_i2v":       "fal-ai/wan-i2v",                          # Wan 2.1 I2V — free
     "wan21_14b_i2v":   "fal-ai/wan/v2.2-a14b/image-to-video",    # Wan 2.2 14B — free, best open-source
-    "hunyuan_i2v":     "fal-ai/hunyuan-video/image-to-video",     # free, strong face lock
+    "hunyuan_i2v":     "fal-ai/hunyuan-video-image-to-video",      # free, strong face lock
     "runway_turbo":    "fal-ai/runway-gen4-turbo/image-to-video", # fastest Runway — paid
     "runway_gen4_i2v": "fal-ai/runway-gen4.5/image-to-video",    # best quality Runway — paid
 }

@@ -481,9 +481,15 @@ async function igLoadVideoGallery() {
     gallery.innerHTML = vids.map(v => `
       <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.15);border-radius:4px;padding:8px;">
         <video src="${IG_BASE + v.url}" controls style="width:100%;border-radius:2px;max-height:180px;background:#000;"></video>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;gap:4px;flex-wrap:wrap;">
           <span style="font-size:10px;color:var(--text-dim);letter-spacing:1px;">${v.created} · ${v.size_mb}MB</span>
-          <a href="${IG_BASE + v.url}" download="${v.name}" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:3px 8px;border-radius:2px;">DL</a>
+          <div style="display:flex;gap:4px;">
+            <button onclick="igSendToTimeline('${v.url}','${v.name}')"
+                    style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#88dd88;background:rgba(0,80,0,0.3);border:1px solid rgba(100,200,100,0.4);padding:3px 8px;border-radius:2px;cursor:pointer;">
+              + Timeline
+            </button>
+            <a href="${IG_BASE + v.url}" download="${v.name}" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:3px 8px;border-radius:2px;">DL</a>
+          </div>
         </div>
       </div>
     `).join("");
@@ -568,6 +574,34 @@ const _FREE_I2V_MODELS = {
   hunyuan_i2v:   "HunyuanVideo",
   wan21_i2v:     "Wan 2.1",
   wan21_14b_i2v: "Wan 2.2 14B",
+};
+
+window.igSendToTimeline = async function igSendToTimeline(videoUrl, name) {
+  try {
+    const tlRes  = await levFetch(`${IG_BASE}/timeline/load`);
+    const tlData = await tlRes.json();
+    const shots  = tlData.shots || [];
+    shots.push({
+      id:               crypto.randomUUID(),
+      name:             name || "Video Clip",
+      type:             "video",
+      videoUrl:         videoUrl,
+      renderOutputUrl:  videoUrl,
+      renderOutputPath: videoUrl,
+      source:           "image_gen",
+    });
+    const saveRes = await levFetch(`${IG_BASE}/timeline/save-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shots }),
+    });
+    if (!saveRes.ok) throw new Error("Save failed");
+    const statusEl = document.getElementById("ig-status");
+    if (statusEl) { statusEl.textContent = `✔ Added to Timeline (${shots.length} clips)`; }
+  } catch (err) {
+    console.error("SEND TO TIMELINE ERROR:", err);
+    alert("Could not add to timeline: " + err.message);
+  }
 };
 
 window.igLoadForAnimate = function igLoadForAnimate(relUrl) {

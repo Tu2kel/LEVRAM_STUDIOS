@@ -38,7 +38,7 @@ function buildCharacterImagePrompt(character) {
     character.wardrobe,
     character.personality ? `personality: ${character.personality}` : "",
     character.notes,
-    "high detail, realistic, dramatic lighting, film still, sharp focus, consistent face, full character design reference"
+    "photorealistic, high detail, dramatic lighting, cinematic"
   ].filter(Boolean).join(", ");
 }
 

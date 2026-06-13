@@ -396,14 +396,18 @@ async def generate_character_preview(payload: dict):
                     None, lambda: fal_client.upload(ref_bytes, "image/jpeg")
                 )
                 result = await loop.run_in_executor(
-                    None, lambda: fal_client.run("fal-ai/instant-character", arguments={
-                        "image_url":      face_url,
-                        "prompt":         prompt,
-                        "num_images":     1,
-                        "output_format":  "jpeg",
+                    None, lambda: fal_client.run("fal-ai/flux-pulid", arguments={
+                        "reference_image_url": face_url,
+                        "prompt":              prompt,
+                        "image_size":          "portrait_4_3",
+                        "num_inference_steps": 28,
+                        "guidance_scale":      4.0,
+                        "id_weight":           1.3,
+                        "negative_prompt":     "cartoon, illustration, painting, stylized, anime, unrealistic, disfigured",
+                        "enable_safety_checker": False,
                     })
                 )
-                engine = "instant_character"
+                engine = "flux_pulid"
             else:
                 # No refs at all — plain Flux
                 result = await loop.run_in_executor(

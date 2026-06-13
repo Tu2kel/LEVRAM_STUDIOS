@@ -255,43 +255,104 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
   if (statusEl) statusEl.textContent = "Approving…";
 
   try {
-    // Mark approved
+    // 1. Mark idea as approved
     const approveRes = await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/approve`, { method: "POST" });
     if (!approveRes.ok) throw new Error("Approve failed");
 
-    // Fetch the idea to get story scenes
-    const ideasRes = await levFetch(`${IV_BASE}/ideas`);
+    // 2. Fetch story scenes already planned (no GPT re-planning in orchestrator)
+    const ideasRes  = await levFetch(`${IV_BASE}/ideas`);
     const ideasData = await ideasRes.json();
-    const idea = (ideasData.ideas || []).find(i => i.id === ivCurrentIdeaId);
-    const scenes = idea?.story?.scenes || [];
+    const idea      = (ideasData.ideas || []).find(i => i.id === ivCurrentIdeaId);
+    const rawScenes = idea?.story?.scenes || [];
 
-    if (!scenes.length) throw new Error("No scenes in story");
+    if (!rawScenes.length) throw new Error("No scenes found — Develop the story first.");
 
-    // Build orchestrator concept from scene descriptions
-    const concept = scenes.map((s, i) => `Scene ${i + 1}: ${s.description}`).join(" | ");
+    // 3. Build full scene objects for the orchestrator
+    const scenes = rawScenes.map(sc => ({
+      description:   sc.description || "",
+      image_prompt:  sc.image_prompt || sc.description || "",
+      motion_prompt: sc.motion_prompt ||
+        `${sc.emotion || "cinematic"} atmosphere, smooth continuous camera movement, ${(sc.description || "").slice(0, 120)}`,
+      dialogue:      sc.dialogue || "",
+      emotion:       sc.emotion || "",
+    }));
 
-    if (statusEl) statusEl.textContent = `Sending ${scenes.length} scenes to orchestrator…`;
+    if (statusEl) statusEl.innerHTML =
+      `<span style="color:var(--gold);">Launching pipeline — ${scenes.length} scenes…</span>`;
 
-    const orchRes = await levFetch(`${IV_BASE}/orchestrate/run`, {
+    // 4. Fire orchestrator — passes scenes directly, TTS on, no GPT re-plan
+    const orchRes  = await levFetch(`${IV_BASE}/orchestrate/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        concept, character_id: charId, character_name: charName,
-        num_shots: scenes.length, duration: sceneSec, model,
-        include_tts: false,
+        scenes,
+        character_id:   charId,
+        character_name: charName,
+        duration:       sceneSec,
+        model,
+        include_tts:    true,
+        project:        charName || idea?.title || "Default",
       }),
     });
     const orchData = await orchRes.json();
-    if (!orchData.success) throw new Error(orchData.error || "Orchestrator failed");
+    if (!orchData.success) throw new Error(orchData.error || "Orchestrator failed to start");
 
-    if (statusEl) statusEl.textContent = `✔ Generating ${scenes.length} clips — Job ${orchData.job_id.slice(0, 8)}… Check Timeline when done.`;
+    const jobId = orchData.job_id;
     if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
     await ivLoadIdeas();
+
+    // 5. Live progress polling
+    ivPollJob(jobId, scenes.length, statusEl);
+
   } catch (err) {
     if (statusEl) statusEl.textContent = "Error: " + err.message;
     if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
   }
 };
+
+// ── Job progress poller ────────────────────────────────────────
+async function ivPollJob(jobId, totalScenes, statusEl) {
+  if (!statusEl) return;
+  let polls = 0;
+
+  const poll = async () => {
+    try {
+      const res  = await levFetch(`${IV_BASE}/orchestrate/status/${jobId}`);
+      const data = await res.json();
+      const done    = data.progress || 0;
+      const total   = data.total   || totalScenes;
+      const pct     = total > 0 ? Math.round((done / total) * 100) : 0;
+      const step    = data.step    || "Running…";
+      const isDone  = data.status === "complete";
+      const isFail  = data.status === "failed";
+
+      statusEl.innerHTML = `
+        <div style="margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.45);margin-bottom:3px;">
+            <span>${done} / ${total} shots complete</span><span>${pct}%</span>
+          </div>
+          <div style="background:rgba(255,255,255,0.1);border-radius:2px;height:4px;">
+            <div style="background:var(--gold);border-radius:2px;height:4px;width:${pct}%;transition:width 0.5s;"></div>
+          </div>
+        </div>
+        <div style="font-size:11px;letter-spacing:1px;color:${isFail ? "var(--imperial-red)" : isDone ? "#4caf50" : "var(--text-dim)"};">
+          ${step}
+        </div>
+        ${isDone ? `<div style="margin-top:8px;font-size:11px;color:#4caf50;letter-spacing:1px;">✔ Film in Timeline — click <strong>Timeline ↗</strong> in the sidebar to review.</div>` : ""}
+        ${isFail ? `<div style="margin-top:4px;font-size:10px;color:var(--imperial-red);">${data.error || ""}</div>` : ""}
+      `;
+
+      if (!isDone && !isFail && polls < 360) {
+        polls++;
+        setTimeout(poll, 5000);
+      }
+    } catch (_) {
+      if (polls < 360) { polls++; setTimeout(poll, 8000); }
+    }
+  };
+
+  setTimeout(poll, 3000);
+}
 
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {

@@ -1,6 +1,6 @@
 """
 LEVRAM Orchestrator — autonomous scene pipeline
-Concept → GPT shot breakdown → Image Gen → I2V → TTS → Timeline
+Idea Vault scenes → Keyframe → I2V → TTS → Timeline (one shot at a time, live updates)
 """
 import os
 import uuid
@@ -12,8 +12,9 @@ from fastapi import APIRouter, BackgroundTasks
 
 router = APIRouter()
 
-# In-memory job store (single-server Railway is fine)
 _JOBS: dict = {}
+
+TIMELINE_FILE = Path("data/timelines/main_timeline.json")
 
 
 def _update(job_id: str, **kw):
@@ -21,12 +22,12 @@ def _update(job_id: str, **kw):
         _JOBS[job_id].update(kw)
 
 
-# ── GPT shot breakdown ────────────────────────────────────────
+# ── GPT shot breakdown (only used when scenes not pre-supplied) ──────────────
 
 async def _plan_shots(concept: str, num_shots: int, character_name: str) -> list[dict]:
     from openai import OpenAI
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    loop = asyncio.get_event_loop()
+    loop   = asyncio.get_event_loop()
 
     system = (
         "You are a cinematic shot planner for LEVRAM Studios. "
@@ -37,8 +38,8 @@ async def _plan_shots(concept: str, num_shots: int, character_name: str) -> list
         f"Character: {character_name or 'unnamed'}\n"
         f"Generate {num_shots} cinematic shots. Each shot is a JSON object with:\n"
         f"  description   – one sentence shot description\n"
-        f"  image_prompt  – detailed image gen prompt (scene, outfit, lighting — NO face/skin descriptions)\n"
-        f"  motion_prompt – single smooth continuous motion for I2V (NO 'then' chains)\n"
+        f"  image_prompt  – detailed image gen prompt (scene, outfit, lighting — NO face/skin)\n"
+        f"  motion_prompt – single smooth continuous motion for I2V (no 'then' chains)\n"
         f"  dialogue      – optional spoken line, empty string if none\n"
         f"Return a JSON array only."
     )
@@ -49,7 +50,7 @@ async def _plan_shots(concept: str, num_shots: int, character_name: str) -> list
             messages=[{"role": "system", "content": system},
                       {"role": "user",   "content": user}],
             temperature=0.7,
-            max_tokens=1200,
+            max_tokens=2000,
         )
         raw = resp.choices[0].message.content.strip()
         raw = raw.lstrip("```json").lstrip("```").rstrip("```").strip()
@@ -58,18 +59,17 @@ async def _plan_shots(concept: str, num_shots: int, character_name: str) -> list
     return await loop.run_in_executor(None, _call)
 
 
-# ── Image generation ──────────────────────────────────────────
+# ── Image generation ──────────────────────────────────────────────────────────
 
 async def _gen_image(prompt: str, character_id: str) -> str:
-    """Returns local /output/... URL."""
-    import fal_client
+    """Returns local /output/renders/images/... URL."""
+    import fal_client, urllib.request
     loop = asyncio.get_event_loop()
 
     api_key = os.getenv("FAL_KEY")
     if api_key:
         os.environ["FAL_KEY"] = api_key
 
-    # Use flux-pulid if character has reference images, else plain flux
     from backend.db import characters_col
     db_char = None
     if character_id:
@@ -82,168 +82,262 @@ async def _gen_image(prompt: str, character_id: str) -> str:
                 chars = json.loads(data_file.read_text()).get("characters", [])
                 db_char = next((c for c in chars if c.get("id") == character_id), None)
 
-    lora_url    = (db_char or {}).get("lora_url") or ""
-    lora_trigger= (db_char or {}).get("lora_trigger") or ""
-    refs        = (db_char or {}).get("reference_images") or []
+    lora_url     = (db_char or {}).get("lora_url") or ""
+    lora_trigger = (db_char or {}).get("lora_trigger") or ""
+    refs         = (db_char or {}).get("reference_images") or []
+
+    # BYO preview images take priority as face reference
+    preview_imgs = (db_char or {}).get("preview_images") or []
+    active_idx   = int((db_char or {}).get("active_preview_index") or 0)
+    byo_entry    = preview_imgs[active_idx] if preview_imgs else None
+    byo_ref_url  = (byo_entry or {}).get("url", "") if byo_entry else ""
 
     if lora_url:
         full_prompt = f"{lora_trigger}, {prompt}" if lora_trigger else prompt
-        result = await loop.run_in_executor(None, lambda: fal_client.run("fal-ai/flux-lora", arguments={
-            "prompt":                full_prompt,
-            "loras":                 [{"path": lora_url, "scale": 1.0}],
-            "image_size":            "landscape_16_9",
-            "num_inference_steps":   30,
-            "guidance_scale":        3.5,
-            "enable_safety_checker": False,
-        }))
-    elif refs:
-        ref_path = next((Path(r.lstrip("/")) for r in refs if Path(r.lstrip("/")).exists()), None)
-        if ref_path:
-            face_url = await loop.run_in_executor(None, lambda: fal_client.upload(ref_path.read_bytes(), "image/jpeg"))
-            result = await loop.run_in_executor(None, lambda: fal_client.run("fal-ai/flux-pulid", arguments={
-                "reference_image_url": face_url,
-                "prompt":              prompt,
-                "image_size":          "landscape_16_9",
-                "num_inference_steps": 28,
-                "guidance_scale":      4.0,
-                "id_weight":           1.0,
-                "negative_prompt":     "cartoon, illustration, stylized, anime, unrealistic, back turned, rear view",
-                "enable_safety_checker": False,
-            }))
+        result = await loop.run_in_executor(None, lambda: fal_client.run(
+            "fal-ai/flux-lora",
+            arguments={"prompt": full_prompt, "loras": [{"path": lora_url, "scale": 1.0}],
+                       "image_size": "landscape_16_9", "num_inference_steps": 30,
+                       "guidance_scale": 3.5, "enable_safety_checker": False}
+        ))
+    elif byo_ref_url or refs:
+        # Resolve face reference URL
+        face_url = ""
+        if byo_ref_url:
+            if byo_ref_url.startswith("http"):
+                face_url = byo_ref_url
+            else:
+                p = Path(byo_ref_url.lstrip("/"))
+                if p.exists():
+                    face_url = await loop.run_in_executor(
+                        None, lambda: fal_client.upload(p.read_bytes(), "image/jpeg"))
+        if not face_url and refs:
+            ref_path = next((Path(r.lstrip("/")) for r in refs if Path(r.lstrip("/")).exists()), None)
+            if ref_path:
+                face_url = await loop.run_in_executor(
+                    None, lambda: fal_client.upload(ref_path.read_bytes(), "image/jpeg"))
+
+        if face_url:
+            result = await loop.run_in_executor(None, lambda: fal_client.run(
+                "fal-ai/flux-pulid",
+                arguments={"reference_image_url": face_url, "prompt": prompt,
+                           "image_size": "landscape_16_9", "num_inference_steps": 28,
+                           "guidance_scale": 4.0, "id_weight": 1.0,
+                           "negative_prompt": "cartoon, illustration, stylized, anime, unrealistic",
+                           "enable_safety_checker": False}
+            ))
         else:
-            result = await loop.run_in_executor(None, lambda: fal_client.run("fal-ai/flux/dev", arguments={
-                "prompt":                prompt,
-                "image_size":            "landscape_16_9",
-                "num_inference_steps":   28,
-                "guidance_scale":        3.5,
-                "num_images":            1,
-                "enable_safety_checker": False,
-            }))
+            result = await loop.run_in_executor(None, lambda: fal_client.run(
+                "fal-ai/flux/dev",
+                arguments={"prompt": prompt, "image_size": "landscape_16_9",
+                           "num_inference_steps": 28, "guidance_scale": 3.5,
+                           "num_images": 1, "enable_safety_checker": False}
+            ))
     else:
-        result = await loop.run_in_executor(None, lambda: fal_client.run("fal-ai/flux/dev", arguments={
-            "prompt":                prompt,
-            "image_size":            "landscape_16_9",
-            "num_inference_steps":   28,
-            "guidance_scale":        3.5,
-            "num_images":            1,
-            "enable_safety_checker": False,
-        }))
+        result = await loop.run_in_executor(None, lambda: fal_client.run(
+            "fal-ai/flux/dev",
+            arguments={"prompt": prompt, "image_size": "landscape_16_9",
+                       "num_inference_steps": 28, "guidance_scale": 3.5,
+                       "num_images": 1, "enable_safety_checker": False}
+        ))
 
-    imgs = result.get("images") or []
-    remote_url = (imgs[0].get("url") if imgs else None) or result.get("image", {}).get("url") or result.get("url") or ""
+    imgs       = result.get("images") or []
+    remote_url = (imgs[0].get("url") if imgs else None) or \
+                 result.get("image", {}).get("url") or result.get("url") or ""
     if not remote_url:
-        raise RuntimeError(f"No image URL: {list(result.keys())}")
+        raise RuntimeError(f"No image URL from fal: {list(result.keys())}")
 
-    import urllib.request
-    out_dir  = Path("output/renders/images")
+    out_dir = Path("output/renders/images")
     out_dir.mkdir(parents=True, exist_ok=True)
-    ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
-    fname    = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
-    req      = urllib.request.Request(remote_url, headers={"User-Agent": "LEVRAM/1.0"})
+    ts    = datetime.now().strftime("%Y%m%d_%H%M%S")
+    fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
+    req   = urllib.request.Request(remote_url, headers={"User-Agent": "LEVRAM/1.0"})
     with urllib.request.urlopen(req, timeout=60) as r:
         (out_dir / fname).write_bytes(r.read())
     return "/output/renders/images/" + fname
 
 
-# ── I2V animation ─────────────────────────────────────────────
+# ── I2V animation ─────────────────────────────────────────────────────────────
 
 async def _animate(image_url: str, motion_prompt: str, model: str, duration: int) -> str:
-    """Returns local /output/videos/... URL."""
+    """Returns local /output/videos/... URL or CDN URL."""
     from backend.routes.video import _fal_image_to_video
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, lambda: _fal_image_to_video(image_url, motion_prompt, model, duration))
-    return result.get("local_url") or result.get("cdn_url") or ""
+    loop   = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None, lambda: _fal_image_to_video(image_url, motion_prompt, model, duration)
+    )
+    # _fal_image_to_video returns videoUrl / outputUrl / remoteUrl
+    return result.get("videoUrl") or result.get("outputUrl") or result.get("remoteUrl") or ""
 
 
-# ── TTS ───────────────────────────────────────────────────────
+# ── TTS ───────────────────────────────────────────────────────────────────────
 
-async def _gen_tts(text: str, character_id: str) -> str:
+async def _gen_tts(text: str, character_id: str, character_name: str = "") -> str:
+    """Resolve character name from ID, then call TTS. Returns audio URL."""
+    from backend.db import characters_col
     from backend.routes.tts import tts_generate
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, lambda: tts_generate(text, character_id))
-    return result.get("audio_url") or result.get("url") or ""
+
+    # Resolve actual character name for TTS lookup
+    char_name = character_name or character_id or "default"
+    if character_id:
+        if characters_col is not None:
+            doc = await characters_col.find_one({"id": character_id})
+            if doc:
+                char_name = doc.get("name", char_name)
+        else:
+            data_file = Path("data/characters.json")
+            if data_file.exists():
+                chars = json.loads(data_file.read_text()).get("characters", [])
+                match = next((c for c in chars if c.get("id") == character_id), None)
+                if match:
+                    char_name = match.get("name", char_name)
+
+    loop   = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, lambda: tts_generate(text=text, character=char_name))
+    return result.get("output_url") or result.get("audio_url") or result.get("url") or ""
 
 
-# ── Timeline save ─────────────────────────────────────────────
+# ── Timeline save (live — called after each shot) ─────────────────────────────
 
-async def _save_to_timeline(new_shots: list[dict]):
-    tl_file = Path("data/timelines/main_timeline.json")
-    tl_file.parent.mkdir(parents=True, exist_ok=True)
-    existing = json.loads(tl_file.read_text()).get("shots", []) if tl_file.exists() else []
-    all_shots = existing + new_shots
-    for i, s in enumerate(all_shots, 1):
+async def _append_to_timeline(shot: dict):
+    """Append one shot to the timeline. MongoDB + local JSON for Railway compatibility."""
+    from backend.db import scenes_col
+
+    # MongoDB: upsert shot as a scene document
+    if scenes_col is not None:
+        try:
+            await scenes_col.update_one(
+                {"id": shot["id"]}, {"$set": shot}, upsert=True
+            )
+        except Exception as e:
+            print(f"[ORCH] MongoDB scene upsert failed: {e}")
+
+    # Local JSON: always write for timeline.html / export compatibility
+    TIMELINE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    existing = []
+    if TIMELINE_FILE.exists():
+        try:
+            existing = json.loads(TIMELINE_FILE.read_text()).get("shots", [])
+        except Exception:
+            existing = []
+
+    # Replace if shot already exists (retry scenario), otherwise append
+    ids = {s["id"] for s in existing}
+    if shot["id"] in ids:
+        existing = [s if s["id"] != shot["id"] else shot for s in existing]
+    else:
+        existing.append(shot)
+
+    # Renumber
+    for i, s in enumerate(existing, 1):
         s["shot_number"] = f"SC-{i:03d}"
-    tl_file.write_text(json.dumps({"shots": all_shots}, indent=2))
+
+    TIMELINE_FILE.write_text(json.dumps({"shots": existing}, indent=2))
 
 
-# ── Main pipeline ─────────────────────────────────────────────
+# ── Main autonomous pipeline ──────────────────────────────────────────────────
 
 async def _run_pipeline(job_id: str, payload: dict):
-    concept      = payload.get("concept", "")
-    character_id = payload.get("character_id", "")
-    char_name    = payload.get("character_name", "")
-    num_shots    = min(max(int(payload.get("num_shots", 3)), 1), 5)
-    duration     = int(payload.get("duration", 5))
-    model        = payload.get("model", "wan21_i2v")
-    include_tts  = payload.get("include_tts", False)
+    scenes_input  = payload.get("scenes", [])    # pre-built scenes from Idea Vault
+    concept       = payload.get("concept", "")
+    character_id  = payload.get("character_id", "")
+    char_name     = payload.get("character_name", "")
+    duration      = int(payload.get("duration", 5))
+    model         = payload.get("model", "wan21_i2v")
+    include_tts   = payload.get("include_tts", True)   # default ON
+    project       = payload.get("project", char_name or "Default")
 
     try:
-        # ── 1. Plan shots
-        _update(job_id, status="planning", step="Breaking concept into shots…")
-        shots = await _plan_shots(concept, num_shots, char_name)
-        _update(job_id, total=len(shots))
-
-        timeline_shots = []
+        # ── 1. Get shots — use pre-built scenes or GPT planning
+        if scenes_input:
+            shots = scenes_input
+            _update(job_id, status="running", total=len(shots),
+                    step=f"Starting autonomous pipeline — {len(shots)} scenes")
+        else:
+            num_shots = min(max(int(payload.get("num_shots", 3)), 1), 100)
+            _update(job_id, status="planning", step="GPT: Breaking concept into shots…")
+            shots = await _plan_shots(concept, num_shots, char_name)
+            _update(job_id, status="running", total=len(shots),
+                    step=f"Plan complete — {len(shots)} shots queued")
 
         for i, shot in enumerate(shots):
-            label = f"Shot {i+1}/{len(shots)}"
+            label = f"[{i+1}/{len(shots)}]"
 
-            # ── 2. Generate image
-            _update(job_id, progress=i, step=f"{label}: Generating keyframe image…")
-            image_url = await _gen_image(shot.get("image_prompt", concept), character_id)
-            _JOBS[job_id].setdefault("generated_images", []).append(image_url)
+            # ── 2. Keyframe image
+            _update(job_id, progress=i,
+                    step=f"{label} Generating keyframe — {shot.get('description','')[:60]}…")
+            try:
+                image_url = await _gen_image(
+                    shot.get("image_prompt") or shot.get("description") or concept,
+                    character_id
+                )
+            except Exception as e:
+                print(f"[ORCH] Image gen failed shot {i+1}: {e}")
+                _update(job_id, step=f"{label} ⚠ Keyframe failed, skipping — {str(e)[:80]}")
+                continue
 
-            # ── 3. Animate
-            _update(job_id, step=f"{label}: Animating keyframe ({model})…")
-            video_url = await _animate(image_url, shot.get("motion_prompt", "cinematic motion"), model, duration)
+            # ── 3. I2V animation
+            motion = (shot.get("motion_prompt") or
+                      f"cinematic motion, {shot.get('emotion','dramatic')}, smooth camera")
+            _update(job_id, step=f"{label} Animating with {model}…")
+            try:
+                video_url = await _animate(image_url, motion, model, duration)
+            except Exception as e:
+                print(f"[ORCH] I2V failed shot {i+1}: {e}")
+                video_url = ""   # shot still lands in timeline with keyframe only
 
-            # ── 4. TTS
+            # ── 4. TTS voice
             audio_url = ""
-            if include_tts and shot.get("dialogue") and character_id:
-                _update(job_id, step=f"{label}: Generating voice…")
+            if include_tts and shot.get("dialogue"):
+                _update(job_id, step=f"{label} Generating voice…")
                 try:
-                    audio_url = await _gen_tts(shot["dialogue"], character_id)
-                except Exception:
-                    pass
+                    audio_url = await _gen_tts(shot["dialogue"], character_id, char_name)
+                except Exception as e:
+                    print(f"[ORCH] TTS failed shot {i+1}: {e}")
 
-            timeline_shots.append({
-                "id":               str(uuid.uuid4()),
-                "name":             f"Shot {i+1}: {shot.get('description','')[:40]}",
-                "description":      shot.get("description", ""),
-                "type":             "video",
-                "videoUrl":         video_url,
-                "renderOutputUrl":  video_url,
-                "renderOutputPath": video_url,
-                "imageUrl":         image_url,
-                "audioUrl":         audio_url,
-                "source":           "orchestrator",
-            })
+            # ── 5. Build shot record
+            shot_doc = {
+                "id":              str(uuid.uuid4()),
+                "shot_number":     f"SC-{i+1:03d}",
+                "name":            f"Shot {i+1}: {shot.get('description','')[:50]}",
+                "shotDesc":        shot.get("description", ""),
+                "shot_description":shot.get("description", ""),
+                "shotPrompt":      shot.get("image_prompt", ""),
+                "dialogue":        shot.get("dialogue", ""),
+                "character":       char_name,
+                "project":         project,
+                "type":            "video",
+                "videoUrl":        video_url,
+                "renderOutputUrl": image_url,
+                "imageUrl":        image_url,
+                "fxUrl":           audio_url,
+                "rawUrl":          audio_url,
+                "source":          "orchestrator",
+                "createdAt":       datetime.now().strftime("%Y-%m-%d %H:%M"),
+            }
 
-        # ── 5. Save to Timeline
-        _update(job_id, step="Saving all clips to Timeline…")
-        await _save_to_timeline(timeline_shots)
+            # ── 6. Land in timeline immediately (live progress)
+            await _append_to_timeline(shot_doc)
+            _JOBS[job_id].setdefault("shots", []).append(shot_doc)
+            _update(job_id,
+                    step=f"{label} ✔ Shot {i+1} in Timeline — "
+                         f"{'animated' if video_url else 'keyframe only'}"
+                         f"{', voiced' if audio_url else ''}")
 
+        total_done = len(_JOBS[job_id].get("shots", []))
         _update(job_id,
-            status="complete",
-            progress=len(shots),
-            shots=timeline_shots,
-            step=f"Done — {len(shots)} clips added to Timeline")
+                status="complete",
+                progress=len(shots),
+                step=f"✔ Done — {total_done}/{len(shots)} shots in Timeline. Open Timeline ↗")
 
     except Exception as e:
-        _update(job_id, status="failed", error=str(e)[:400], step=f"Failed: {str(e)[:120]}")
+        import traceback
+        traceback.print_exc()
+        _update(job_id, status="failed", error=str(e)[:400],
+                step=f"Pipeline failed: {str(e)[:120]}")
 
 
-# ── Routes ────────────────────────────────────────────────────
+# ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/orchestrate/run")
 async def run_orchestration(payload: dict, background_tasks: BackgroundTasks):
@@ -255,6 +349,7 @@ async def run_orchestration(payload: dict, background_tasks: BackgroundTasks):
         "step":     "Starting…",
         "shots":    [],
         "error":    None,
+        "started_at": datetime.now().isoformat(),
     }
     background_tasks.add_task(_run_pipeline, job_id, payload)
     return {"success": True, "job_id": job_id}
@@ -270,5 +365,9 @@ async def orchestrate_status(job_id: str):
 
 @router.get("/orchestrate/jobs")
 async def list_jobs():
-    return {"jobs": [{"job_id": k, **{kk: v for kk, v in j.items() if kk != "shots"}}
-                     for k, j in _JOBS.items()]}
+    return {
+        "jobs": [
+            {"job_id": k, **{kk: v for kk, v in j.items() if kk != "shots"}}
+            for k, j in _JOBS.items()
+        ]
+    }

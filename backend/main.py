@@ -22,6 +22,7 @@ from backend.routes.music import router as music_router
 from backend.routes.upscale import router as upscale_router
 from backend.routes.assets import router as assets_router
 from backend.routes.projects import router as projects_router
+from backend.routes.orchestrate import router as orchestrate_router
 from dotenv import load_dotenv
 from pathlib import Path
 load_dotenv()
@@ -107,3 +108,4 @@ app.include_router(music_router)
 app.include_router(upscale_router)
 app.include_router(assets_router)
 app.include_router(projects_router)
+app.include_router(orchestrate_router)

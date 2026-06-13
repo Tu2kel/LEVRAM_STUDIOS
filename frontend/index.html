@@ -389,6 +389,66 @@
           </div>
           <div class="voice-lab">
 
+            <!-- ── AUTO-CREATE SCENE ── -->
+            <div id="orch-panel" style="background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.25);border-radius:4px;padding:10px;margin-bottom:12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="document.getElementById('orch-body').style.display=document.getElementById('orch-body').style.display==='none'?'flex':'none'">
+                <span style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);">⚡ Auto-Create Scene</span>
+                <span style="font-size:10px;color:var(--text-dim);">▾</span>
+              </div>
+              <div id="orch-body" style="display:none;flex-direction:column;gap:8px;margin-top:10px;">
+                <textarea id="orch-concept" rows="3" placeholder="Scene concept — e.g. Kelz stands on the megastructure, turns to face the Dyson sphere, then leaps into the void"
+                          style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:6px 8px;border-radius:2px;resize:vertical;width:100%;box-sizing:border-box;"></textarea>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                  <div>
+                    <div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Character</div>
+                    <select id="orch-character" style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 6px;border-radius:2px;">
+                      <option value="">None / Standalone</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Shots</div>
+                    <select id="orch-shots" style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 6px;border-radius:2px;">
+                      <option value="2">2 shots</option>
+                      <option value="3" selected>3 shots</option>
+                      <option value="4">4 shots</option>
+                      <option value="5">5 shots</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Duration</div>
+                    <select id="orch-duration" style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 6px;border-radius:2px;">
+                      <option value="3">3s per clip</option>
+                      <option value="5" selected>5s per clip</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Video Model</div>
+                    <select id="orch-model" style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 6px;border-radius:2px;">
+                      <option value="wan21_i2v" selected>Wan 2.1</option>
+                      <option value="wan21_14b_i2v">Wan 2.2 14B</option>
+                      <option value="hunyuan_i2v">HunyuanVideo</option>
+                    </select>
+                  </div>
+                </div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;cursor:pointer;">
+                  <input type="checkbox" id="orch-tts" style="accent-color:var(--gold);" />
+                  Generate voice lines
+                </label>
+                <button onclick="orchRun()" id="orch-run-btn"
+                        style="width:100%;background:linear-gradient(90deg,rgba(139,105,20,0.5),rgba(201,168,76,0.5));border:1px solid rgba(201,168,76,0.6);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;padding:8px;border-radius:3px;cursor:pointer;">
+                  ⚡ Auto-Create Scene
+                </button>
+                <!-- Progress -->
+                <div id="orch-progress-wrap" style="display:none;">
+                  <div id="orch-step" style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;"></div>
+                  <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.2);border-radius:2px;height:6px;overflow:hidden;">
+                    <div id="orch-bar" style="height:100%;background:var(--gold);width:0%;transition:width 0.5s;"></div>
+                  </div>
+                  <div id="orch-result" style="margin-top:8px;font-size:11px;color:#88dd88;letter-spacing:1px;text-transform:uppercase;"></div>
+                </div>
+              </div>
+            </div>
+
             <!-- Image / Video mode toggle -->
             <div class="field-group">
               <div class="field-label">Mode</div>
@@ -1004,6 +1064,7 @@
     <script src="tabs.js"></script>
     <script src="idea-vault.js"></script>
     <script src="image-gen.js"></script>
+    <script src="orchestrate.js"></script>
 
     <!-- Workspace switcher -->
     <script>

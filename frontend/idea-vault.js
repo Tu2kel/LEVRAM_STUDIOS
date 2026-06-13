@@ -356,11 +356,11 @@ async function ivPollJob(jobId, totalScenes, statusEl) {
 
 // ── Cost estimator ─────────────────────────────────────────────
 const IV_MODEL_COSTS = {
-  "wan21_i2v":     { label: "Wan 2.1",       cost: 0,    note: "free" },
-  "wan21_14b_i2v": { label: "Wan 2.1 Best",  cost: 0,    note: "free (slow)" },
-  "seedance":      { label: "Seedance 2.0",   cost: 0.05, note: "$0.05/shot" },
+  "wan21_i2v":     { label: "Wan 2.1",        cost: 0,    note: "free" },
+  "wan21_14b_i2v": { label: "Wan 2.1 Best",   cost: 0,    note: "free (slow)" },
   "kling_21_pro":  { label: "Kling 2.1 Pro",  cost: 0.14, note: "$0.14/shot" },
   "kling_26":      { label: "Kling 2.6 Pro",  cost: 0.28, note: "$0.28/shot" },
+  "seedance":      { label: "Seedance 2.0",   cost: 1.21, note: "$1.21/shot (~$2.42/10s)" },
 };
 
 window.ivUpdateCostEst = function ivUpdateCostEst() {

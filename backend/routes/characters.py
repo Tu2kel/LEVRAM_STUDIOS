@@ -402,7 +402,7 @@ async def generate_character_preview(payload: dict):
                         "image_size":          "portrait_4_3",
                         "num_inference_steps": 28,
                         "guidance_scale":      4.0,
-                        "id_weight":           1.3,
+                        "id_weight":           1.0,
                         "negative_prompt":     "cartoon, illustration, painting, stylized, anime, unrealistic, disfigured",
                         "enable_safety_checker": False,
                     })

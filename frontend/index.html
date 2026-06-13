@@ -696,15 +696,30 @@
               <div id="ig-i2v-panel" style="display:none;margin-top:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:4px;padding:10px;">
                 <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Animate this image</div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
-                  <select id="ig-i2v-model" style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 8px;border-radius:2px;">
-                    <option value="kling_pro" selected>Kling 2.1 Pro — ~$0.35/5s, cinematic</option>
-                    <option value="kling_26">Kling 2.6 Pro — latest, sharpest motion</option>
-                    <option value="seedance">Seedance 2.0 Fast — ~$2.42/10s, built-in audio</option>
-                    <option value="wan21_i2v">Wan 2.1 — Free, open-source</option>
+                  <select id="ig-i2v-model" onchange="igHandleI2VModelChange(this.value)" style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 8px;border-radius:2px;">
+                    <option value="wan21_i2v" selected>Wan 2.1 — Free (test here first)</option>
                     <option value="wan21_14b_i2v">Wan 2.2 14B — Free, best open-source</option>
+                    <option value="kling_pro">Kling 2.1 Pro — ~$0.35/5s, cinematic</option>
+                    <option value="kling_26">Kling 2.6 Pro — latest, sharpest motion</option>
+                    <option value="kling_o1">Kling O1 — Dual Keyframe (start → end image)</option>
+                    <option value="seedance">Seedance 2.0 Fast — ~$2.42/10s, built-in audio</option>
                     <option value="runway_turbo">Runway Gen-4 Turbo ✦ — Fastest Runway</option>
                     <option value="runway_gen4_i2v">Runway Gen-4.5 ✦ — Best quality Runway</option>
                   </select>
+
+                  <!-- End frame slot — only shown for Kling O1 -->
+                  <div id="ig-i2v-endframe" style="display:none;margin-top:6px;padding:8px;background:rgba(0,0,0,0.3);border:1px dashed rgba(201,168,76,0.4);border-radius:3px;">
+                    <div style="font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">End Frame (Kling O1)</div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px;">Upload the final state — model synthesises motion between start and end.</div>
+                    <div id="ig-i2v-endframe-preview" style="display:none;margin-bottom:6px;">
+                      <img id="ig-i2v-endframe-img" style="width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid rgba(201,168,76,0.4);" />
+                    </div>
+                    <input type="file" id="ig-i2v-endframe-input" accept="image/*" style="display:none;" onchange="igLoadEndFrame(this)" />
+                    <button onclick="document.getElementById('ig-i2v-endframe-input').click()"
+                      style="width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:5px;border-radius:2px;cursor:pointer;">
+                      + Upload End Frame
+                    </button>
+                  </div>
                   <input id="ig-i2v-prompt" type="text" placeholder="Motion prompt (optional)…" style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 8px;border-radius:2px;" />
                   <div style="display:flex;gap:6px;align-items:center;">
                     <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">Duration</label>

@@ -760,6 +760,34 @@ window.igUploadOwnImage = async function igUploadOwnImage() {
   input.value = "";
 };
 
+// ── Kling O1 dual-keyframe state ─────────────────────────────
+let igEndFrameUrl = null;
+
+window.igHandleI2VModelChange = function igHandleI2VModelChange(model) {
+  const endSlot = document.getElementById("ig-i2v-endframe");
+  if (endSlot) endSlot.style.display = model === "kling_o1" ? "block" : "none";
+};
+
+window.igLoadEndFrame = async function igLoadEndFrame(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append("file", file);
+  try {
+    const res  = await levFetch(`${IG_BASE}/video/upload-image`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Upload failed");
+    igEndFrameUrl = data.image_url;
+    const img     = document.getElementById("ig-i2v-endframe-img");
+    const preview = document.getElementById("ig-i2v-endframe-preview");
+    if (img)     { img.src = (igEndFrameUrl.startsWith("http") ? igEndFrameUrl : IG_BASE + igEndFrameUrl); }
+    if (preview) preview.style.display = "block";
+  } catch (err) {
+    alert("End frame upload failed: " + err.message);
+  }
+  input.value = "";
+};
+
 async function igRunI2V() {
   if (!igCurrentImageUrl) return;
   const model    = document.getElementById("ig-i2v-model")?.value    || "wan21_i2v";
@@ -768,7 +796,13 @@ async function igRunI2V() {
   const statusEl = document.getElementById("ig-i2v-status");
   const btn      = document.getElementById("ig-i2v-go-btn");
 
+  if (model === "kling_o1" && !igEndFrameUrl) {
+    if (statusEl) statusEl.textContent = "Upload an end frame image first for Kling O1.";
+    return;
+  }
+
   const modelLabels = {
+    kling_o1:        "Kling O1 Dual-Keyframe",
     kling_pro:       "Kling 2.1 Pro",
     kling_26:        "Kling 2.6 Pro",
     seedance:        "Seedance 2.0",
@@ -803,7 +837,11 @@ async function igRunI2V() {
     const res  = await levFetch(`${IG_BASE}/video/image-to-video`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image_url: igCurrentImageUrl, prompt, model, duration }),
+      body: JSON.stringify({
+        image_url:     igCurrentImageUrl,
+        end_image_url: model === "kling_o1" ? (igEndFrameUrl || "") : "",
+        prompt, model, duration,
+      }),
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "I2V submit failed");

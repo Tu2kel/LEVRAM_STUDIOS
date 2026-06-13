@@ -399,6 +399,7 @@ FAL_I2V_MODELS = {
     "wan21_14b_i2v":   "fal-ai/wan/v2.2-a14b/image-to-video",         # Wan 2.2 14B — free, best open
     "kling_pro":       "fal-ai/kling-video/v2.1/pro/image-to-video",   # Kling 2.1 Pro — ~$0.35/5s
     "kling_26":        "fal-ai/kling-video/v2.6/pro/image-to-video",   # Kling 2.6 Pro — latest
+    "kling_o1":        "fal-ai/kling-video/o1/image-to-video",         # Kling O1 — dual keyframe (start+end)
     "seedance":        "bytedance/seedance-2.0/fast/image-to-video",   # Seedance 2.0 Fast — ~$2.42/10s
     "runway_turbo":    "fal-ai/runway-gen4-turbo/image-to-video",      # Runway Turbo — paid
     "runway_gen4_i2v": "fal-ai/runway-gen4.5/image-to-video",         # Runway Gen-4.5 — paid, best
@@ -559,13 +560,15 @@ async def get_job_status(job_id: str):
 # ── Image-to-Video (character-locked) ────────────────────────
 
 class FalI2VPayload(BaseModel):
-    image_url: str               # local /output/... URL or remote https:// URL
-    prompt: str = ""             # optional motion description
-    model: str = "kling_pro"    # kling_pro | kling_26 | seedance | wan21_i2v | wan21_14b_i2v | runway_*
+    image_url: str               # start frame — local /output/... URL or remote https://
+    end_image_url: str = ""      # end frame — only used by kling_o1 dual-keyframe
+    prompt: str = ""
+    model: str = "kling_pro"
     duration: int = 5
 
 
-def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: int) -> dict:
+def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: int,
+                        end_image_url: str = "") -> dict:
     import os, urllib.request as ur
     try:
         import fal_client
@@ -579,19 +582,31 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
 
     model_id = FAL_I2V_MODELS.get(model_key, FAL_I2V_MODELS["wan21_i2v"])
 
-    # If local path, upload to fal.ai storage first
-    if image_url.startswith("/output/") or image_url.startswith("output/"):
-        local_path = image_url.lstrip("/")
-        remote_url = fal_client.upload_file(local_path)
-    else:
-        remote_url = image_url
+    def _upload_if_local(url: str) -> str:
+        if url.startswith("/output/") or url.startswith("output/"):
+            return fal_client.upload_file(url.lstrip("/"))
+        return url
+
+    remote_url = _upload_if_local(image_url)
 
     is_runway   = model_key.startswith("runway")
     is_wan      = model_key.startswith("wan")
     is_kling    = model_key.startswith("kling")
     is_seedance = model_key.startswith("seedance")
 
-    if is_runway:
+    if model_key == "kling_o1":
+        # Dual-keyframe: synthesises motion between start and end image
+        if not end_image_url:
+            raise RuntimeError("Kling O1 requires an end frame image (end_image_url).")
+        remote_end = _upload_if_local(end_image_url)
+        args = {
+            "start_image_url": remote_url,
+            "end_image_url":   remote_end,
+            "prompt":          prompt or "smooth cinematic transition between frames",
+            "duration":        10 if duration >= 8 else 5,
+            "aspect_ratio":    "16:9",
+        }
+    elif is_runway:
         # Runway: image_url + prompt + duration (5 or 10 only)
         args = {
             "image_url": remote_url,
@@ -608,7 +623,7 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
             "aspect_ratio": "16:9",
         }
     elif is_kling:
-        # Kling: duration must be 5 or 10
+        # Standard Kling single-frame: duration 5 or 10
         args = {
             "image_url":    remote_url,
             "prompt":       prompt or "cinematic motion, smooth camera movement",
@@ -699,7 +714,10 @@ async def image_to_video(payload: FalI2VPayload):
             loop = asyncio.get_event_loop()
             try:
                 result = await loop.run_in_executor(
-                    None, lambda: _fal_image_to_video(payload.image_url, payload.prompt, payload.model, payload.duration)
+                    None, lambda: _fal_image_to_video(
+                        payload.image_url, payload.prompt, payload.model,
+                        payload.duration, payload.end_image_url
+                    )
                 )
                 _JOBS[job_id]["status"] = "complete"
                 _JOBS[job_id]["result"] = result

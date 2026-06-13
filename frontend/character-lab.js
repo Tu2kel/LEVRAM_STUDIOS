@@ -308,23 +308,11 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
   const badge = document.getElementById("cl-edit-badge");
   if (badge) badge.style.display = "inline-block";
 
-  // PHASE 8G — auto-load existing reference image into the preview panel
-  const previewImg = document.getElementById("character-preview-img");
-  const previewStatus = document.getElementById("character-preview-status");
-  if (previewImg) {
-    if (c.reference_image_url) {
-      const refUrl = c.reference_image_url.startsWith("http")
-        ? c.reference_image_url
-        : BASE + c.reference_image_url;
-      previewImg.src = refUrl;
-      previewImg.style.display = "block";
-      if (previewStatus) previewStatus.textContent = "Reference image loaded ✔";
-    } else {
-      previewImg.src = "";
-      previewImg.style.display = "none";
-      if (previewStatus) previewStatus.textContent = "";
-    }
-  }
+  // Load multi-image preview panel
+  const prevImages  = c.preview_images || [];
+  const activeIdx   = c.active_preview_index ?? 0;
+  clRenderPreviewImages(prevImages, activeIdx);
+  _clShowActivePreviewImg(prevImages, activeIdx);
 
   clRefreshLoraPanel(c);
 };
@@ -628,20 +616,73 @@ window.clDeleteReference = async function clDeleteReference(filename) {
   }
 };
 
-window.clUploadOwnPreview = async function clUploadOwnPreview() {
-  const input    = document.getElementById("cl-own-preview-input");
-  const file     = input?.files?.[0];
+// ── Multi-image preview helpers ───────────────────────────────
+
+function clRenderPreviewImages(images, activeIdx) {
+  const grid = document.getElementById("cl-preview-images-grid");
+  if (!grid) return;
+  if (!images || images.length === 0) {
+    grid.innerHTML = '<div style="font-size:11px;color:var(--text-dim);grid-column:1/-1;padding:4px 0;">No images yet — click + Add Image</div>';
+    return;
+  }
+  grid.innerHTML = images.map((img, i) => {
+    const displayUrl = img.url.startsWith("http") ? img.url : BASE + img.url;
+    const isActive   = i === (activeIdx ?? 0);
+    const labelEsc   = (img.label || "").replace(/"/g, "&quot;");
+    return `<div style="position:relative;cursor:pointer;" onclick="clSetActivePreview(${i})">
+      <img src="${displayUrl}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:3px;border:2px solid ${isActive ? "var(--gold)" : "rgba(255,255,255,0.1)"};" />
+      ${isActive ? '<div style="position:absolute;top:2px;left:2px;background:var(--gold);color:#000;font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;letter-spacing:1px;line-height:14px;">ACTIVE</div>' : ""}
+      <button onclick="event.stopPropagation();clRemovePreviewImage(${i})" style="position:absolute;top:2px;right:2px;background:rgba(140,20,20,0.9);border:none;color:#fff;width:16px;height:16px;border-radius:2px;cursor:pointer;font-size:10px;line-height:1;padding:0;">✕</button>
+      <input type="text" value="${labelEsc}" placeholder="Label"
+             onblur="clSavePreviewLabel(${i},this.value)" onclick="event.stopPropagation()"
+             style="width:100%;box-sizing:border-box;margin-top:2px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12);color:var(--text);font-size:10px;padding:2px 4px;border-radius:2px;" />
+    </div>`;
+  }).join("");
+}
+
+async function _clSavePreviewImages(previewImages, activeIdx) {
+  const cache    = window.LEVRAM_CHARACTERS_CACHE || [];
+  const existing = cache.find(c => c.id === editingCharacterId);
+  if (!existing) return;
+  const payload = { ...existing, preview_images: previewImages, active_preview_index: activeIdx };
+  await levFetch(`${BASE}/characters/${editingCharacterId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  existing.preview_images         = previewImages;
+  existing.active_preview_index   = activeIdx;
+}
+
+function _clShowActivePreviewImg(images, activeIdx) {
+  const img      = document.getElementById("character-preview-img");
+  const statusEl = document.getElementById("character-preview-status");
+  if (!img) return;
+  const entry = (images || [])[activeIdx ?? 0];
+  if (entry) {
+    const displayUrl = entry.url.startsWith("http") ? entry.url : BASE + entry.url;
+    img.src = displayUrl;
+    img.style.display = "block";
+    if (statusEl) statusEl.textContent = `Active: ${entry.label || "Image " + ((activeIdx ?? 0) + 1)}`;
+  } else {
+    img.src = "";
+    img.style.display = "none";
+    if (statusEl) statusEl.textContent = "";
+  }
+}
+
+window.clAddOwnPreview = async function clAddOwnPreview() {
+  const input = document.getElementById("cl-own-preview-input");
+  const file  = input?.files?.[0];
   if (!file) return;
 
   if (!editingCharacterId) {
-    levShowError("Save the character first, then upload a preview image.");
+    levShowError("Save the character first, then upload an image.");
     input.value = "";
     return;
   }
 
   const statusEl = document.getElementById("character-preview-status");
-  const img      = document.getElementById("character-preview-img");
-  const btn      = document.getElementById("generate-character-preview-btn");
   if (statusEl) statusEl.textContent = "Uploading…";
 
   const fd = new FormData();
@@ -652,29 +693,68 @@ window.clUploadOwnPreview = async function clUploadOwnPreview() {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Upload failed");
 
-    const imageUrl   = data.image_url;
-    const displayUrl = imageUrl.startsWith("http") ? imageUrl : `${BASE}${imageUrl}`;
-
-    if (img)      { img.src = displayUrl; img.style.display = "block"; }
-    if (statusEl) statusEl.textContent = "Preview image set ✔";
-
-    // Persist to character
+    const imageUrl = data.image_url;
     const cache    = window.LEVRAM_CHARACTERS_CACHE || [];
     const existing = cache.find(c => c.id === editingCharacterId);
-    if (existing) {
-      const payload = { ...existing, reference_image_url: imageUrl };
-      await levFetch(`${BASE}/characters/${editingCharacterId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      await loadCharacters();
-    }
+    if (!existing) throw new Error("Character not found");
+
+    const prevImages = [...(existing.preview_images || [])];
+    const label      = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+    prevImages.push({ url: imageUrl, label });
+
+    const newActive = prevImages.length === 1 ? 0 : (existing.active_preview_index ?? 0);
+    await _clSavePreviewImages(prevImages, newActive);
+
+    clRenderPreviewImages(prevImages, newActive);
+    _clShowActivePreviewImg(prevImages, newActive);
+    if (statusEl) statusEl.textContent = `${prevImages.length} image${prevImages.length > 1 ? "s" : ""} — click one to set active ✔`;
   } catch (err) {
     if (statusEl) statusEl.textContent = "Upload failed: " + err.message;
-    console.error("CL OWN PREVIEW ERROR:", err);
+    console.error("CL ADD PREVIEW ERROR:", err);
   }
   input.value = "";
+};
+
+window.clSetActivePreview = async function clSetActivePreview(idx) {
+  if (!editingCharacterId) return;
+  const cache    = window.LEVRAM_CHARACTERS_CACHE || [];
+  const existing = cache.find(c => c.id === editingCharacterId);
+  if (!existing) return;
+  const prevImages = existing.preview_images || [];
+  if (idx < 0 || idx >= prevImages.length) return;
+  await _clSavePreviewImages(prevImages, idx);
+  clRenderPreviewImages(prevImages, idx);
+  _clShowActivePreviewImg(prevImages, idx);
+};
+
+window.clRemovePreviewImage = async function clRemovePreviewImage(idx) {
+  if (!editingCharacterId) return;
+  const cache    = window.LEVRAM_CHARACTERS_CACHE || [];
+  const existing = cache.find(c => c.id === editingCharacterId);
+  if (!existing) return;
+  const prevImages = [...(existing.preview_images || [])];
+  prevImages.splice(idx, 1);
+  let activeIdx = existing.active_preview_index ?? 0;
+  if (activeIdx >= prevImages.length) activeIdx = Math.max(0, prevImages.length - 1);
+  await _clSavePreviewImages(prevImages, activeIdx);
+  clRenderPreviewImages(prevImages, activeIdx);
+  _clShowActivePreviewImg(prevImages, activeIdx);
+};
+
+window.clSavePreviewLabel = async function clSavePreviewLabel(idx, value) {
+  if (!editingCharacterId) return;
+  const cache    = window.LEVRAM_CHARACTERS_CACHE || [];
+  const existing = cache.find(c => c.id === editingCharacterId);
+  if (!existing) return;
+  const prevImages = [...(existing.preview_images || [])];
+  if (!prevImages[idx]) return;
+  prevImages[idx] = { ...prevImages[idx], label: value };
+  existing.preview_images = prevImages;
+  await levFetch(`${BASE}/characters/${editingCharacterId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...existing, preview_images: prevImages }),
+  });
 };
 
 window.clUploadReferences = clUploadReferences;

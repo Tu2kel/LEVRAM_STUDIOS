@@ -160,11 +160,17 @@
         </div>
         <div class="cl-preview-body">
           <button id="generate-character-preview-btn" type="button" onclick="generateCharacterPreview()">Generate Character Preview</button>
-          <input type="file" id="cl-own-preview-input" accept="image/*" style="display:none;" onchange="clUploadOwnPreview()" />
-          <button type="button" onclick="document.getElementById('cl-own-preview-input').click()"
-                  style="width:100%;background:rgba(0,0,0,0.4);border:1px dashed rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:8px;border-radius:3px;cursor:pointer;margin-top:6px;">
-            + Bring Your Own Image
-          </button>
+
+          <!-- Multi-image reference panel -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;margin-bottom:4px;">
+            <span style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">Character Images</span>
+            <label style="cursor:pointer;color:var(--gold);font-size:11px;letter-spacing:1px;text-transform:uppercase;background:rgba(0,0,0,0.4);border:1px dashed rgba(201,168,76,0.4);padding:4px 10px;border-radius:3px;">
+              + Add Image
+              <input type="file" id="cl-own-preview-input" accept="image/*" style="display:none;" onchange="clAddOwnPreview()" />
+            </label>
+          </div>
+          <div id="cl-preview-images-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-bottom:8px;min-height:24px;"></div>
+
           <textarea id="character-preview-prompt" placeholder="Generated image prompt will appear here..."></textarea>
           <div id="character-preview-status" class="character-preview-status"></div>
           <img id="character-preview-img" class="character-preview-img" alt="Character preview" style="display:none;" />

@@ -33,6 +33,8 @@ class CharacterPayload(BaseModel):
     notes: str = ""
     reference_image_url: str = ""
     reference_images: list = []       # list of /output/... URLs for LoRA training
+    preview_images: list = []         # [{url, label}] — BYO character look images
+    active_preview_index: int = 0     # which preview_images entry flux-pulid uses
     voice_source: str = "edge_tts"
     elevenlabs_voice_id: str = ""
     rvc_model_path: str = ""
@@ -382,19 +384,40 @@ async def generate_character_preview(payload: dict):
             engine = "fal_flux_lora"
 
         else:
-            # No LoRA — use InstantID with reference photos if available
+            # No LoRA — resolve face reference: BYO preview_images first, then LoRA refs
             import base64 as _b64
-            refs     = (db_char or {}).get("reference_images") or []
-            ref_path = next(
-                (Path(r.lstrip("/")) for r in refs if Path(r.lstrip("/")).exists()),
-                None
-            )
+            face_url  = None
+            face_bytes = None
 
-            if ref_path:
-                ref_bytes = ref_path.read_bytes()
-                face_url  = await loop.run_in_executor(
-                    None, lambda: fal_client.upload(ref_bytes, "image/jpeg")
+            preview_imgs  = (db_char or {}).get("preview_images") or []
+            active_idx    = int((db_char or {}).get("active_preview_index") or 0)
+            byo_entry     = preview_imgs[active_idx] if preview_imgs else None
+
+            if byo_entry:
+                byo_url = byo_entry.get("url", "")
+                if byo_url.startswith("http"):
+                    face_url = byo_url
+                else:
+                    byo_path = Path(byo_url.lstrip("/"))
+                    if byo_path.exists():
+                        face_bytes = byo_path.read_bytes()
+                        face_url   = await loop.run_in_executor(
+                            None, lambda: fal_client.upload(face_bytes, "image/jpeg")
+                        )
+
+            if not face_url:
+                refs     = (db_char or {}).get("reference_images") or []
+                ref_path = next(
+                    (Path(r.lstrip("/")) for r in refs if Path(r.lstrip("/")).exists()),
+                    None
                 )
+                if ref_path:
+                    ref_bytes = ref_path.read_bytes()
+                    face_url  = await loop.run_in_executor(
+                        None, lambda: fal_client.upload(ref_bytes, "image/jpeg")
+                    )
+
+            if face_url:
                 result = await loop.run_in_executor(
                     None, lambda: fal_client.run("fal-ai/flux-pulid", arguments={
                         "reference_image_url": face_url,

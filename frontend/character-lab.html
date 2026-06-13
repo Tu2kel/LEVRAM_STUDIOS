@@ -160,6 +160,11 @@
         </div>
         <div class="cl-preview-body">
           <button id="generate-character-preview-btn" type="button" onclick="generateCharacterPreview()">Generate Character Preview</button>
+          <input type="file" id="cl-own-preview-input" accept="image/*" style="display:none;" onchange="clUploadOwnPreview()" />
+          <button type="button" onclick="document.getElementById('cl-own-preview-input').click()"
+                  style="width:100%;background:rgba(0,0,0,0.4);border:1px dashed rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:8px;border-radius:3px;cursor:pointer;margin-top:6px;">
+            + Bring Your Own Image
+          </button>
           <textarea id="character-preview-prompt" placeholder="Generated image prompt will appear here..."></textarea>
           <div id="character-preview-status" class="character-preview-status"></div>
           <img id="character-preview-img" class="character-preview-img" alt="Character preview" style="display:none;" />

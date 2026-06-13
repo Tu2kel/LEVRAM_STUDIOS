@@ -628,6 +628,55 @@ window.clDeleteReference = async function clDeleteReference(filename) {
   }
 };
 
+window.clUploadOwnPreview = async function clUploadOwnPreview() {
+  const input    = document.getElementById("cl-own-preview-input");
+  const file     = input?.files?.[0];
+  if (!file) return;
+
+  if (!editingCharacterId) {
+    levShowError("Save the character first, then upload a preview image.");
+    input.value = "";
+    return;
+  }
+
+  const statusEl = document.getElementById("character-preview-status");
+  const img      = document.getElementById("character-preview-img");
+  const btn      = document.getElementById("generate-character-preview-btn");
+  if (statusEl) statusEl.textContent = "Uploading…";
+
+  const fd = new FormData();
+  fd.append("file", file);
+
+  try {
+    const res  = await levFetch(`${BASE}/video/upload-image`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Upload failed");
+
+    const imageUrl   = data.image_url;
+    const displayUrl = imageUrl.startsWith("http") ? imageUrl : `${BASE}${imageUrl}`;
+
+    if (img)      { img.src = displayUrl; img.style.display = "block"; }
+    if (statusEl) statusEl.textContent = "Preview image set ✔";
+
+    // Persist to character
+    const cache    = window.LEVRAM_CHARACTERS_CACHE || [];
+    const existing = cache.find(c => c.id === editingCharacterId);
+    if (existing) {
+      const payload = { ...existing, reference_image_url: imageUrl };
+      await levFetch(`${BASE}/characters/${editingCharacterId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      await loadCharacters();
+    }
+  } catch (err) {
+    if (statusEl) statusEl.textContent = "Upload failed: " + err.message;
+    console.error("CL OWN PREVIEW ERROR:", err);
+  }
+  input.value = "";
+};
+
 window.clUploadReferences = clUploadReferences;
 window.clTrainLora        = clTrainLora;
 

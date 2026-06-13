@@ -183,9 +183,101 @@ def assemble_episode(payload: AssembleEpisodePayload):
 # ─── Export Timeline → final MP4 ─────────────────────────────
 
 class ExportTimelinePayload(BaseModel):
-    timeline_file: str = "data/timelines/main_timeline.json"
-    title: str = "levram_export"
-    shot_ids: list[str] = []   # if non-empty, only export these shots in order
+    timeline_file: str  = "data/timelines/main_timeline.json"
+    title:         str  = "levram_export"
+    shot_ids:      list[str] = []
+    music_url:     str  = ""      # /output/music/... local path
+    music_volume:  float = 0.20   # 0.0–1.0
+    include_voice: bool = True    # mix in per-shot TTS audio if present
+    fade_out_sec:  int  = 4
+
+
+def _probe_duration(path: Path) -> float:
+    """Return duration in seconds via ffprobe, fallback 5.0."""
+    try:
+        import json as _json
+        r = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(path)],
+            capture_output=True, text=True, timeout=30
+        )
+        return float(_json.loads(r.stdout)["format"]["duration"])
+    except Exception:
+        return 5.0
+
+
+def _resolve_audio(url: str) -> Path | None:
+    """Turn a local /output/... URL into a Path, strip any host prefix."""
+    if not url:
+        return None
+    # Strip http://host:port prefix if present
+    if url.startswith("http"):
+        from urllib.parse import urlparse
+        url = urlparse(url).path
+    p = BASE_DIR / url.lstrip("/")
+    return p if p.exists() else None
+
+
+def _ffmpeg_mix_audio(
+    video_path: Path,
+    voice_clips: list[tuple[Path, float]],   # (audio_path, start_offset_sec)
+    music_path: Path | None,
+    music_volume: float,
+    fade_out_sec: int,
+    out_path: Path,
+) -> None:
+    """Combine video + offset voice clips + optional music bed into one MP4."""
+    inputs     = ["-i", str(video_path)]
+    filters    = []
+    audio_outs = []
+    idx        = 1   # input index (0 = video)
+
+    for audio_path, offset_ms in [(p, int(o * 1000)) for p, o in voice_clips]:
+        inputs += ["-i", str(audio_path)]
+        tag = f"[va{idx}]"
+        filters.append(f"[{idx}:a]adelay={offset_ms}|{offset_ms},apad[va{idx}]")
+        audio_outs.append(tag)
+        idx += 1
+
+    if music_path:
+        inputs += ["-i", str(music_path)]
+        # Probe video duration for music fade
+        try:
+            vid_dur    = _probe_duration(video_path)
+            fade_start = max(0, vid_dur - fade_out_sec)
+        except Exception:
+            fade_start = 0
+        filters.append(
+            f"[{idx}:a]volume={music_volume},"
+            f"afade=t=out:st={fade_start:.1f}:d={fade_out_sec}[vmusic]"
+        )
+        audio_outs.append("[vmusic]")
+        idx += 1
+
+    if not audio_outs:
+        # No audio at all — just copy video
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(video_path), "-c", "copy", str(out_path)],
+            capture_output=True, text=True, timeout=600, check=True
+        )
+        return
+
+    n = len(audio_outs)
+    filters.append(f"{''.join(audio_outs)}amix=inputs={n}:duration=first:dropout_transition=2[aout]")
+    filter_str = ";".join(filters)
+
+    cmd = [
+        "ffmpeg", "-y",
+        *inputs,
+        "-filter_complex", filter_str,
+        "-map", "0:v",
+        "-map", "[aout]",
+        "-c:v", "copy",
+        "-c:a", "aac", "-b:a", "192k",
+        str(out_path),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    if result.returncode != 0:
+        raise RuntimeError(f"ffmpeg audio mix error:\n{result.stderr}")
 
 
 @router.post("/video/export-timeline")
@@ -196,8 +288,8 @@ async def export_timeline(payload: ExportTimelinePayload):
     if not tl_path.exists():
         raise HTTPException(400, "Timeline not found")
 
-    data   = json.loads(tl_path.read_text())
-    shots  = data.get("shots", [])
+    data  = json.loads(tl_path.read_text())
+    shots = data.get("shots", [])
 
     if payload.shot_ids:
         shots = [s for sid in payload.shot_ids for s in shots if s.get("id") == sid]
@@ -205,55 +297,88 @@ async def export_timeline(payload: ExportTimelinePayload):
         shots = [s for s in shots if s.get("videoUrl") or s.get("renderOutputUrl") or s.get("clipUrl")]
 
     if not shots:
-        raise HTTPException(400, "No video clips found in timeline. Animate your shots first.")
+        raise HTTPException(400, "No video clips in timeline — animate your shots first.")
 
-    tmp_dir  = Path(tempfile.mkdtemp())
-    clip_paths: list[Path] = []
+    tmp_dir    = Path(tempfile.mkdtemp())
+    clip_paths: list[Path]   = []
+    shot_map:  list[int]     = []   # which shot index maps to which clip
 
+    # ── 1. Download / resolve all video clips ─────────────────
     for i, shot in enumerate(shots):
         url = shot.get("videoUrl") or shot.get("renderOutputUrl") or shot.get("clipUrl") or ""
         if not url:
             continue
-
-        # Already a local path
         if not url.startswith("http"):
             local = _resolve_path(url)
             if local.exists():
-                clip_paths.append(local)
+                clip_paths.append(local); shot_map.append(i)
             continue
-
-        # Remote URL — download to temp file
         dest = tmp_dir / f"clip_{i:04d}.mp4"
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "LEVRAM/1.0"})
+            req  = urllib.request.Request(url, headers={"User-Agent": "LEVRAM/1.0"})
             loop = asyncio.get_event_loop()
             def _dl(r=req, d=dest):
                 with urllib.request.urlopen(r, timeout=120) as resp:
                     d.write_bytes(resp.read())
             await loop.run_in_executor(None, _dl)
-            clip_paths.append(dest)
-        except Exception as e:
-            # Skip undownloadable clips rather than aborting the whole export
+            clip_paths.append(dest); shot_map.append(i)
+        except Exception:
             continue
 
     if not clip_paths:
-        raise HTTPException(400, "Could not resolve any video files. Re-generate clips and try again.")
+        raise HTTPException(400, "Could not resolve any video files.")
 
-    ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_name = f"{payload.title.replace(' ', '_')}_{ts}.mp4"
-    out_path = VID_DIR / out_name
+    ts        = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_title = payload.title.replace(" ", "_")
 
+    # ── 2. Concat video clips ─────────────────────────────────
+    base_video = tmp_dir / f"{safe_title}_base_{ts}.mp4"
     loop = asyncio.get_event_loop()
     try:
-        await loop.run_in_executor(None, lambda: _ffmpeg_concat(clip_paths, out_path))
+        await loop.run_in_executor(None, lambda: _ffmpeg_concat(clip_paths, base_video))
+    except RuntimeError as e:
+        raise HTTPException(500, str(e))
+
+    # ── 3. Collect voice audio with timing offsets ────────────
+    voice_clips: list[tuple[Path, float]] = []
+    if payload.include_voice:
+        cursor = 0.0
+        for clip_idx, shot_idx in enumerate(shot_map):
+            shot     = shots[shot_idx]
+            clip_dur = await loop.run_in_executor(None, lambda p=clip_paths[clip_idx]: _probe_duration(p))
+            # Prefer FX-processed audio, then raw TTS
+            audio_url = shot.get("fxUrl") or shot.get("rawUrl") or ""
+            audio_path = _resolve_audio(audio_url)
+            if audio_path:
+                voice_clips.append((audio_path, cursor))
+            cursor += clip_dur
+
+    # ── 4. Resolve music track ────────────────────────────────
+    music_path: Path | None = None
+    if payload.music_url:
+        mp = BASE_DIR / payload.music_url.lstrip("/")
+        if mp.exists():
+            music_path = mp
+
+    # ── 5. Mix audio → final output ──────────────────────────
+    out_name = f"{safe_title}_{ts}.mp4"
+    out_path = VID_DIR / out_name
+
+    try:
+        await loop.run_in_executor(None, lambda: _ffmpeg_mix_audio(
+            base_video, voice_clips, music_path,
+            payload.music_volume, payload.fade_out_sec, out_path
+        ))
     except RuntimeError as e:
         raise HTTPException(500, str(e))
 
     return {
-        "success":    True,
-        "exportUrl":  "/output/videos/" + out_name,
-        "clips":      len(clip_paths),
-        "skipped":    len(shots) - len(clip_paths),
+        "success":      True,
+        "exportUrl":    "/output/videos/" + out_name,
+        "clips":        len(clip_paths),
+        "voice_tracks": len(voice_clips),
+        "music":        bool(music_path),
+        "skipped":      len(shots) - len(clip_paths),
     }
 
 

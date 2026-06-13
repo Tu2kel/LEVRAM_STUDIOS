@@ -918,8 +918,7 @@
             <button id="btn-clear" class="ws-ctrl-btn">Clear</button>
             <button id="btn-save-timeline-order" class="ws-ctrl-btn gold">Save Order</button>
             <button id="btn-export-timeline" class="ws-ctrl-btn"
-              style="background:linear-gradient(90deg,rgba(139,105,20,0.5),rgba(201,168,76,0.5));border-color:rgba(201,168,76,0.6);color:var(--gold);"
-              onclick="tlExportFinalVideo()">
+              style="background:linear-gradient(90deg,rgba(139,105,20,0.5),rgba(201,168,76,0.5));border-color:rgba(201,168,76,0.6);color:var(--gold);">
               ⬇ Export Final Video
             </button>
           </div>
@@ -1214,5 +1213,61 @@
         setInterval(ping, 15000);
       })();
     </script>
+
+    <!-- ── Export Modal ────────────────────────────────────── -->
+    <div id="tl-export-modal"
+      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;"
+      onclick="if(event.target===this)tlCloseExportModal()">
+      <div style="background:#0d0d14;border:1px solid rgba(201,168,76,0.35);border-radius:6px;width:460px;max-width:95vw;padding:24px;font-family:Rajdhani,sans-serif;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span style="font-size:16px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);">⬇ Export Final Video</span>
+          <button onclick="tlCloseExportModal()" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:18px;cursor:pointer;">✕</button>
+        </div>
+
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-bottom:16px;">
+          <span id="tl-export-clip-count">0</span> animated clips &nbsp;·&nbsp;
+          <span id="tl-export-voice-count">0</span> voice tracks
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Title / Filename</div>
+            <input id="tl-export-title" value="LEVRAM_Export"
+              style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12);color:#fff;font-family:Rajdhani,sans-serif;font-size:14px;padding:7px 10px;border-radius:3px;" />
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:3px;">
+            <input type="checkbox" id="tl-export-voice-chk" checked style="accent-color:var(--gold);width:14px;height:14px;" />
+            <label for="tl-export-voice-chk" style="font-size:12px;color:rgba(255,255,255,0.7);letter-spacing:1px;cursor:pointer;">
+              Include voice audio (auto-generated TTS + FX or manual recordings)
+            </label>
+          </div>
+
+          <div>
+            <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Music Track (optional)</div>
+            <select id="tl-export-music-sel"
+              style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12);color:#fff;font-family:Rajdhani,sans-serif;font-size:13px;padding:6px 8px;border-radius:3px;">
+              <option value="">None — no music</option>
+            </select>
+          </div>
+
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;">Music Volume</span>
+              <span id="tl-export-vol-label" style="font-size:11px;color:rgba(255,255,255,0.4);">20%</span>
+            </div>
+            <input type="range" id="tl-export-music-vol" min="0" max="1" step="0.05" value="0.2"
+              oninput="document.getElementById('tl-export-vol-label').textContent=Math.round(this.value*100)+'%'"
+              style="width:100%;accent-color:var(--gold);" />
+          </div>
+        </div>
+
+        <button id="tl-export-run-btn" onclick="tlRunExport()"
+          style="width:100%;margin-top:20px;background:linear-gradient(90deg,rgba(139,105,20,0.6),rgba(201,168,76,0.6));border:1px solid rgba(201,168,76,0.6);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;padding:10px;border-radius:3px;cursor:pointer;">
+          ⬇ Export Final Video
+        </button>
+        <div id="tl-export-status" style="margin-top:10px;font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:1px;min-height:16px;text-align:center;"></div>
+      </div>
+    </div>
   </body>
 </html>

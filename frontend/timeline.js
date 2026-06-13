@@ -157,38 +157,81 @@
 
       loadRenderQueue();
 
-      // ── Export Timeline → Final MP4 ──────────────────────────
-      window.tlExportFinalVideo = async function tlExportFinalVideo() {
-        const btn      = document.getElementById("btn-export-timeline");
-        const videoShots = shots.filter(s => s.videoUrl || s.renderOutputUrl || s.clipUrl);
+      // ── Export modal ──────────────────────────────────────────
+      async function tlLoadMusicLibrary() {
+        try {
+          const res  = await levFetch(`${BASE}/music/library`);
+          const data = await res.json();
+          const sel  = document.getElementById("tl-export-music-sel");
+          if (!sel) return;
+          (data.tracks || []).forEach(t => {
+            const o = document.createElement("option");
+            o.value = t.url; o.textContent = t.title || t.filename || t.url.split("/").pop();
+            sel.appendChild(o);
+          });
+        } catch (_) {}
+      }
 
+      window.tlOpenExportModal = function tlOpenExportModal() {
+        const videoShots = shots.filter(s => s.videoUrl || s.renderOutputUrl || s.clipUrl);
+        const voiceShots = shots.filter(s => s.fxUrl || s.rawUrl);
+        const modal = document.getElementById("tl-export-modal");
+        if (!modal) return;
+        document.getElementById("tl-export-clip-count").textContent  = videoShots.length;
+        document.getElementById("tl-export-voice-count").textContent = voiceShots.length;
+        tlLoadMusicLibrary();
+        modal.style.display = "flex";
+      };
+
+      window.tlCloseExportModal = function tlCloseExportModal() {
+        const modal = document.getElementById("tl-export-modal");
+        if (modal) modal.style.display = "none";
+      };
+
+      window.tlRunExport = async function tlRunExport() {
+        const videoShots = shots.filter(s => s.videoUrl || s.renderOutputUrl || s.clipUrl);
         if (!videoShots.length) {
-          alert("No animated clips in the timeline yet. Animate your shots first, then export.");
+          alert("No animated clips in timeline yet.");
           return;
         }
 
-        const title = prompt("Export title (used for filename):", "LEVRAM_Export") || "LEVRAM_Export";
-        if (btn) { btn.textContent = `Exporting ${videoShots.length} clips…`; btn.disabled = true; btn.classList.add("lora-scanning"); }
+        const title         = document.getElementById("tl-export-title")?.value.trim()       || "LEVRAM_Export";
+        const musicUrl      = document.getElementById("tl-export-music-sel")?.value          || "";
+        const musicVolume   = parseFloat(document.getElementById("tl-export-music-vol")?.value ?? "0.2");
+        const includeVoice  = document.getElementById("tl-export-voice-chk")?.checked        ?? true;
+
+        const btn    = document.getElementById("tl-export-run-btn");
+        const status = document.getElementById("tl-export-status");
+
+        if (btn)    { btn.disabled = true; btn.textContent = `Exporting ${videoShots.length} clips…`; btn.classList.add("lora-scanning"); }
+        if (status) status.textContent = "Downloading clips and mixing audio…";
 
         try {
           const res  = await levFetch(`${BASE}/video/export-timeline`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title }),
+            body: JSON.stringify({ title, music_url: musicUrl, music_volume: musicVolume, include_voice: includeVoice }),
           });
           const data = await res.json();
           if (!res.ok || !data.success) throw new Error(data.detail || "Export failed");
 
           const fullUrl = (window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000") + data.exportUrl;
-          if (btn) { btn.textContent = `✔ Done — ${data.clips} clips`; btn.disabled = false; btn.classList.remove("lora-scanning"); }
 
-          // Auto-trigger download
+          const parts = [`${data.clips} clips`];
+          if (data.voice_tracks) parts.push(`${data.voice_tracks} voice tracks`);
+          if (data.music)        parts.push("music mixed");
+          if (status) status.textContent = `✔ Done — ${parts.join(" · ")}`;
+
+          if (btn) { btn.disabled = false; btn.textContent = "Export Again"; btn.classList.remove("lora-scanning"); }
+
           const a = document.createElement("a");
           a.href = fullUrl; a.download = data.exportUrl.split("/").pop(); a.click();
-
-          setTimeout(() => { if (btn) btn.textContent = "⬇ Export Final Video"; }, 4000);
         } catch (err) {
-          if (btn) { btn.textContent = "Export failed — " + err.message; btn.disabled = false; btn.classList.remove("lora-scanning"); }
+          if (status) status.textContent = "Export failed: " + err.message;
+          if (btn)    { btn.disabled = false; btn.textContent = "⬇ Export Final Video"; btn.classList.remove("lora-scanning"); }
           console.error("TL EXPORT ERROR:", err);
         }
       };
+
+      // Wire export button to modal opener
+      document.getElementById("btn-export-timeline")?.addEventListener("click", tlOpenExportModal);

@@ -403,7 +403,7 @@ async def generate_character_preview(payload: dict):
                         "num_inference_steps": 28,
                         "guidance_scale":      4.0,
                         "id_weight":           1.0,
-                        "negative_prompt":     "cartoon, illustration, painting, stylized, anime, unrealistic, disfigured",
+                        "negative_prompt":     "cartoon, illustration, painting, stylized, anime, unrealistic, disfigured, back turned, rear view, from behind, back to camera, silhouette",
                         "enable_safety_checker": False,
                     })
                 )

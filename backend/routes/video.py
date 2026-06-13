@@ -383,12 +383,22 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
         remote_url = image_url
 
     is_runway = model_key.startswith("runway")
+    is_wan    = model_key.startswith("wan")
     if is_runway:
         # Runway: image_url + prompt + duration only; no resolution param
         args = {
             "image_url": remote_url,
             "prompt":    prompt or "cinematic motion, smooth camera movement",
             "duration":  10 if duration >= 8 else 5,
+        }
+    elif is_wan:
+        # Wan requires explicit aspect_ratio — 'auto' is not supported on distributed GPUs
+        args = {
+            "image_url":    remote_url,
+            "prompt":       prompt or "cinematic motion, smooth camera",
+            "duration":     duration,
+            "resolution":   "720p",
+            "aspect_ratio": "16:9",
         }
     else:
         args = {

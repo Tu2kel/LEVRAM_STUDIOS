@@ -548,12 +548,10 @@ FAL_T2V_MODELS = {
 
 # Image-to-Video models — lock the character's face via a keyframe
 FAL_I2V_MODELS = {
-    "wan21_i2v":       "fal-ai/wan-i2v",                               # Wan 2.1 I2V — free
+    "wan21_i2v":       "fal-ai/wan-i2v",                               # Wan 2.1 I2V — free, fast draft
     "wan21_14b_i2v":   "fal-ai/wan/v2.2-a14b/image-to-video",         # Wan 2.2 14B — free, best open
-    "kling_pro":       "fal-ai/kling-video/v2.1/pro/image-to-video",   # Kling 2.1 Pro — ~$0.35/5s
-    "kling_26":        "fal-ai/kling-video/v2.6/pro/image-to-video",   # Kling 2.6 Pro — latest
+    "kling_26":        "fal-ai/kling-video/v2.6/pro/image-to-video",   # Kling 2.6 Pro — production
     "kling_o1":        "fal-ai/kling-video/o1/image-to-video",         # Kling O1 — dual keyframe (start+end)
-    "seedance":        "bytedance/seedance-2.0/fast/image-to-video",   # Seedance 2.0 Fast — ~$2.42/10s
     "runway_turbo":    "fal-ai/runway-gen4-turbo/image-to-video",      # Runway Turbo — paid
     "runway_gen4_i2v": "fal-ai/runway-gen4.5/image-to-video",         # Runway Gen-4.5 — paid, best
 }
@@ -716,7 +714,7 @@ class FalI2VPayload(BaseModel):
     image_url: str               # start frame — local /output/... URL or remote https://
     end_image_url: str = ""      # end frame — only used by kling_o1 dual-keyframe
     prompt: str = ""
-    model: str = "kling_pro"
+    model: str = "kling_26"
     duration: int = 5
     project: str = ""            # saga/project name for per-project film library
 
@@ -744,9 +742,8 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
     remote_url = _upload_if_local(image_url)
 
     is_runway   = model_key.startswith("runway")
-    is_wan      = model_key.startswith("wan")
-    is_kling    = model_key.startswith("kling")
-    is_seedance = model_key.startswith("seedance")
+    is_wan   = model_key.startswith("wan")
+    is_kling = model_key.startswith("kling")
 
     if model_key == "kling_o1":
         # Dual-keyframe: synthesises motion between start and end image
@@ -783,15 +780,6 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
             "prompt":       prompt or "cinematic motion, smooth camera movement",
             "duration":     10 if duration >= 8 else 5,
             "aspect_ratio": "16:9",
-        }
-    elif is_seedance:
-        # Seedance 2.0: duration up to 10s, supports audio gen
-        args = {
-            "image_url":      remote_url,
-            "prompt":         prompt or "cinematic motion, smooth camera movement",
-            "duration":       min(duration, 10),
-            "resolution":     "720p",
-            "aspect_ratio":   "16:9",
         }
     else:
         # Generic fallback
@@ -921,14 +909,15 @@ def list_fal_video_models():
             ],
         },
         "i2v": {
-            "default": "hunyuan_i2v",
+            "default": "wan21_i2v",
             "note": "Animate a FLUX+LoRA keyframe — character face is locked",
             "models": [
-                {"id": "hunyuan_i2v",     "label": "HunyuanVideo I2V",      "speed": "medium", "paid": False, "note": "Free — strong face consistency"},
-                {"id": "runway_turbo",    "label": "Runway Gen-4 Turbo ✦",  "speed": "fast",   "paid": True,  "note": "Fastest Runway — I2V only"},
-                {"id": "runway_gen4_i2v", "label": "Runway Gen-4.5 ✦",      "speed": "fast",   "paid": True,  "note": "Best quality — Runway flagship I2V"},
-                {"id": "wan21_i2v",       "label": "Wan 2.1 Fast",           "speed": "fast",   "paid": False, "note": "Free — fast character shots"},
-                {"id": "wan21_14b_i2v",   "label": "Wan 2.1 Best",           "speed": "slow",   "paid": False, "note": "Free — best open-source quality"},
+                {"id": "wan21_i2v",       "label": "Wan 2.1 Fast",          "speed": "fast",   "paid": False, "note": "Free — fast draft/preview"},
+                {"id": "wan21_14b_i2v",   "label": "Wan 2.1 Best",          "speed": "slow",   "paid": False, "note": "Free — best open-source quality"},
+                {"id": "kling_26",        "label": "Kling 2.6 Pro ✦",       "speed": "medium", "paid": True,  "note": "Production — best quality I2V"},
+                {"id": "kling_o1",        "label": "Kling O1 Dual-frame ✦", "speed": "medium", "paid": True,  "note": "Start+end keyframe synthesis"},
+                {"id": "runway_turbo",    "label": "Runway Gen-4 Turbo ✦",  "speed": "fast",   "paid": True,  "note": "Fast Runway I2V"},
+                {"id": "runway_gen4_i2v", "label": "Runway Gen-4.5 ✦",      "speed": "fast",   "paid": True,  "note": "Runway flagship I2V"},
             ],
         },
     }

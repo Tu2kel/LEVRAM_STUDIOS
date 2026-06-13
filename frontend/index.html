@@ -419,11 +419,9 @@
                 </select>
                 <div class="field-label" style="margin:0;white-space:nowrap;">Quality:</div>
                 <select id="iv-model" class="voice-char-select" style="flex:2;min-width:160px;" onchange="ivUpdateCostEst()">
-                  <option value="wan21_i2v">Wan 2.1 — Free preview</option>
+                  <option value="wan21_i2v">Wan 2.1 — Free (draft preview)</option>
                   <option value="wan21_14b_i2v">Wan 2.1 Best — Free (slow)</option>
-                  <option value="kling_21_pro">Kling 2.1 Pro — ~$0.14/shot</option>
-                  <option value="kling_26">Kling 2.6 Pro — ~$0.28/shot</option>
-                  <option value="seedance">Seedance 2.0 — ~$1.21/shot ⚠ expensive</option>
+                  <option value="kling_26">Kling 2.6 Pro — production quality</option>
                 </select>
               </div>
               <div id="iv-cost-est" style="font-size:10px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-bottom:10px;"></div>
@@ -507,11 +505,9 @@
                   <div>
                     <div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Video Model</div>
                     <select id="orch-model" style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 6px;border-radius:2px;">
-                      <option value="kling_pro" selected>Kling 2.1 Pro</option>
-                      <option value="kling_26">Kling 2.6 Pro</option>
-                      <option value="wan21_i2v">Wan 2.1</option>
-                      <option value="wan21_14b_i2v">Wan 2.2 14B</option>
-                      <option value="seedance">Seedance 2.0</option>
+                      <option value="wan21_i2v" selected>Wan 2.1 — Free draft</option>
+                      <option value="wan21_14b_i2v">Wan 2.1 Best — Free</option>
+                      <option value="kling_26">Kling 2.6 Pro — production</option>
                     </select>
                   </div>
                 </div>
@@ -723,14 +719,12 @@
                 <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Animate this image</div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
                   <select id="ig-i2v-model" onchange="igHandleI2VModelChange(this.value)" style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 8px;border-radius:2px;">
-                    <option value="wan21_i2v" selected>Wan 2.1 — Free (test here first)</option>
-                    <option value="wan21_14b_i2v">Wan 2.2 14B — Free, best open-source</option>
-                    <option value="kling_pro">Kling 2.1 Pro — ~$0.35/5s, cinematic</option>
-                    <option value="kling_26">Kling 2.6 Pro — latest, sharpest motion</option>
-                    <option value="kling_o1">Kling O1 — Dual Keyframe (start → end image)</option>
-                    <option value="seedance">Seedance 2.0 Fast — ~$2.42/10s, built-in audio</option>
-                    <option value="runway_turbo">Runway Gen-4 Turbo ✦ — Fastest Runway</option>
-                    <option value="runway_gen4_i2v">Runway Gen-4.5 ✦ — Best quality Runway</option>
+                    <option value="wan21_i2v" selected>Wan 2.1 — Free (draft)</option>
+                    <option value="wan21_14b_i2v">Wan 2.1 Best — Free</option>
+                    <option value="kling_26">Kling 2.6 Pro — production</option>
+                    <option value="kling_o1">Kling O1 — Dual Keyframe (start → end)</option>
+                    <option value="runway_turbo">Runway Gen-4 Turbo ✦</option>
+                    <option value="runway_gen4_i2v">Runway Gen-4.5 ✦ — best Runway</option>
                   </select>
 
                   <!-- End frame slot — only shown for Kling O1 -->
@@ -762,9 +756,9 @@
                   <div id="ig-i2v-compare" style="display:none;margin-top:8px;display:none;">
                     <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Model Comparison</div>
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
-                      <div id="ig-i2v-slot-kling_pro"     style="background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:3px;padding:6px;min-height:60px;font-size:10px;color:var(--text-dim);"></div>
                       <div id="ig-i2v-slot-wan21_i2v"     style="background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:3px;padding:6px;min-height:60px;font-size:10px;color:var(--text-dim);"></div>
                       <div id="ig-i2v-slot-wan21_14b_i2v" style="background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:3px;padding:6px;min-height:60px;font-size:10px;color:var(--text-dim);"></div>
+                      <div id="ig-i2v-slot-kling_26"      style="background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:3px;padding:6px;min-height:60px;font-size:10px;color:var(--text-dim);"></div>
                     </div>
                   </div>
                 </div>

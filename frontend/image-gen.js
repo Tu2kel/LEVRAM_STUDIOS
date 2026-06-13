@@ -631,9 +631,9 @@ function igAnimateImage() {
 }
 
 const _FREE_I2V_MODELS = {
-  kling_pro:     "Kling 2.1 Pro",
   wan21_i2v:     "Wan 2.1",
-  wan21_14b_i2v: "Wan 2.2 14B",
+  wan21_14b_i2v: "Wan 2.1 Best",
+  kling_26:      "Kling 2.6 Pro",
 };
 
 window.igSendToTimeline = async function igSendToTimeline(videoUrl, name) {
@@ -817,12 +817,10 @@ async function igRunI2V() {
   }
 
   const modelLabels = {
-    kling_o1:        "Kling O1 Dual-Keyframe",
-    kling_pro:       "Kling 2.1 Pro",
-    kling_26:        "Kling 2.6 Pro",
-    seedance:        "Seedance 2.0",
     wan21_i2v:       "Wan 2.1",
-    wan21_14b_i2v:   "Wan 2.2 14B",
+    wan21_14b_i2v:   "Wan 2.1 Best",
+    kling_26:        "Kling 2.6 Pro",
+    kling_o1:        "Kling O1 Dual-Keyframe",
     runway_turbo:    "Runway Gen-4 Turbo ✦",
     runway_gen4_i2v: "Runway Gen-4.5 ✦",
   };

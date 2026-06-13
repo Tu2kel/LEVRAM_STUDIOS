@@ -21,6 +21,9 @@ function loadSceneIntoEditor(scene) {
 
         setActiveSceneForBattery(scene);
 
+        // Populate preview panel with this shot's keyframe, clip, and metadata
+        if (window.pdUpdatePreview) window.pdUpdatePreview(scene);
+
         setStatus(`Loaded ${scene.id} for editing.`);
       }
 
@@ -191,6 +194,11 @@ function buildCinematicPrompt() {
 document
   .getElementById("btn-generate-prompt")
   ?.addEventListener("click", buildCinematicPrompt);
+
+// ─── Expose current project globally so other tabs can scope their data ──
+document.getElementById("shot-project")?.addEventListener("input", function () {
+  window.LEVRAM_CURRENT_PROJECT = this.value.trim();
+});
 
 // ─── AI Shot Assistant ─────────────────────────────────────
 document

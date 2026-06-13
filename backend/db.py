@@ -38,7 +38,7 @@ if MONGODB_URL:
     db = _client[DB_NAME]
 
     # Convenience collection handles — import these in route files
-    characters_col  = db["characters"]
+    characters_col   = db["characters"]
     scenes_col       = db["scenes"]
     ideas_col        = db["ideas"]
     projects_col     = db["projects"]
@@ -46,7 +46,10 @@ if MONGODB_URL:
     render_queue_col = db["render_queue"]
     music_col        = db["music_library"]
     asset_tags_col   = db["asset_tags"]
+    videos_col       = db["videos"]       # generated video metadata (project, filename, url, created)
+    timelines_col    = db["timelines"]    # timeline shot order per project
 else:
     # Stub objects so import statements don't break
     characters_col = scenes_col = ideas_col = projects_col = None
     episodes_col = render_queue_col = music_col = asset_tags_col = None
+    videos_col = timelines_col = None

@@ -514,7 +514,9 @@ async function igLoadVideoGallery() {
   if (!gallery) return;
 
   try {
-    const res  = await levFetch(`${IG_BASE}/video/library`);
+    const project = window.LEVRAM_CURRENT_PROJECT || "";
+    const qs      = project ? `?project=${encodeURIComponent(project)}` : "";
+    const res  = await levFetch(`${IG_BASE}/video/library${qs}`);
     const data = await res.json();
     const vids = data.videos || [];
 
@@ -524,7 +526,9 @@ async function igLoadVideoGallery() {
     }
 
     gallery.innerHTML = vids.map(v => `
-      <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.15);border-radius:4px;padding:8px;">
+      <div id="ig-vid-${v.name}" style="background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.15);border-radius:4px;padding:8px;position:relative;">
+        <button onclick="igDeleteVideo('${v.url}','${v.name}')" title="Delete"
+          style="position:absolute;top:4px;right:4px;background:rgba(140,20,20,0.85);border:none;color:#fff;width:20px;height:20px;border-radius:3px;cursor:pointer;font-size:11px;line-height:1;z-index:1;">✕</button>
         <video src="${IG_BASE + v.url}" controls style="width:100%;border-radius:2px;max-height:180px;background:#000;"></video>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;gap:4px;flex-wrap:wrap;">
           <span style="font-size:10px;color:var(--text-dim);letter-spacing:1px;">${v.created} · ${v.size_mb}MB</span>
@@ -543,6 +547,17 @@ async function igLoadVideoGallery() {
     if (gallery) gallery.innerHTML = `<div style="color:var(--text-dim);font-size:11px;">Could not load videos.</div>`;
   }
 }
+
+window.igDeleteVideo = async function igDeleteVideo(url, name) {
+  if (!confirm(`Delete ${name}?`)) return;
+  try {
+    const res = await levFetch(`${IG_BASE}/video/delete?url=${encodeURIComponent(url)}`, { method: "DELETE" });
+    if (!res.ok) throw new Error((await res.json()).detail || "Delete failed");
+    document.getElementById(`ig-vid-${name}`)?.remove();
+  } catch (err) {
+    alert("Could not delete: " + err.message);
+  }
+};
 
 // ─── Lightbox ─────────────────────────────────────────────
 function igOpenLightbox(url) {
@@ -834,6 +849,8 @@ async function igRunI2V() {
   }
 
   try {
+    const currentProject = document.getElementById("shot-project")?.value?.trim()
+      || window.LEVRAM_CURRENT_PROJECT || "";
     const res  = await levFetch(`${IG_BASE}/video/image-to-video`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -841,6 +858,7 @@ async function igRunI2V() {
         image_url:     igCurrentImageUrl,
         end_image_url: model === "kling_o1" ? (igEndFrameUrl || "") : "",
         prompt, model, duration,
+        project: currentProject,
       }),
     });
     const data = await res.json();

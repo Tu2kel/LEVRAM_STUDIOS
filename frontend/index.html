@@ -18,17 +18,11 @@
         <span class="logo-sub">Generator v2</span>
       </div>
       <nav class="top-nav">
-        <button class="nav-btn active" data-tab="voice-lab">Voice Lab</button>
         <button class="nav-btn" data-tab="idea-vault">Idea Vault</button>
-        <button class="nav-btn" data-tab="shot-builder">Shot Builder</button>
+        <button class="nav-btn" data-tab="characters">Characters</button>
+        <button class="nav-btn active" data-tab="shot-builder">Production</button>
         <button class="nav-btn" data-tab="image-gen">Image Gen</button>
-        <button class="nav-btn" data-tab="title-seq">Title Seq ↗</button>
-        <button class="nav-btn" data-tab="story">Story Engine ↗</button>
-        <button class="nav-btn" data-tab="music">Music ↗</button>
         <button class="nav-btn" data-tab="timeline">Timeline ↗</button>
-        <button class="nav-btn" data-tab="export">Export ↗</button>
-        <button class="nav-btn" data-tab="voice-clone">Voice Clone ↗</button>
-        <button class="nav-btn" data-tab="assets">Assets ↗</button>
         <button class="nav-btn" data-tab="projects">Projects ↗</button>
         <button class="nav-btn" data-tab="settings">Settings ↗</button>
         <button id="theme-toggle" class="nav-btn">Ivory Mode</button>
@@ -685,7 +679,7 @@
                 <span class="field-label" style="margin:0;">Latest</span>
                 <button onclick="document.getElementById('ig-result').style.display='none'" style="background:transparent;border:none;color:var(--text-dim);font-size: 19px;cursor:pointer;padding:0 4px;" title="Close">✕</button>
               </div>
-              <img id="ig-result-img" style="width:100%;border:1px solid var(--border);border-radius:2px;cursor:zoom-in;" alt="Generated image" onclick="igOpenLightbox(this.src)" />
+              <img id="ig-result-img" style="max-height:50vh;max-width:100%;width:auto;display:block;margin:0 auto;border:1px solid var(--border);border-radius:2px;cursor:zoom-in;" alt="Generated image" onclick="igOpenLightbox(this.src)" />
               <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;flex-wrap:wrap;">
                 <button id="ig-upscale-btn" onclick="igUpscale()" style="background:transparent;border:1px solid rgba(60,120,255,0.4);color:#6fa3ff;font-family:Rajdhani,sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Upscale ×4</button>
                 <button id="ig-swap-btn" onclick="igSwapFaces()" style="background:transparent;border:1px solid rgba(255,140,0,0.5);color:#ffaa44;font-family:Rajdhani,sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;" title="Replace faces using Person 1 / Person 2 slots">Swap Faces</button>
@@ -801,20 +795,6 @@
         <button class="workspace-tab-btn" type="button" onclick="window.open('timeline.html','_blank')">
           ☰ &nbsp;Timeline ↗
         </button>
-        <button
-          class="workspace-tab-btn"
-          type="button"
-          onclick="window.open('render-queue.html', '_blank')"
-        >
-          🎬 &nbsp;Render Queue ↗
-        </button>
-        <button
-          class="workspace-tab-btn"
-          type="button"
-          onclick="window.open('character-lab.html','_blank')"
-        >
-          👤 &nbsp;Character Lab ↗
-        </button>
       </div>
 
       <!-- ROW 4a — PREVIEW workspace -->
@@ -881,16 +861,20 @@
           </div>
           <div class="preview-meta">
             <div class="meta-item">
+              <span class="meta-label">Shot</span
+              ><span id="meta-shot-num" class="meta-val gold">—</span>
+            </div>
+            <div class="meta-item">
               <span class="meta-label">Character</span
-              ><span id="meta-char" class="meta-val gold">Hulk</span>
+              ><span id="meta-char" class="meta-val gold">—</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">Preset</span
-              ><span id="meta-preset" class="meta-val">Villain</span>
+              ><span id="meta-preset" class="meta-val">—</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">Engine</span
-              ><span class="meta-val">Spark-TTS</span>
+              ><span id="meta-engine" class="meta-val">Spark-TTS</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">FX Status</span
@@ -902,10 +886,32 @@
             </div>
             <div class="meta-item">
               <span class="meta-label">Project</span
-              ><span class="meta-val blue">The Runner</span>
+              ><span id="meta-project" class="meta-val blue">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Keyframe</span
+              ><span id="meta-keyframe-status" class="meta-val">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Clip</span
+              ><span id="meta-clip-status" class="meta-val">—</span>
             </div>
           </div>
         </div>
+        <!-- Shot media preview row — populated by pdUpdatePreview(shot) -->
+        <div id="preview-media-row" style="display:none;flex-shrink:0;padding:8px 20px 6px;border-top:1px solid rgba(201,168,76,0.08);background:rgba(0,0,0,0.25);">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <img id="preview-keyframe" style="display:none;height:110px;max-width:150px;border-radius:4px;object-fit:contain;border:1px solid rgba(201,168,76,0.25);flex-shrink:0;" alt="Keyframe" />
+            <video id="preview-clip" style="display:none;height:110px;max-width:180px;border-radius:4px;flex-shrink:0;" controls muted loop playsinline></video>
+            <div style="flex:1;min-width:0;">
+              <div id="preview-shot-num" style="font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;"></div>
+              <div id="preview-shot-desc" style="font-size:11px;color:rgba(255,255,255,0.6);line-height:1.5;max-height:50px;overflow:hidden;margin-bottom:4px;"></div>
+              <div id="preview-shot-dialogue" style="font-size:12px;color:var(--gold);font-style:italic;line-height:1.4;max-height:40px;overflow:hidden;"></div>
+              <div id="preview-shot-actions" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;"></div>
+            </div>
+          </div>
+        </div>
+
         <div id="waveform-area" class="waveform-area" style="flex-shrink: 0">
           <span
             style="
@@ -968,34 +974,6 @@
             flex-direction: column;
             gap: 10px;
             border-top: 1px solid rgba(201, 168, 76, 0.08);
-          "
-        ></div>
-      </div>
-
-      <!-- ROW 4c — RENDER QUEUE workspace -->
-      <div
-        id="ws-queue"
-        class="workspace-panel"
-        style="grid-column: 1/-1; grid-row: 4; display: none; flex-direction: column; min-height: 0; overflow: hidden"
-      >
-        <div class="timeline-header" style="flex-shrink: 0">
-          <span class="panel-title" style="font-size: 20px; letter-spacing: 5px">Render Queue</span>
-          <div style="display: flex; gap: 8px; margin-left: 16px">
-            <button id="btn-clear-render-queue" class="ws-ctrl-btn">Clear Queue</button>
-          </div>
-          <span id="rq-count" class="tl-time">0 Jobs</span>
-        </div>
-
-        <div
-          id="render-queue-panel"
-          style="
-            flex: 1 1 0;
-            min-height: 0;
-            overflow-y: scroll;
-            padding: 16px 20px 32px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
           "
         ></div>
       </div>
@@ -1135,7 +1113,6 @@
     <script src="project-battery.js"></script>
     <script src="shot-builder.js"></script>
     <script src="voice-lab.js"></script>
-    <script src="render-queue.js"></script>
     <script src="character-lab.js"></script>
     <script src="timeline.js"></script>
     <script src="preview-drawer.js"></script>
@@ -1148,9 +1125,8 @@
     <script>
       (function () {
         const panels = {
-          preview: document.getElementById("ws-preview"),
-          timeline: document.getElementById("ws-timeline"),
-          queue: document.getElementById("ws-queue"),
+          preview:   document.getElementById("ws-preview"),
+          timeline:  document.getElementById("ws-timeline"),
           character: document.getElementById("ws-character"),
         };
 
@@ -1277,6 +1253,50 @@
             <input type="range" id="tl-export-music-vol" min="0" max="1" step="0.05" value="0.2"
               oninput="document.getElementById('tl-export-vol-label').textContent=Math.round(this.value*100)+'%'"
               style="width:100%;accent-color:var(--gold);" />
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Transition</div>
+              <select id="tl-export-transition"
+                style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12);color:#fff;font-family:Rajdhani,sans-serif;font-size:13px;padding:6px 8px;border-radius:3px;">
+                <option value="none">None (hard cut)</option>
+                <option value="fade">Fade</option>
+                <option value="dissolve">Dissolve</option>
+                <option value="wipeleft">Wipe Left</option>
+                <option value="smoothup">Smooth Up</option>
+                <option value="radial">Radial</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Color Grade</div>
+              <select id="tl-export-grade"
+                style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12);color:#fff;font-family:Rajdhani,sans-serif;font-size:13px;padding:6px 8px;border-radius:3px;">
+                <option value="">None</option>
+                <option value="cinematic">Cinematic</option>
+                <option value="warm">Warm</option>
+                <option value="cool">Cool</option>
+                <option value="noir">Noir (B&W)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;">
+            <div>
+              <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Clip Speed</div>
+              <select id="tl-export-speed"
+                style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12);color:#fff;font-family:Rajdhani,sans-serif;font-size:13px;padding:6px 8px;border-radius:3px;">
+                <option value="1.0">Normal (1×)</option>
+                <option value="0.5">Slow-mo (0.5×)</option>
+                <option value="0.75">Cinematic (0.75×)</option>
+                <option value="1.5">Fast (1.5×)</option>
+                <option value="2.0">2× Speed</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:3px;height:fit-content;">
+              <input type="checkbox" id="tl-export-captions" style="accent-color:var(--gold);width:14px;height:14px;" />
+              <label for="tl-export-captions" style="font-size:12px;color:rgba(255,255,255,0.7);letter-spacing:1px;cursor:pointer;">Burn-in captions</label>
+            </div>
           </div>
         </div>
 

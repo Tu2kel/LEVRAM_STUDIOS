@@ -73,6 +73,117 @@ def _ffmpeg_concat(clip_paths: list[Path], out_path: Path) -> None:
         raise RuntimeError(f"ffmpeg concat error:\n{result.stderr}")
 
 
+_GRADE_FILTERS: dict[str, str] = {
+    "cinematic": (
+        "curves=r='0/0 0.2/0.18 0.8/0.75 1/0.92':"
+        "g='0/0.01 0.5/0.48 1/0.95':"
+        "b='0/0.04 0.5/0.44 1/0.85',"
+        "eq=contrast=1.05:saturation=0.85"
+    ),
+    "warm": "colorchannelmixer=rr=1.08:gg=1.0:bb=0.88,eq=saturation=1.1:brightness=0.02",
+    "cool": "colorchannelmixer=rr=0.90:gg=0.95:bb=1.12,eq=saturation=0.92",
+    "noir": "hue=s=0,eq=contrast=1.3:brightness=-0.05",
+}
+
+
+def _ffmpeg_build_video(
+    clip_paths: list[Path],
+    out_path: Path,
+    *,
+    transition: str = "none",
+    transition_dur: float = 0.5,
+    color_grade: str = "",
+    captions: list[dict] | None = None,
+    speed: float = 1.0,
+) -> None:
+    """Re-encode clips with optional transitions, color grade, captions, or speed."""
+    n = len(clip_paths)
+
+    # Fast path: no effects, use stream-copy concat
+    if transition == "none" and not color_grade and not captions and speed == 1.0:
+        _ffmpeg_concat(clip_paths, out_path)
+        return
+
+    durations = [_probe_duration(p) for p in clip_paths]
+    adj_durs  = [d / speed for d in durations]
+
+    inputs: list[str] = []
+    for p in clip_paths:
+        inputs += ["-i", str(p)]
+
+    vfilters: list[str] = []
+    normalize = (
+        "fps=25,"
+        "scale=1920:1080:force_original_aspect_ratio=decrease,"
+        "pad=1920:1080:-1:-1:color=black,"
+        "setsar=1"
+    )
+    for i in range(n):
+        speed_f = f"setpts={1.0/speed:.6f}*PTS," if speed != 1.0 else ""
+        vfilters.append(f"[{i}:v]{speed_f}{normalize}[v{i}]")
+
+    # Transitions or plain concat
+    current_tag: str
+    if transition != "none" and n > 1:
+        td       = transition_dur
+        last_tag = "[v0]"
+        cumulative = adj_durs[0]
+        for i in range(1, n):
+            offset   = max(0.0, cumulative - td)
+            new_tag  = f"[xf{i}]"
+            vfilters.append(
+                f"{last_tag}[v{i}]xfade=transition={transition}"
+                f":duration={td:.3f}:offset={offset:.3f}{new_tag}"
+            )
+            cumulative += adj_durs[i] - td
+            last_tag = new_tag
+        current_tag = last_tag
+    elif n > 1:
+        concat_in = "".join(f"[v{i}]" for i in range(n))
+        vfilters.append(f"{concat_in}concat=n={n}:v=1:a=0[vcat]")
+        current_tag = "[vcat]"
+    else:
+        current_tag = "[v0]"
+
+    # Color grade
+    gf = _GRADE_FILTERS.get(color_grade, "")
+    if gf:
+        vfilters.append(f"{current_tag}{gf}[vgrade]")
+        current_tag = "[vgrade]"
+
+    # Captions (burn-in dialogue)
+    if captions:
+        for j, cap in enumerate(captions):
+            raw = str(cap.get("text", "")).strip()
+            if not raw:
+                continue
+            esc   = raw.replace("\\", "\\\\").replace("'", "\\'").replace(":", "\\:")
+            start = float(cap.get("start", 0))
+            end   = float(cap.get("end", start + 3.0))
+            vfilters.append(
+                f"{current_tag}drawtext="
+                f"text='{esc}':"
+                f"fontcolor=white:fontsize=34:"
+                f"box=1:boxcolor=black@0.55:boxborderw=6:"
+                f"x=(w-text_w)/2:y=h-th-40:"
+                f"enable='between(t\\,{start:.2f}\\,{end:.2f})'[vcap{j}]"
+            )
+            current_tag = f"[vcap{j}]"
+
+    cmd = [
+        "ffmpeg", "-y",
+        *inputs,
+        "-filter_complex", ";".join(vfilters),
+        "-map", current_tag,
+        "-an",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
+        str(out_path),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+    if result.returncode != 0:
+        raise RuntimeError(f"ffmpeg build_video error:\n{result.stderr}")
+
+
 def _load_queue():
     import json
     qf = Path("data/render_queue.json")
@@ -183,13 +294,18 @@ def assemble_episode(payload: AssembleEpisodePayload):
 # ─── Export Timeline → final MP4 ─────────────────────────────
 
 class ExportTimelinePayload(BaseModel):
-    timeline_file: str  = "data/timelines/main_timeline.json"
-    title:         str  = "levram_export"
-    shot_ids:      list[str] = []
-    music_url:     str  = ""      # /output/music/... local path
-    music_volume:  float = 0.20   # 0.0–1.0
-    include_voice: bool = True    # mix in per-shot TTS audio if present
-    fade_out_sec:  int  = 4
+    timeline_file:  str   = "data/timelines/main_timeline.json"
+    title:          str   = "levram_export"
+    shot_ids:       list[str] = []
+    music_url:      str   = ""      # /output/music/... local path
+    music_volume:   float = 0.20    # 0.0–1.0
+    include_voice:  bool  = True    # mix in per-shot TTS audio if present
+    fade_out_sec:   int   = 4
+    transition:     str   = "none"  # none | fade | dissolve | wipeleft | radial | smoothup
+    transition_dur: float = 0.5     # seconds (0.25–2.0)
+    color_grade:    str   = ""      # "" | cinematic | warm | cool | noir
+    captions:       bool  = False   # burn dialogue as subtitles
+    speed:          float = 1.0     # 1.0=normal 0.5=slow-mo 2.0=fast
 
 
 def _probe_duration(path: Path) -> float:
@@ -331,36 +447,61 @@ async def export_timeline(payload: ExportTimelinePayload):
     ts        = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_title = payload.title.replace(" ", "_")
 
-    # ── 2. Concat video clips ─────────────────────────────────
-    base_video = tmp_dir / f"{safe_title}_base_{ts}.mp4"
+    # ── 2. Probe clip durations (needed for transitions + captions) ──
     loop = asyncio.get_event_loop()
+    clip_durs: list[float] = []
+    for cp in clip_paths:
+        d = await loop.run_in_executor(None, lambda p=cp: _probe_duration(p))
+        clip_durs.append(d)
+
+    # ── 3. Build caption timing list ───────────────────────────
+    caption_list: list[dict] | None = None
+    if payload.captions:
+        caption_list = []
+        cursor = 0.0
+        for clip_idx, shot_idx in enumerate(shot_map):
+            shot = shots[shot_idx]
+            dur  = clip_durs[clip_idx] / max(payload.speed, 0.1)
+            text = shot.get("dialogue") or shot.get("voiceText") or ""
+            if text:
+                caption_list.append({"text": text, "start": cursor, "end": cursor + dur - 0.3})
+            cursor += dur
+
+    # ── 4. Build base video (effects pass) ────────────────────
+    base_video = tmp_dir / f"{safe_title}_base_{ts}.mp4"
     try:
-        await loop.run_in_executor(None, lambda: _ffmpeg_concat(clip_paths, base_video))
+        await loop.run_in_executor(None, lambda: _ffmpeg_build_video(
+            clip_paths, base_video,
+            transition=payload.transition,
+            transition_dur=payload.transition_dur,
+            color_grade=payload.color_grade,
+            captions=caption_list,
+            speed=payload.speed,
+        ))
     except RuntimeError as e:
         raise HTTPException(500, str(e))
 
-    # ── 3. Collect voice audio with timing offsets ────────────
+    # ── 5. Collect voice audio with timing offsets ────────────
     voice_clips: list[tuple[Path, float]] = []
     if payload.include_voice:
         cursor = 0.0
         for clip_idx, shot_idx in enumerate(shot_map):
-            shot     = shots[shot_idx]
-            clip_dur = await loop.run_in_executor(None, lambda p=clip_paths[clip_idx]: _probe_duration(p))
-            # Prefer FX-processed audio, then raw TTS
+            shot      = shots[shot_idx]
+            clip_dur  = clip_durs[clip_idx] / max(payload.speed, 0.1)
             audio_url = shot.get("fxUrl") or shot.get("rawUrl") or ""
             audio_path = _resolve_audio(audio_url)
             if audio_path:
                 voice_clips.append((audio_path, cursor))
             cursor += clip_dur
 
-    # ── 4. Resolve music track ────────────────────────────────
+    # ── 6. Resolve music track ────────────────────────────────
     music_path: Path | None = None
     if payload.music_url:
         mp = BASE_DIR / payload.music_url.lstrip("/")
         if mp.exists():
             music_path = mp
 
-    # ── 5. Mix audio → final output ──────────────────────────
+    # ── 7. Mix audio → final output ──────────────────────────
     out_name = f"{safe_title}_{ts}.mp4"
     out_path = VID_DIR / out_name
 
@@ -565,6 +706,7 @@ class FalI2VPayload(BaseModel):
     prompt: str = ""
     model: str = "kling_pro"
     duration: int = 5
+    project: str = ""            # saga/project name for per-project film library
 
 
 def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: int,
@@ -669,10 +811,6 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
     except Exception as dl_err:
         print(f"[LEVRAM] I2V local download failed ({dl_err}); using fal.ai CDN URL")
 
-    # ── Long-term persistence (uncomment + wire R2 env vars when ready) ──
-    # See T2V block above for the full boto3/R2 snippet — same pattern applies here.
-    # key = f"videos/{filename}"  →  upload raw bytes  →  set local_url to R2 public URL
-
     return {
         "videoUrl":     local_url or video_url,
         "outputUrl":    local_url or video_url,
@@ -681,7 +819,21 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
         "model":        model_id,
         "engine":       "fal_i2v",
         "source_image": image_url,
+        "filename":     filename,
     }
+
+
+@router.delete("/video/delete")
+async def delete_video(url: str):
+    """Delete a generated video file by its /output/videos/... URL."""
+    safe = url.lstrip("/")
+    if not safe.startswith("output/videos/"):
+        raise HTTPException(400, "Only output/videos/ files can be deleted.")
+    path = BASE_DIR / safe
+    if not path.exists():
+        raise HTTPException(404, "File not found.")
+    path.unlink()
+    return {"success": True}
 
 
 @router.post("/video/upload-image")
@@ -708,6 +860,8 @@ async def image_to_video(payload: FalI2VPayload):
         "started_at": datetime.now().isoformat(), "type": "i2v",
     }
 
+    project = payload.project
+
     async def _run():
         async with _FAL_SEM:
             _JOBS[job_id]["status"] = "running"
@@ -719,6 +873,17 @@ async def image_to_video(payload: FalI2VPayload):
                         payload.duration, payload.end_image_url
                     )
                 )
+                # Persist video metadata (MongoDB → Railway volume sidecar fallback)
+                if result.get("filename"):
+                    ts_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+                    import asyncio as _aio
+                    _aio.create_task(_save_video_meta(result["filename"], {
+                        "project": project,
+                        "created": ts_str,
+                        "created_ts": datetime.now().timestamp(),
+                        "prompt": prompt,
+                        "model": model_key,
+                    }))
                 _JOBS[job_id]["status"] = "complete"
                 _JOBS[job_id]["result"] = result
             except Exception as e:
@@ -791,19 +956,92 @@ async def generate_wan_video(payload: WanVideoPayload):
 
 # ─── List generated videos ───────────────────────────────────
 
+def _read_video_meta(path: Path) -> dict:
+    """Read sidecar .json for a video file (local-dev fallback). Returns {} if missing."""
+    import json as _json
+    sidecar = path.with_suffix(".json")
+    if sidecar.exists():
+        try:
+            return _json.loads(sidecar.read_text())
+        except Exception:
+            pass
+    return {}
+
+
+def _write_video_meta_local(path: Path, meta: dict) -> None:
+    """Write sidecar JSON next to a video (local-dev fallback)."""
+    import json as _json
+    try:
+        path.with_suffix(".json").write_text(_json.dumps(meta))
+    except Exception:
+        pass
+
+
+async def _save_video_meta(filename: str, meta: dict) -> None:
+    """Persist video metadata: MongoDB when available, sidecar file otherwise."""
+    from backend.db import videos_col
+    if videos_col is not None:
+        await videos_col.update_one(
+            {"filename": filename},
+            {"$set": {**meta, "filename": filename}},
+            upsert=True,
+        )
+    else:
+        _write_video_meta_local(VID_DIR / filename, meta)
+
+
 @router.get("/video/library")
-def get_video_library():
+async def get_video_library(project: str = ""):
+    from backend.db import videos_col
     VID_DIR.mkdir(parents=True, exist_ok=True)
+
+    if videos_col is not None:
+        # MongoDB path
+        query = {"project": project} if project else {}
+        cursor = videos_col.find(query, {"_id": 0}).sort("created_ts", -1).limit(50)
+        docs   = await cursor.to_list(length=50)
+        # Enrich with current file size (Railway volume still holds the actual MP4s)
+        result = []
+        for doc in docs:
+            path = VID_DIR / doc["filename"]
+            size_mb = round(path.stat().st_size / 1_048_576, 1) if path.exists() else 0
+            result.append({
+                "url":     "/output/videos/" + doc["filename"],
+                "name":    doc["filename"],
+                "created": doc.get("created", ""),
+                "size_mb": size_mb,
+                "project": doc.get("project", ""),
+            })
+        return {"success": True, "videos": result}
+
+    # Local JSON fallback
     videos = sorted(VID_DIR.glob("*.mp4"), key=lambda f: f.stat().st_mtime, reverse=True)
-    return {
-        "success": True,
-        "videos": [
-            {
-                "url":     "/output/videos/" + v.name,
-                "name":    v.name,
-                "created": datetime.fromtimestamp(v.stat().st_mtime).strftime("%Y-%m-%d %H:%M"),
-                "size_mb": round(v.stat().st_size / 1_048_576, 1),
-            }
-            for v in videos[:30]
-        ],
-    }
+    result = []
+    for v in videos:
+        meta = _read_video_meta(v)
+        if project and meta.get("project", "") != project:
+            continue
+        result.append({
+            "url":     "/output/videos/" + v.name,
+            "name":    v.name,
+            "created": datetime.fromtimestamp(v.stat().st_mtime).strftime("%Y-%m-%d %H:%M"),
+            "size_mb": round(v.stat().st_size / 1_048_576, 1),
+            "project": meta.get("project", ""),
+        })
+        if len(result) >= 50:
+            break
+    return {"success": True, "videos": result}
+
+
+@router.post("/video/tag-project")
+async def tag_video_project(url: str, project: str):
+    """Attach a project/saga name to a video."""
+    safe = url.lstrip("/")
+    if not safe.startswith("output/videos/"):
+        raise HTTPException(400, "Only output/videos/ files can be tagged.")
+    path = BASE_DIR / safe
+    if not path.exists():
+        raise HTTPException(404, "File not found.")
+    filename = path.name
+    await _save_video_meta(filename, {"project": project})
+    return {"success": True}

@@ -1,14 +1,25 @@
 // ─── Nav Tab System ───────────────────────────────────────
 (function () {
-  // Map each data-tab value to its panel ID and the display value to use when visible
+  // Tabs that render inline in the row-2 content area
   const TAB_PANELS = {
-    "voice-lab":   { id: "tab-main",        display: "grid" },
-    "shot-builder":{ id: "tab-main",        display: "grid" },
-    "idea-vault":  { id: "tab-idea-vault",  display: "flex" },
-    "image-gen":   { id: "tab-image-gen",   display: "flex" },
+    "idea-vault":   { id: "tab-idea-vault",  display: "flex" },
+    "shot-builder": { id: "tab-main",        display: "grid" },
+    "image-gen":    { id: "tab-image-gen",   display: "flex" },
   };
 
-  // Get unique panel IDs
+  // External pages opened in a new tab
+  const EXTERNAL_TABS = {
+    "timeline": "timeline.html",
+    "projects": "projects.html",
+    "settings": "settings.html",
+    "title-seq":   "title-sequence.html",
+    "voice-clone": "voice-clone.html",
+    "music":       "music.html",
+    "export":      "export.html",
+    "assets":      "assets.html",
+    "story":       "story-engine.html",
+  };
+
   const ALL_PANEL_IDS = [...new Set(Object.values(TAB_PANELS).map(v => v.id))];
 
   function hideAllTabPanels() {
@@ -18,10 +29,16 @@
     });
   }
 
+  function hideCharacterWorkspace() {
+    const el = document.getElementById("ws-character");
+    if (el) el.style.display = "none";
+  }
+
   function showTab(tabKey) {
     const cfg = TAB_PANELS[tabKey];
     if (!cfg) return;
     hideAllTabPanels();
+    hideCharacterWorkspace(); // row-4 character panel should close when switching tabs
     const el = document.getElementById(cfg.id);
     if (el) el.style.display = cfg.display;
   }
@@ -36,50 +53,34 @@
       btn.addEventListener("click", () => {
         const tab = btn.dataset.tab;
 
-        if (tab === "story") {
-          window.open("story-engine.html", "_blank");
-          return;
-        }
-        if (tab === "music") {
-          window.open("music.html", "_blank");
-          return;
-        }
-        if (tab === "timeline") {
-          window.open("timeline.html", "_blank");
-          return;
-        }
-        if (tab === "export") {
-          window.open("export.html", "_blank");
-          return;
-        }
-        if (tab === "settings") {
-          window.open("settings.html", "_blank");
-          return;
-        }
-        if (tab === "title-seq") {
-          window.open("title-sequence.html", "_blank");
-          return;
-        }
-        if (tab === "voice-clone") {
-          window.open("voice-clone.html", "_blank");
-          return;
-        }
-        if (tab === "assets") {
-          window.open("assets.html", "_blank");
-          return;
-        }
-        if (tab === "projects") {
-          window.open("projects.html", "_blank");
+        // External pages
+        if (EXTERNAL_TABS[tab]) {
+          window.open(EXTERNAL_TABS[tab], "_blank");
           return;
         }
 
+        // Characters: lives in the row-4 workspace area
+        if (tab === "characters") {
+          setActiveNav(btn);
+          hideAllTabPanels();
+          const panel = document.getElementById("ws-character");
+          if (panel) {
+            panel.style.display    = "flex";
+            panel.style.flexDirection = "column";
+            panel.style.minHeight  = "400px";
+            panel.style.overflow   = "hidden";
+          }
+          return;
+        }
+
+        // Inline tab panels (row 2) — also collapse character workspace
         setActiveNav(btn);
         showTab(tab);
       });
     });
 
-    // Ensure voice-lab is shown on load (default active tab)
-    showTab("voice-lab");
+    // Default: show Production (Shot Builder + Voice Lab) on load
+    showTab("shot-builder");
   });
 
   window.showTab = showTab;

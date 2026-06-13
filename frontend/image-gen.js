@@ -562,8 +562,8 @@ function igAnimateImage() {
 
 const _FREE_I2V_MODELS = {
   hunyuan_i2v:   "HunyuanVideo",
-  wan21_i2v:     "Wan 2.1 Fast",
-  wan21_14b_i2v: "Wan 2.1 Best",
+  wan21_i2v:     "Wan 2.1",
+  wan21_14b_i2v: "Wan 2.2 14B",
 };
 
 window.igTestAllI2V = async function igTestAllI2V() {

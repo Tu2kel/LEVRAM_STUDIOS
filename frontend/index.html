@@ -540,6 +540,13 @@
               <button id="ig-generate-btn" class="gen-btn" style="flex:1;">Generate Image</button>
               <button id="ig-compare-btn" onclick="igCompareAll()" style="flex:1;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.35);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:3px;padding:10px;">⚡ Compare All</button>
             </div>
+            <div style="margin-top:6px;">
+              <input type="file" id="ig-upload-input" accept="image/*" style="display:none;" onchange="igUploadOwnImage()" />
+              <button type="button" onclick="document.getElementById('ig-upload-input').click()"
+                      style="width:100%;background:rgba(0,0,0,0.4);border:1px dashed rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:8px;border-radius:3px;cursor:pointer;">
+                + Bring Your Own Image → Animate
+              </button>
+            </div>
             <p id="ig-status" class="status"></p>
           </div>
         </div>

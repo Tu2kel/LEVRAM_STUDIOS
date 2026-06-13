@@ -560,6 +560,41 @@ function igAnimateImage() {
   if (panel) panel.style.display = panel.style.display === "none" ? "block" : "none";
 }
 
+window.igUploadOwnImage = async function igUploadOwnImage() {
+  const input    = document.getElementById("ig-upload-input");
+  const file     = input?.files?.[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById("ig-status");
+  if (statusEl) statusEl.textContent = "Uploading…";
+
+  const fd = new FormData();
+  fd.append("file", file);
+
+  try {
+    const res  = await levFetch(`${IG_BASE}/video/upload-image`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Upload failed");
+
+    igCurrentImageUrl = data.image_url;
+
+    const resultDiv = document.getElementById("ig-result");
+    const resultImg = document.getElementById("ig-result-img");
+    const i2vPanel  = document.getElementById("ig-i2v-panel");
+    const dlLink    = document.getElementById("ig-download");
+
+    if (resultImg) resultImg.src = IG_BASE + data.image_url;
+    if (resultDiv) resultDiv.style.display = "block";
+    if (i2vPanel)  i2vPanel.style.display  = "block";
+    if (dlLink)    { dlLink.href = IG_BASE + data.image_url; dlLink.download = file.name; }
+    if (statusEl)  statusEl.textContent = "Image loaded — hit Generate Video to animate";
+  } catch (err) {
+    if (statusEl) statusEl.textContent = "Upload failed: " + err.message;
+    console.error("IG UPLOAD OWN IMAGE ERROR:", err);
+  }
+  input.value = "";
+};
+
 async function igRunI2V() {
   if (!igCurrentImageUrl) return;
   const model    = document.getElementById("ig-i2v-model")?.value    || "wan21_i2v";

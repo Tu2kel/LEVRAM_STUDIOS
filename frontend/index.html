@@ -595,7 +595,17 @@
                     </select>
                     <button id="ig-i2v-go-btn" onclick="igRunI2V()" style="flex:1;background:linear-gradient(90deg,rgba(139,105,20,0.4),rgba(201,168,76,0.4));border:1px solid rgba(201,168,76,0.5);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Generate Video</button>
                   </div>
+                  <button onclick="igTestAllI2V()" style="width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(100,200,100,0.4);color:#88dd88;font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:6px;border-radius:3px;cursor:pointer;">⚡ Test All Free Models Simultaneously</button>
                   <div id="ig-i2v-status" style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;min-height:16px;"></div>
+                  <!-- Comparison grid — shown when Test All is clicked -->
+                  <div id="ig-i2v-compare" style="display:none;margin-top:8px;display:none;">
+                    <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Model Comparison</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                      <div id="ig-i2v-slot-hunyuan_i2v" style="background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:3px;padding:6px;min-height:60px;font-size:10px;color:var(--text-dim);"></div>
+                      <div id="ig-i2v-slot-wan21_i2v"    style="background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:3px;padding:6px;min-height:60px;font-size:10px;color:var(--text-dim);"></div>
+                      <div id="ig-i2v-slot-wan21_14b_i2v" style="background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:3px;padding:6px;min-height:60px;font-size:10px;color:var(--text-dim);"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

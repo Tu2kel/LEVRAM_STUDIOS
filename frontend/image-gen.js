@@ -560,6 +560,73 @@ function igAnimateImage() {
   if (panel) panel.style.display = panel.style.display === "none" ? "block" : "none";
 }
 
+const _FREE_I2V_MODELS = {
+  hunyuan_i2v:   "HunyuanVideo",
+  wan21_i2v:     "Wan 2.1 Fast",
+  wan21_14b_i2v: "Wan 2.1 Best",
+};
+
+window.igTestAllI2V = async function igTestAllI2V() {
+  if (!igCurrentImageUrl) {
+    const s = document.getElementById("ig-status");
+    if (s) s.textContent = "Load an image first.";
+    return;
+  }
+  const prompt     = document.getElementById("ig-i2v-prompt")?.value   || "";
+  const duration   = parseInt(document.getElementById("ig-i2v-duration")?.value || "5");
+  const statusEl   = document.getElementById("ig-i2v-status");
+  const compareEl  = document.getElementById("ig-i2v-compare");
+
+  if (compareEl) compareEl.style.display = "block";
+  if (statusEl)  statusEl.textContent = "Submitting to all free models simultaneously…";
+
+  Object.entries(_FREE_I2V_MODELS).forEach(([key, label]) => {
+    const slot = document.getElementById(`ig-i2v-slot-${key}`);
+    if (slot) slot.innerHTML = `<div style="color:var(--text-dim);">⏳ ${label}<br>queued…</div>`;
+  });
+
+  const results = await Promise.allSettled(
+    Object.keys(_FREE_I2V_MODELS).map(async model => {
+      const res  = await levFetch(`${IG_BASE}/video/image-to-video`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: igCurrentImageUrl, prompt, model, duration }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.detail || "submit failed");
+      return { model, job_id: data.job_id };
+    })
+  );
+
+  results.forEach(r => {
+    if (r.status === "rejected") return;
+    const { model, job_id } = r.value;
+    const label = _FREE_I2V_MODELS[model];
+    levPollJob(job_id, IG_BASE, {
+      onRunning: (sec) => {
+        const slot = document.getElementById(`ig-i2v-slot-${model}`);
+        if (slot) slot.innerHTML = `<div style="color:var(--text-dim);">⏳ ${label}<br>${sec}s…</div>`;
+      },
+      onComplete: (res) => {
+        const raw = res.outputUrl || res.videoUrl || "";
+        const url = raw.startsWith("http") ? raw : IG_BASE + raw;
+        const slot = document.getElementById(`ig-i2v-slot-${model}`);
+        if (slot) slot.innerHTML = `
+          <div style="font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:4px;">${label}</div>
+          <video src="${url}" controls style="width:100%;border-radius:2px;"></video>
+          <a href="${url}" download style="display:block;margin-top:4px;font-size:10px;color:var(--gold);text-align:center;">↓ Download</a>`;
+        if (statusEl) statusEl.textContent = `${label} ready`;
+      },
+      onFailed: (err) => {
+        const slot = document.getElementById(`ig-i2v-slot-${model}`);
+        if (slot) slot.innerHTML = `<div style="color:#ff6b6b;">${label}: ${err}</div>`;
+      },
+    });
+  });
+
+  if (statusEl) statusEl.textContent = "All 3 jobs running — results appear as they finish";
+};
+
 window.igUploadOwnImage = async function igUploadOwnImage() {
   const input    = document.getElementById("ig-upload-input");
   const file     = input?.files?.[0];

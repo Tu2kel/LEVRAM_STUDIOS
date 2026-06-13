@@ -395,11 +395,13 @@ FAL_T2V_MODELS = {
 
 # Image-to-Video models — lock the character's face via a keyframe
 FAL_I2V_MODELS = {
-    "wan21_i2v":       "fal-ai/wan-i2v",                          # Wan 2.1 I2V — free
-    "wan21_14b_i2v":   "fal-ai/wan/v2.2-a14b/image-to-video",    # Wan 2.2 14B — free, best open-source
-    "hunyuan_i2v":     "fal-ai/hunyuan-video-image-to-video",      # free, strong face lock
-    "runway_turbo":    "fal-ai/runway-gen4-turbo/image-to-video", # fastest Runway — paid
-    "runway_gen4_i2v": "fal-ai/runway-gen4.5/image-to-video",    # best quality Runway — paid
+    "wan21_i2v":       "fal-ai/wan-i2v",                               # Wan 2.1 I2V — free
+    "wan21_14b_i2v":   "fal-ai/wan/v2.2-a14b/image-to-video",         # Wan 2.2 14B — free, best open
+    "kling_pro":       "fal-ai/kling-video/v2.1/pro/image-to-video",   # Kling 2.1 Pro — ~$0.35/5s
+    "kling_26":        "fal-ai/kling-video/v2.6/pro/image-to-video",   # Kling 2.6 Pro — latest
+    "seedance":        "bytedance/seedance-2.0/fast/image-to-video",   # Seedance 2.0 Fast — ~$2.42/10s
+    "runway_turbo":    "fal-ai/runway-gen4-turbo/image-to-video",      # Runway Turbo — paid
+    "runway_gen4_i2v": "fal-ai/runway-gen4.5/image-to-video",         # Runway Gen-4.5 — paid, best
 }
 
 FAL_VIDEO_MODELS = {**FAL_T2V_MODELS, **FAL_I2V_MODELS}  # keep for backward compat
@@ -559,7 +561,7 @@ async def get_job_status(job_id: str):
 class FalI2VPayload(BaseModel):
     image_url: str               # local /output/... URL or remote https:// URL
     prompt: str = ""             # optional motion description
-    model: str = "wan21_i2v"    # wan21_i2v | wan21_14b_i2v | hunyuan_i2v
+    model: str = "kling_pro"    # kling_pro | kling_26 | seedance | wan21_i2v | wan21_14b_i2v | runway_*
     duration: int = 5
 
 
@@ -584,17 +586,20 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
     else:
         remote_url = image_url
 
-    is_runway = model_key.startswith("runway")
-    is_wan    = model_key.startswith("wan")
+    is_runway   = model_key.startswith("runway")
+    is_wan      = model_key.startswith("wan")
+    is_kling    = model_key.startswith("kling")
+    is_seedance = model_key.startswith("seedance")
+
     if is_runway:
-        # Runway: image_url + prompt + duration only; no resolution param
+        # Runway: image_url + prompt + duration (5 or 10 only)
         args = {
             "image_url": remote_url,
             "prompt":    prompt or "cinematic motion, smooth camera movement",
             "duration":  10 if duration >= 8 else 5,
         }
     elif is_wan:
-        # Wan requires explicit aspect_ratio — 'auto' is not supported on distributed GPUs
+        # Wan requires explicit aspect_ratio
         args = {
             "image_url":    remote_url,
             "prompt":       prompt or "cinematic motion, smooth camera",
@@ -602,14 +607,29 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
             "resolution":   "720p",
             "aspect_ratio": "16:9",
         }
+    elif is_kling:
+        # Kling: duration must be 5 or 10
+        args = {
+            "image_url":    remote_url,
+            "prompt":       prompt or "cinematic motion, smooth camera movement",
+            "duration":     10 if duration >= 8 else 5,
+            "aspect_ratio": "16:9",
+        }
+    elif is_seedance:
+        # Seedance 2.0: duration up to 10s, supports audio gen
+        args = {
+            "image_url":      remote_url,
+            "prompt":         prompt or "cinematic motion, smooth camera movement",
+            "duration":       min(duration, 10),
+            "resolution":     "720p",
+            "aspect_ratio":   "16:9",
+        }
     else:
-        # HunyuanVideo uses num_frames, not duration (129 ≈ 5s at 24fps)
-        frames = {3: 81, 5: 129, 8: 193}.get(duration, 129)
+        # Generic fallback
         args = {
             "image_url":    remote_url,
             "prompt":       prompt or "cinematic motion, smooth camera",
-            "num_frames":   frames,
-            "resolution":   "720p",
+            "duration":     duration,
             "aspect_ratio": "16:9",
         }
 

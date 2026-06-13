@@ -331,10 +331,10 @@
       </div><!-- /#tab-main -->
 
       <!-- TAB: Idea Vault -->
-      <div id="tab-idea-vault" class="tab-panel" style="grid-column: 1/-1; grid-row: 2; display: none; flex-direction: row; gap: 12px;">
+      <div id="tab-idea-vault" class="tab-panel" style="grid-column: 1/-1; grid-row: 2; display: none; flex-direction: row; gap: 12px; align-items: flex-start;">
 
         <!-- Capture column -->
-        <div class="left-panel" style="flex: 0 0 380px; overflow-y: auto;">
+        <div class="left-panel" style="flex: 0 0 320px; overflow-y: auto;">
           <div class="panel-header">
             <div class="panel-header-icon gold">
               <svg viewBox="0 0 16 16" fill="black"><path d="M8 1.5l1.5 4H15l-3.5 2.5 1.5 4.5L8 10l-4.5 2.5 1.5-4.5L1.5 5.5h5.5L8 1.5z"/></svg>
@@ -349,11 +349,35 @@
             </div>
             <div class="field-group">
               <div class="field-label">The Idea</div>
-              <textarea id="iv-text" class="script-input" style="height:140px;" placeholder="Skit concept, dialogue, scene idea, or anything worth remembering..."></textarea>
+              <textarea id="iv-text" class="script-input" style="height:120px;" placeholder="Concept, scene, dialogue, anything worth developing..."></textarea>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Genre</div>
+              <input id="iv-genre" class="script-input" style="height:auto;padding:8px;" value="sci-fi action" placeholder="sci-fi action, drama, thriller..." />
+            </div>
+            <div class="field-group" style="display:flex;gap:8px;">
+              <div style="flex:1;">
+                <div class="field-label">Target Length</div>
+                <select id="iv-minutes" class="voice-char-select">
+                  <option value="2">2 min (reel)</option>
+                  <option value="5">5 min</option>
+                  <option value="8" selected>8 min</option>
+                  <option value="12">12 min</option>
+                  <option value="20">20 min</option>
+                </select>
+              </div>
+              <div style="flex:1;">
+                <div class="field-label">Scene Length</div>
+                <select id="iv-scene-sec" class="voice-char-select">
+                  <option value="3">3s — quick cuts</option>
+                  <option value="5" selected>5s — standard</option>
+                  <option value="8">8s — cinematic</option>
+                </select>
+              </div>
             </div>
             <div class="field-group">
               <div class="field-label">Tags</div>
-              <input id="iv-tags" class="script-input" style="height:auto;padding:8px;" placeholder="action, comedy, villain (comma separated)" />
+              <input id="iv-tags" class="script-input" style="height:auto;padding:8px;" placeholder="action, villain (comma separated)" />
             </div>
             <button id="iv-save-btn" class="gen-btn">Save Idea</button>
             <p id="iv-status" class="status"></p>
@@ -361,7 +385,7 @@
         </div>
 
         <!-- Saved ideas column -->
-        <div class="right-panel" style="flex: 1; overflow-y: auto;">
+        <div style="flex: 0 0 280px; overflow-y: auto; max-height: 80vh;">
           <div class="panel-header">
             <div class="panel-header-icon blue">
               <svg viewBox="0 0 16 16" fill="white"><path d="M2 3h12v1H2zm0 3h12v1H2zm0 3h8v1H2z"/></svg>
@@ -369,7 +393,40 @@
             <span class="panel-title">Saved Ideas</span>
           </div>
           <div id="iv-list" style="padding:12px;display:flex;flex-direction:column;gap:8px;">
-            <p style="color:var(--text-dim);font-size: 16px;letter-spacing:2px;text-transform:uppercase;">No ideas saved yet.</p>
+            <p style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">No ideas saved yet.</p>
+          </div>
+        </div>
+
+        <!-- Story development panel (right, shown after Develop) -->
+        <div id="iv-story-panel" style="flex:1;overflow-y:auto;max-height:80vh;display:none;">
+          <div class="panel-header">
+            <div class="panel-header-icon gold">
+              <svg viewBox="0 0 16 16" fill="black"><path d="M2 2h12v2H2zm0 4h12v2H2zm0 4h8v2H2z"/></svg>
+            </div>
+            <span class="panel-title" id="iv-story-title">Story Breakdown</span>
+            <span id="iv-story-duration" class="panel-badge" style="background:rgba(201,168,76,0.15);color:var(--gold);">—</span>
+          </div>
+          <div style="padding:12px;">
+            <div id="iv-story-meta" style="margin-bottom:12px;font-size:12px;color:var(--text-dim);line-height:1.6;"></div>
+
+            <!-- Reel cut indicators -->
+            <div id="iv-reel-row" style="display:none;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;"></div>
+
+            <!-- Scene list -->
+            <div id="iv-scene-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+
+            <!-- Approve bar -->
+            <div style="margin-top:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <div class="field-label" style="margin:0;">Character:</div>
+              <select id="iv-dev-character" class="voice-char-select" style="flex:1;min-width:120px;">
+                <option value="">None / Original</option>
+              </select>
+              <button id="iv-approve-btn" onclick="ivApproveAndGenerate()"
+                style="background:linear-gradient(90deg,rgba(139,105,20,0.6),rgba(201,168,76,0.6));border:1px solid rgba(201,168,76,0.6);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:8px 20px;border-radius:3px;cursor:pointer;">
+                ⚡ Approve &amp; Generate All
+              </button>
+            </div>
+            <p id="iv-approve-status" class="status" style="margin-top:8px;"></p>
           </div>
         </div>
 
@@ -516,6 +573,7 @@
               <select id="ig-character" class="voice-char-select">
                 <option value="">None / Standalone</option>
               </select>
+              <div id="ig-char-images-row" style="display:none;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
             </div>
 
             <!-- Face References — Person 1 + Person 2 -->

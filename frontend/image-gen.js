@@ -200,19 +200,64 @@ function igInitVideoEngineToggle() {
 }
 
 // ─── Character select ─────────────────────────────────────
+let igCharacterCache = [];
+
 async function igLoadCharacters() {
   const sel = document.getElementById("ig-character");
   if (!sel) return;
   try {
     const res  = await levFetch(`${IG_BASE}/characters`);
     const data = await res.json();
-    const chars = data.characters || [];
+    igCharacterCache = data.characters || [];
     sel.innerHTML = '<option value="">None / Standalone</option>' +
-      chars.map(c => `<option value="${c.id}" data-name="${c.name}">${c.name}${c.lora_status === "ready" ? " ★" : ""}</option>`).join("");
+      igCharacterCache.map(c => `<option value="${c.id}" data-name="${c.name}">${c.name}${c.lora_status === "ready" ? " ★" : ""}</option>`).join("");
   } catch (err) {
     console.error("IG CHAR LOAD ERROR:", err);
   }
 }
+
+function igRenderCharacterImages(charId) {
+  const row = document.getElementById("ig-char-images-row");
+  if (!row) return;
+  if (!charId) { row.innerHTML = ""; row.style.display = "none"; return; }
+  const char   = igCharacterCache.find(c => c.id === charId);
+  const images = char?.preview_images || [];
+  if (images.length === 0) { row.innerHTML = ""; row.style.display = "none"; return; }
+  const activeIdx = char.active_preview_index ?? 0;
+  row.style.display = "flex";
+  row.innerHTML = images.map((img, i) => {
+    const displayUrl = img.url.startsWith("http") ? img.url : IG_BASE + img.url;
+    const relUrl     = img.url.startsWith("/") ? img.url : "/" + img.url;
+    const label      = (img.label || `Look ${i + 1}`).replace(/'/g, "\\'");
+    const isActive   = i === activeIdx;
+    return `<div onclick="igLoadCharacterImage('${relUrl}','${label}','${charId}',${i})"
+      title="${label}" style="cursor:pointer;text-align:center;flex-shrink:0;">
+      <img src="${displayUrl}" style="width:64px;height:64px;object-fit:cover;border-radius:3px;
+        border:2px solid ${isActive ? "var(--gold)" : "rgba(255,255,255,0.12)"};" />
+      <div style="font-size:9px;color:${isActive ? "var(--gold)" : "var(--text-dim)"};letter-spacing:1px;
+        text-transform:uppercase;margin-top:2px;width:64px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        ${img.label || `Look ${i + 1}`}</div>
+    </div>`;
+  }).join("");
+}
+
+window.igLoadCharacterImage = function igLoadCharacterImage(relUrl, label, charId, idx) {
+  const char = igCharacterCache.find(c => c.id === charId);
+  if (char) { char.active_preview_index = idx; igRenderCharacterImages(charId); }
+  const fullUrl = relUrl.startsWith("http") ? relUrl : IG_BASE + relUrl;
+  igCurrentImageUrl = relUrl;
+  const resultBox = document.getElementById("ig-result");
+  const resultImg = document.getElementById("ig-result-img");
+  const i2vPanel  = document.getElementById("ig-i2v-panel");
+  const dlLink    = document.getElementById("ig-download");
+  const statusEl  = document.getElementById("ig-status");
+  if (resultImg) resultImg.src = fullUrl;
+  if (resultBox) resultBox.style.display = "block";
+  if (i2vPanel)  i2vPanel.style.display  = "block";
+  if (dlLink)    { dlLink.href = fullUrl; dlLink.download = relUrl.split("/").pop(); }
+  if (statusEl)  statusEl.textContent = `Loaded: ${label} — ready to animate`;
+  resultBox?.scrollIntoView({ behavior: "smooth", block: "start" });
+};
 
 // ─── Generate dispatcher ──────────────────────────────────
 async function igGenerate() {
@@ -899,4 +944,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("ig-generate-btn")?.addEventListener("click", igGenerate);
   igLoadCharacters();
   igLoadGallery();
+  document.getElementById("ig-character")?.addEventListener("change", function() {
+    igRenderCharacterImages(this.value);
+  });
 });

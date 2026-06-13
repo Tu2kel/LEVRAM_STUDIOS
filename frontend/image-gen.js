@@ -390,6 +390,10 @@ async function igLoadGallery() {
         <img src="${IG_BASE + img.url}" loading="lazy" alt="${img.filename}" onclick="igOpenLightbox('${IG_BASE + img.url}')" style="cursor:pointer;" />
         <div class="ig-thumb-meta">${img.created}</div>
         <button class="ig-thumb-del" onclick="igDeleteImage('${img.filename}')" title="Delete">✕</button>
+        <button onclick="igLoadForAnimate('${img.url}')" title="Load for animation"
+                style="position:absolute;bottom:20px;left:0;right:0;width:100%;background:rgba(201,168,76,0.85);border:none;color:#000;font-family:Rajdhani,sans-serif;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;padding:3px 0;cursor:pointer;opacity:0;transition:opacity 0.15s;">
+          Animate →
+        </button>
       </div>
     `).join("");
   } catch (err) {
@@ -564,6 +568,21 @@ const _FREE_I2V_MODELS = {
   hunyuan_i2v:   "HunyuanVideo",
   wan21_i2v:     "Wan 2.1",
   wan21_14b_i2v: "Wan 2.2 14B",
+};
+
+window.igLoadForAnimate = function igLoadForAnimate(relUrl) {
+  igCurrentImageUrl = relUrl;
+  const resultDiv = document.getElementById("ig-result");
+  const resultImg = document.getElementById("ig-result-img");
+  const i2vPanel  = document.getElementById("ig-i2v-panel");
+  const dlLink    = document.getElementById("ig-download");
+  const statusEl  = document.getElementById("ig-status");
+  if (resultImg) resultImg.src = IG_BASE + relUrl;
+  if (resultDiv) resultDiv.style.display = "block";
+  if (i2vPanel)  i2vPanel.style.display  = "block";
+  if (dlLink)    dlLink.href = IG_BASE + relUrl;
+  if (statusEl)  statusEl.textContent = "Image loaded — ready to animate";
+  resultDiv?.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 
 window.igTestAllI2V = async function igTestAllI2V() {

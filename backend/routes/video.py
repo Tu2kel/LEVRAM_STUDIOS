@@ -180,6 +180,83 @@ def assemble_episode(payload: AssembleEpisodePayload):
     }
 
 
+# ─── Export Timeline → final MP4 ─────────────────────────────
+
+class ExportTimelinePayload(BaseModel):
+    timeline_file: str = "data/timelines/main_timeline.json"
+    title: str = "levram_export"
+    shot_ids: list[str] = []   # if non-empty, only export these shots in order
+
+
+@router.post("/video/export-timeline")
+async def export_timeline(payload: ExportTimelinePayload):
+    import json, urllib.request
+
+    tl_path = Path(payload.timeline_file)
+    if not tl_path.exists():
+        raise HTTPException(400, "Timeline not found")
+
+    data   = json.loads(tl_path.read_text())
+    shots  = data.get("shots", [])
+
+    if payload.shot_ids:
+        shots = [s for sid in payload.shot_ids for s in shots if s.get("id") == sid]
+    else:
+        shots = [s for s in shots if s.get("videoUrl") or s.get("renderOutputUrl") or s.get("clipUrl")]
+
+    if not shots:
+        raise HTTPException(400, "No video clips found in timeline. Animate your shots first.")
+
+    tmp_dir  = Path(tempfile.mkdtemp())
+    clip_paths: list[Path] = []
+
+    for i, shot in enumerate(shots):
+        url = shot.get("videoUrl") or shot.get("renderOutputUrl") or shot.get("clipUrl") or ""
+        if not url:
+            continue
+
+        # Already a local path
+        if not url.startswith("http"):
+            local = _resolve_path(url)
+            if local.exists():
+                clip_paths.append(local)
+            continue
+
+        # Remote URL — download to temp file
+        dest = tmp_dir / f"clip_{i:04d}.mp4"
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "LEVRAM/1.0"})
+            loop = asyncio.get_event_loop()
+            def _dl(r=req, d=dest):
+                with urllib.request.urlopen(r, timeout=120) as resp:
+                    d.write_bytes(resp.read())
+            await loop.run_in_executor(None, _dl)
+            clip_paths.append(dest)
+        except Exception as e:
+            # Skip undownloadable clips rather than aborting the whole export
+            continue
+
+    if not clip_paths:
+        raise HTTPException(400, "Could not resolve any video files. Re-generate clips and try again.")
+
+    ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_name = f"{payload.title.replace(' ', '_')}_{ts}.mp4"
+    out_path = VID_DIR / out_name
+
+    loop = asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(None, lambda: _ffmpeg_concat(clip_paths, out_path))
+    except RuntimeError as e:
+        raise HTTPException(500, str(e))
+
+    return {
+        "success":    True,
+        "exportUrl":  "/output/videos/" + out_name,
+        "clips":      len(clip_paths),
+        "skipped":    len(shots) - len(clip_paths),
+    }
+
+
 # ─── Lane 2a: fal.ai T2V (lead — cloud GPU) ──────────────────
 
 # Text-to-Video models

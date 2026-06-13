@@ -156,3 +156,39 @@
         .addEventListener("click", clearRenderQueue);
 
       loadRenderQueue();
+
+      // ── Export Timeline → Final MP4 ──────────────────────────
+      window.tlExportFinalVideo = async function tlExportFinalVideo() {
+        const btn      = document.getElementById("btn-export-timeline");
+        const videoShots = shots.filter(s => s.videoUrl || s.renderOutputUrl || s.clipUrl);
+
+        if (!videoShots.length) {
+          alert("No animated clips in the timeline yet. Animate your shots first, then export.");
+          return;
+        }
+
+        const title = prompt("Export title (used for filename):", "LEVRAM_Export") || "LEVRAM_Export";
+        if (btn) { btn.textContent = `Exporting ${videoShots.length} clips…`; btn.disabled = true; btn.classList.add("lora-scanning"); }
+
+        try {
+          const res  = await levFetch(`${BASE}/video/export-timeline`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.detail || "Export failed");
+
+          const fullUrl = (window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000") + data.exportUrl;
+          if (btn) { btn.textContent = `✔ Done — ${data.clips} clips`; btn.disabled = false; btn.classList.remove("lora-scanning"); }
+
+          // Auto-trigger download
+          const a = document.createElement("a");
+          a.href = fullUrl; a.download = data.exportUrl.split("/").pop(); a.click();
+
+          setTimeout(() => { if (btn) btn.textContent = "⬇ Export Final Video"; }, 4000);
+        } catch (err) {
+          if (btn) { btn.textContent = "Export failed — " + err.message; btn.disabled = false; btn.classList.remove("lora-scanning"); }
+          console.error("TL EXPORT ERROR:", err);
+        }
+      };

@@ -37,7 +37,11 @@
 
   function hideCharacterWorkspace() {
     const el = document.getElementById("ws-character");
-    if (el) el.style.display = "none";
+    if (el) {
+      el.style.display  = "none";
+      el.style.gridRow  = "4";      // restore original row
+      el.style.height   = "";
+    }
   }
 
   function showTab(tabKey) {
@@ -73,10 +77,12 @@
           _batteryVis(true);
           const panel = document.getElementById("ws-character");
           if (panel) {
-            panel.style.display    = "flex";
+            panel.style.display       = "flex";
             panel.style.flexDirection = "column";
-            panel.style.minHeight  = "400px";
-            panel.style.overflow   = "hidden";
+            panel.style.gridRow       = "2 / -1";   // fill all rows below battery
+            panel.style.minHeight     = "0";
+            panel.style.height        = "calc(100vh - 73px)";
+            panel.style.overflow      = "hidden";
           }
           return;
         }

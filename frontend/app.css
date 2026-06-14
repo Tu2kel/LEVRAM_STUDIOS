@@ -2522,3 +2522,89 @@ button:disabled {
   .db-stat-grid { grid-template-columns: repeat(2, 1fr); }
   .db-cc-label { font-size: 18px; }
 }
+
+/* ─── Character Lab inline workspace ────────────────────────── */
+#ws-character {
+  background: #07060e;
+  border-top: 1px solid rgba(201,168,76,.15);
+}
+
+.character-lab-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 20px;
+  align-items: start;
+  height: 100%;
+}
+
+/* Left column: the form */
+.character-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.character-form input,
+.character-form textarea,
+.character-form select {
+  width: 100%;
+  background: rgba(0,0,0,.45);
+  border: 1px solid rgba(201,168,76,.22);
+  border-radius: 3px;
+  color: #e0e0e0;
+  font-family: Rajdhani, sans-serif;
+  font-size: 14px;
+  padding: 9px 12px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color .15s;
+}
+.character-form input:focus,
+.character-form textarea:focus,
+.character-form select:focus {
+  border-color: rgba(201,168,76,.6);
+}
+.character-form input::placeholder,
+.character-form textarea::placeholder {
+  color: #555;
+}
+.character-form textarea {
+  resize: vertical;
+  min-height: 64px;
+  line-height: 1.5;
+}
+.character-form select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c9a84c'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 30px;
+}
+.character-form button#save-character-btn {
+  margin-top: 4px;
+  background: rgba(201,168,76,.15);
+  border: 1px solid rgba(201,168,76,.5);
+  color: #c9a84c;
+  font-family: Rajdhani, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s;
+}
+.character-form button#save-character-btn:hover {
+  background: rgba(201,168,76,.28);
+  box-shadow: 0 0 16px rgba(201,168,76,.2);
+}
+
+/* Row of short inputs: name / gender / age */
+.character-form input#character-name   { font-size: 16px; font-weight: 700; }
+
+/* Right column: character list */
+.character-list {
+  min-height: 200px;
+  overflow-y: auto;
+}

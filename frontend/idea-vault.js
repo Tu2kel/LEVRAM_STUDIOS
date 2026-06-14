@@ -652,6 +652,16 @@ window.ivAnimateSelected = async function ivAnimateSelected() {
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("iv-save-btn")?.addEventListener("click", ivSaveIdea);
+
+  // Auto-grow textarea as you type
+  const ta = document.getElementById("iv-text");
+  if (ta) {
+    ta.addEventListener("input", () => {
+      ta.style.height = "auto";
+      ta.style.height = Math.max(260, ta.scrollHeight) + "px";
+    });
+  }
+
   ivLoadCharacters();
   ivLoadIdeas();
   ivUpdateCostEst();

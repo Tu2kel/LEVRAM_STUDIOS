@@ -134,6 +134,24 @@ async def develop_idea(idea_id: str, body: DevelopRequest):
     return {"success": True, "story": story}
 
 
+@router.patch("/ideas/{idea_id}")
+async def update_idea(idea_id: str, body: dict):
+    """Update core idea fields — title, rawIdea, genre, tags, target_minutes, scene_seconds."""
+    allowed = {"title", "rawIdea", "genre", "tags", "target_minutes", "scene_seconds"}
+    updates = {k: v for k, v in body.items() if k in allowed}
+    if not updates:
+        raise HTTPException(400, "No valid fields to update")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    updates["updatedAt"] = now
+    if ideas_col is not None:
+        await ideas_col.update_one({"id": idea_id}, {"$set": updates})
+        doc = await ideas_col.find_one({"id": idea_id}, {"_id": 0})
+        return {"success": True, "idea": doc}
+    _patch_idea(idea_id, updates)
+    idea = _get_idea(idea_id)
+    return {"success": True, "idea": idea}
+
+
 @router.patch("/ideas/{idea_id}/story")
 async def update_story(idea_id: str, body: dict):
     idea = _get_idea(idea_id)

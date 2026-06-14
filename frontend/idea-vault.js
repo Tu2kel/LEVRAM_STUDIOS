@@ -1,7 +1,8 @@
 // ─── Idea Vault ───────────────────────────────────────────────
 const IV_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
-let ivCurrentIdeaId = null;
+let ivCurrentIdeaId  = null;
+let ivEditingIdeaId  = null;   // non-null when the capture form is in edit mode
 
 // ── Load character dropdown ────────────────────────────────────
 async function ivLoadCharacters() {
@@ -49,8 +50,12 @@ async function ivLoadIdeas() {
           </div>
           ${idea.tags?.length ? `<div class="iv-tags">${idea.tags.map(t => `<span class="iv-tag">${t}</span>`).join("")}</div>` : ""}
           <div class="iv-card-body" style="max-height:60px;overflow:hidden;text-overflow:ellipsis;">${idea.rawIdea || ""}</div>
-          <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
+          <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;">
             <span style="font-size:9px;color:${statusColor};letter-spacing:1px;text-transform:uppercase;">${idea.status}</span>
+            <button onclick="ivEditIdea('${idea.id}')"
+              style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
+              ✎ Edit
+            </button>
             <button onclick="ivDevelopIdea('${idea.id}')"
               style="flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
               ${idea.story ? "View / Re-develop" : "⚡ Develop Story"}
@@ -64,7 +69,7 @@ async function ivLoadIdeas() {
   }
 }
 
-// ── Save ───────────────────────────────────────────────────────
+// ── Save / Update ──────────────────────────────────────────────
 async function ivSaveIdea() {
   const title    = document.getElementById("iv-title")?.value.trim() || "";
   const text     = document.getElementById("iv-text")?.value.trim()  || "";
@@ -77,26 +82,101 @@ async function ivSaveIdea() {
   if (!title) { if (statusEl) statusEl.textContent = "Add a title first."; return; }
   if (!text)  { if (statusEl) statusEl.textContent = "Write the idea."; return; }
 
+  const payload = {
+    title, rawIdea: text, genre,
+    target_minutes: minutes, scene_seconds: sceneSec,
+    tags: tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [],
+  };
+
   try {
-    const res = await levFetch(`${IV_BASE}/ideas`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title, rawIdea: text, source: "web", genre,
-        target_minutes: minutes, scene_seconds: sceneSec,
-        tags: tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [],
-      }),
-    });
+    let res;
+    if (ivEditingIdeaId) {
+      // Update existing idea
+      res = await levFetch(`${IV_BASE}/ideas/${ivEditingIdeaId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      // Create new idea
+      res = await levFetch(`${IV_BASE}/ideas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, source: "web" }),
+      });
+    }
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Save failed");
-    document.getElementById("iv-title").value = "";
-    document.getElementById("iv-text").value  = "";
-    document.getElementById("iv-tags").value  = "";
-    if (statusEl) statusEl.textContent = `Saved: "${title}"`;
+
+    ivCancelEdit();
+    if (statusEl) statusEl.textContent = ivEditingIdeaId ? `Updated: "${title}"` : `Saved: "${title}"`;
     await ivLoadIdeas();
   } catch (err) {
     if (statusEl) statusEl.textContent = err.message || "Failed to save.";
   }
+}
+
+// ── Edit ───────────────────────────────────────────────────────
+window.ivEditIdea = async function ivEditIdea(id) {
+  // Fetch fresh idea data
+  let idea = null;
+  try {
+    const res  = await levFetch(`${IV_BASE}/ideas`);
+    const data = await res.json();
+    idea = (data.ideas || []).find(i => i.id === id);
+  } catch (_) {}
+  if (!idea) return;
+
+  // Load into capture form
+  const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ""; };
+  set("iv-title",      idea.title     || "");
+  set("iv-text",       idea.rawIdea   || "");
+  set("iv-genre",      idea.genre     || "sci-fi action");
+  set("iv-tags",       (idea.tags || []).join(", "));
+  set("iv-minutes",    idea.target_minutes || "8");
+  set("iv-scene-sec",  idea.scene_seconds  || "5");
+
+  ivEditingIdeaId = id;
+
+  // Flip save button label and add cancel
+  const saveBtn = document.getElementById("iv-save-btn");
+  if (saveBtn) {
+    saveBtn.textContent = "✔ Update Idea";
+    saveBtn.style.background = "rgba(33,150,243,0.3)";
+    saveBtn.style.borderColor = "rgba(33,150,243,0.6)";
+    saveBtn.style.color = "#90caf9";
+  }
+
+  // Insert cancel button if not already there
+  if (!document.getElementById("iv-cancel-edit-btn")) {
+    const cancel = document.createElement("button");
+    cancel.id = "iv-cancel-edit-btn";
+    cancel.textContent = "✕ Cancel";
+    cancel.onclick = ivCancelEdit;
+    cancel.style.cssText = "width:100%;margin-top:4px;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:5px;border-radius:2px;cursor:pointer;";
+    saveBtn?.parentNode?.insertBefore(cancel, saveBtn.nextSibling);
+  }
+
+  // Scroll capture form into view
+  document.getElementById("iv-title")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  document.getElementById("iv-title")?.focus();
+};
+
+function ivCancelEdit() {
+  ivEditingIdeaId = null;
+  const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val; };
+  set("iv-title", ""); set("iv-text", ""); set("iv-tags", "");
+
+  const saveBtn = document.getElementById("iv-save-btn");
+  if (saveBtn) {
+    saveBtn.textContent = "Save Idea";
+    saveBtn.style.background = "";
+    saveBtn.style.borderColor = "";
+    saveBtn.style.color = "";
+  }
+  document.getElementById("iv-cancel-edit-btn")?.remove();
+  const statusEl = document.getElementById("iv-status");
+  if (statusEl) statusEl.textContent = "";
 }
 
 // ── Delete ─────────────────────────────────────────────────────
@@ -577,4 +657,5 @@ document.addEventListener("DOMContentLoaded", () => {
   ivUpdateCostEst();
 });
 
-window.ivDeleteIdea = ivDeleteIdea;
+window.ivDeleteIdea  = ivDeleteIdea;
+window.ivCancelEdit  = ivCancelEdit;

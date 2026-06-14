@@ -1,12 +1,17 @@
 // ─── Nav Tab System ───────────────────────────────────────
 (function () {
   // Tabs that render inline in the row-2 content area
+  function _batteryVis(show) {
+    const el = document.getElementById("project-battery-host");
+    if (el) el.style.display = show ? "" : "none";
+  }
+
   const TAB_PANELS = {
-    "dashboard":    { id: "tab-dashboard",   display: "flex", onShow: () => window.dbLoad?.() },
-    "idea-vault":   { id: "tab-idea-vault",  display: "flex" },
-    "shot-builder": { id: "tab-main",        display: "grid" },
-    "image-gen":    { id: "tab-image-gen",   display: "flex" },
-    "music":        { id: "tab-music",       display: "flex" },
+    "dashboard":    { id: "tab-dashboard",   display: "flex", onShow: () => { _batteryVis(false); window.dbLoad?.(); } },
+    "idea-vault":   { id: "tab-idea-vault",  display: "flex", onShow: () => _batteryVis(true) },
+    "shot-builder": { id: "tab-main",        display: "grid", onShow: () => _batteryVis(true) },
+    "image-gen":    { id: "tab-image-gen",   display: "flex", onShow: () => _batteryVis(true) },
+    "music":        { id: "tab-music",       display: "flex", onShow: () => _batteryVis(true) },
   };
 
   // External pages opened in a new tab
@@ -65,6 +70,7 @@
         if (tab === "characters") {
           setActiveNav(btn);
           hideAllTabPanels();
+          _batteryVis(true);
           const panel = document.getElementById("ws-character");
           if (panel) {
             panel.style.display    = "flex";

@@ -20,7 +20,13 @@
       label:  "Dark Studio",
       accent: "#13112a",
       swatch: "linear-gradient(135deg, #13112a 0%, #201e3f 100%)",
-      vars:   {},  // default — app.css handles everything
+      vars: {
+        "--accent":      "#cc1a1a",
+        "--accent-bright":"#ff4444",
+        "--accent-rgb":  "200, 0, 0",
+        "--panel-bg":    "rgba(0,0,0,.82)",
+        "--panel-border":"rgba(255,255,255,.07)",
+      },
       body:   null,
       grid:   null,
     },
@@ -30,6 +36,11 @@
       accent: "#3d0810",
       swatch: "linear-gradient(135deg, #1a0206 0%, #5a0c1c 50%, #c9a84c 100%)",
       vars: {
+        "--accent":        "#9b111e",
+        "--accent-bright": "#d42030",
+        "--accent-rgb":    "155, 17, 30",
+        "--panel-bg":      "rgba(10,2,4,.85)",
+        "--panel-border":  "rgba(201,168,76,.10)",
         "--black":         "#070103",
         "--surface":       "#110408",
         "--surface2":      "#1c060e",
@@ -88,6 +99,11 @@
       accent: "#06080d",
       swatch: "linear-gradient(135deg, #9b111e 0%, #060810 45%, #1f4fa3 100%)",
       vars: {
+        "--accent":        "#2d6fd4",
+        "--accent-bright": "#4a9eff",
+        "--accent-rgb":    "45, 111, 212",
+        "--panel-bg":      "rgba(5,8,18,.85)",
+        "--panel-border":  "rgba(45,111,212,.15)",
         "--black":         "#05080d",
         "--surface":       "#090e18",
         "--surface2":      "#0e1420",
@@ -135,6 +151,11 @@
       accent: "#f0ebe0",
       swatch: "linear-gradient(135deg, #f5f0e4 0%, #ede8da 60%, #c9a84c 100%)",
       vars: {
+        "--accent":         "#8b6914",
+        "--accent-bright":  "#c9a84c",
+        "--accent-rgb":     "139, 105, 20",
+        "--panel-bg":       "rgba(255,255,255,.72)",
+        "--panel-border":   "rgba(139,105,20,.25)",
         "--black":          "#ece6d8",
         "--surface":        "#e5dece",
         "--surface2":       "#dcd5c4",
@@ -174,6 +195,20 @@
         html[data-theme="ivory"] body {
           color: #1a1208 !important;
         }
+        html[data-theme="ivory"] .db-stat-num,
+        html[data-theme="ivory"] .db-cc-label,
+        html[data-theme="ivory"] .db-clock,
+        html[data-theme="ivory"] .db-wip-title,
+        html[data-theme="ivory"] .db-wip-logline,
+        html[data-theme="ivory"] .db-proj-name,
+        html[data-theme="ivory"] .db-clip-name { color: #2a1a08 !important; }
+        html[data-theme="ivory"] .db-stat-card,
+        html[data-theme="ivory"] .character-form input,
+        html[data-theme="ivory"] .character-form textarea,
+        html[data-theme="ivory"] .character-form select { color: #2a1a08 !important; }
+        html[data-theme="ivory"] .db-bg-img { opacity: 0.08 !important; }
+        html[data-theme="ivory"] .db-bg-vignette { background: rgba(236,230,216,.6) !important; }
+        html[data-theme="ivory"] #ws-character { background: #ece6d8 !important; border-color: rgba(139,105,20,.2) !important; }
         html[data-theme="ivory"] input,
         html[data-theme="ivory"] textarea,
         html[data-theme="ivory"] select {
@@ -250,6 +285,11 @@
       accent: "#040810",
       swatch: "linear-gradient(135deg, #040810 0%, #0c1c38 50%, #c9a84c 100%)",
       vars: {
+        "--accent":        "#2a5bc8",
+        "--accent-bright": "#4a80ff",
+        "--accent-rgb":    "42, 91, 200",
+        "--panel-bg":      "rgba(4,8,20,.85)",
+        "--panel-border":  "rgba(42,91,200,.18)",
         "--black":         "#040810",
         "--surface":       "#071428",
         "--surface2":      "#0c1c38",

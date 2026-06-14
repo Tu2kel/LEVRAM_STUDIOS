@@ -16,6 +16,13 @@
   --blue-bright:   #2e6fd4;
   --royal-purple:  #2a1a5e;
 
+  /* ── Per-theme accent (dashboard, character lab) ── */
+  --accent:        #cc1a1a;
+  --accent-bright: #ff4444;
+  --accent-rgb:    200, 0, 0;
+  --panel-bg:      rgba(0,0,0,.82);
+  --panel-border:  rgba(255,255,255,.07);
+
   /* ── Backgrounds (royal sapphire-dark) ── */
   --black:         #13112a;
   --surface:       #1a1838;
@@ -2130,10 +2137,10 @@ button:disabled {
   gap: 18px;
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: #cc1a1a #0a0a0a;
+  scrollbar-color: var(--accent) #0a0a0a;
 }
 .db-content::-webkit-scrollbar { width: 4px; }
-.db-content::-webkit-scrollbar-thumb { background: #cc1a1a; border-radius: 2px; }
+.db-content::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
 
 /* ── Hero header ──────────────────────────────────────────────── */
 .db-hero {
@@ -2146,7 +2153,7 @@ button:disabled {
 .db-studio-label {
   font-size: 14px;
   letter-spacing: .25em;
-  color: #cc1a1a;
+  color: var(--accent);
   font-weight: 700;
   text-transform: uppercase;
   margin-bottom: 4px;
@@ -2175,7 +2182,7 @@ button:disabled {
   font-variant-numeric: tabular-nums;
   color: #fff;
   letter-spacing: .08em;
-  text-shadow: 0 0 20px rgba(200,0,0,.5);
+  text-shadow: 0 0 20px rgba(var(--accent-rgb),.5);
 }
 .db-date {
   font-size: 14px;
@@ -2186,8 +2193,8 @@ button:disabled {
 .db-refresh-btn-hero {
   margin-top: 6px;
   background: none;
-  border: 1px solid rgba(180,0,0,.4);
-  color: #cc1a1a;
+  border: 1px solid rgba(var(--accent-rgb),.4);
+  color: var(--accent);
   width: 28px; height: 28px;
   border-radius: 50%;
   font-size: 14px;
@@ -2195,7 +2202,7 @@ button:disabled {
   transition: all .2s;
   display: flex; align-items: center; justify-content: center;
 }
-.db-refresh-btn-hero:hover { background: rgba(180,0,0,.15); border-color: #cc1a1a; }
+.db-refresh-btn-hero:hover { background: rgba(var(--accent-rgb),.15); border-color: var(--accent); }
 
 /* ── Active job banner ────────────────────────────────────────── */
 .db-job-banner {
@@ -2205,7 +2212,7 @@ button:disabled {
   gap: 16px;
   padding: 14px 20px;
   background: rgba(180, 0, 0, 0.08);
-  border: 1px solid rgba(180,0,0,.5);
+  border: 1px solid rgba(var(--accent-rgb),.5);
   border-radius: 4px;
   position: relative;
   overflow: hidden;
@@ -2216,26 +2223,26 @@ button:disabled {
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 3px;
-  background: #cc1a1a;
-  box-shadow: 0 0 12px #cc1a1a;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
 }
 @keyframes db-job-pulse {
-  0%,100% { border-color: rgba(180,0,0,.4); box-shadow: none; }
-  50%      { border-color: rgba(200,0,0,.8); box-shadow: 0 0 20px rgba(180,0,0,.2); }
+  0%,100% { border-color: rgba(var(--accent-rgb),.4); box-shadow: none; }
+  50%      { border-color: rgba(var(--accent-rgb),.8); box-shadow: 0 0 20px rgba(var(--accent-rgb),.2); }
 }
 .db-job-left  { display:flex; align-items:center; gap:12px; padding-left:8px; }
 .db-job-right { display:flex; align-items:center; gap:12px; flex-shrink:0; }
 .db-job-pulse {
   width:10px; height:10px; border-radius:50%;
-  background:#cc1a1a;
-  box-shadow: 0 0 8px #cc1a1a;
+  background:var(--accent);
+  box-shadow: 0 0 8px var(--accent);
   animation: pulse 1.2s ease-in-out infinite;
   flex-shrink:0;
 }
-.db-job-title { font-weight:800; color:#cc1a1a; font-size:15px; letter-spacing:.06em; text-transform:uppercase; }
+.db-job-title { font-weight:800; color:var(--accent); font-size:15px; letter-spacing:.06em; text-transform:uppercase; }
 .db-job-step  { color:#ccc; font-size:14px; max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .db-job-bar-wrap { width:180px; height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; }
-.db-job-bar-fill { height:100%; background:linear-gradient(90deg,#8b0000,#cc1a1a,#ff4444); border-radius:2px; transition:width .4s; }
+.db-job-bar-fill { height:100%; background:linear-gradient(90deg,#8b0000,var(--accent),#ff4444); border-radius:2px; transition:width .4s; }
 .db-job-pct   { font-size:11px; color:#ccc; white-space:nowrap; font-weight:700; }
 .db-job-time  { font-size:10px; color:#666; }
 
@@ -2260,12 +2267,12 @@ button:disabled {
   transition: border-color .2s;
   backdrop-filter: blur(8px);
 }
-.db-stat-card:hover { border-color: rgba(200,0,0,.5); }
+.db-stat-card:hover { border-color: rgba(var(--accent-rgb),.5); }
 .db-stat-card--accent {
-  border-color: rgba(180,0,0,.3);
+  border-color: rgba(var(--accent-rgb),.3);
   background: rgba(100,0,0,.2);
 }
-.db-stat-card--accent:hover { border-color: #cc1a1a; }
+.db-stat-card--accent:hover { border-color: var(--accent); }
 .db-stat-glow {
   position: absolute;
   top: -20px; left: 50%; transform: translateX(-50%);
@@ -2274,19 +2281,19 @@ button:disabled {
   pointer-events: none;
 }
 .db-stat-glow--hot {
-  background: radial-gradient(circle, rgba(200,0,0,.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--accent-rgb),.15) 0%, transparent 70%);
 }
 .db-stat-num {
   font-size: 36px;
   font-weight: 900;
   line-height: 1;
   color: #fff;
-  text-shadow: 0 0 20px rgba(200,0,0,.4);
+  text-shadow: 0 0 20px rgba(var(--accent-rgb),.4);
   font-variant-numeric: tabular-nums;
 }
 .db-stat-card--accent .db-stat-num {
   color: #fff;
-  text-shadow: 0 0 18px rgba(255,60,60,.9), 0 0 40px rgba(200,0,0,.5);
+  text-shadow: 0 0 18px rgba(255,60,60,.9), 0 0 40px rgba(var(--accent-rgb),.5);
 }
 .db-stat-label {
   font-size: 13px;
@@ -2327,24 +2334,24 @@ button:disabled {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(180,0,0,.08) 0%, transparent 100%);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb),.08) 0%, transparent 100%);
   opacity: 0;
   transition: opacity .2s;
 }
 .db-launch-btn:hover {
-  border-color: #cc1a1a;
+  border-color: var(--accent);
   color: #fff;
-  box-shadow: 0 0 20px rgba(180,0,0,.2), inset 0 0 20px rgba(180,0,0,.05);
+  box-shadow: 0 0 20px rgba(var(--accent-rgb),.2), inset 0 0 20px rgba(var(--accent-rgb),.05);
 }
 .db-launch-btn:hover::after { opacity: 1; }
 .db-launch-icon {
   font-size: 20px;
-  color: #cc1a1a;
-  text-shadow: 0 0 12px rgba(200,0,0,.6);
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(var(--accent-rgb),.6);
   transition: text-shadow .2s;
 }
 .db-launch-btn:hover .db-launch-icon {
-  text-shadow: 0 0 20px rgba(255,60,60,.9), 0 0 40px rgba(200,0,0,.4);
+  text-shadow: 0 0 20px rgba(255,60,60,.9), 0 0 40px rgba(var(--accent-rgb),.4);
 }
 .db-launch-text { position: relative; z-index: 1; font-size: 13px; }
 
@@ -2366,7 +2373,7 @@ button:disabled {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: .2em;
-  color: #cc1a1a;
+  color: var(--accent);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -2378,14 +2385,14 @@ button:disabled {
 .db-panel-line {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, rgba(180,0,0,.4) 0%, rgba(255,255,255,.03) 100%);
+  background: linear-gradient(90deg, rgba(var(--accent-rgb),.4) 0%, rgba(255,255,255,.03) 100%);
 }
 
 /* ── Where I Left Off ─────────────────────────────────────────── */
 .db-left-off-wrap { min-height: 60px; }
 .db-wip-card { display:flex; flex-direction:column; gap:10px; }
 .db-wip-top  { display:flex; align-items:center; gap:12px; }
-.db-wip-title { font-size:20px; font-weight:800; color:#fff; letter-spacing:.02em; text-shadow: 0 0 20px rgba(200,0,0,.3); }
+.db-wip-title { font-size:20px; font-weight:800; color:#fff; letter-spacing:.02em; text-shadow: 0 0 20px rgba(var(--accent-rgb),.3); }
 .db-wip-logline { font-size:15px; color:#bbb; margin:0; line-height:1.6; font-style:italic; max-width:800px; }
 .db-wip-meta { display:flex; gap:16px; font-size:13px; color:#888; flex-wrap:wrap; letter-spacing:.06em; text-transform:uppercase; }
 .db-wip-actions { display:flex; align-items:center; gap:16px; margin-top:4px; }
@@ -2393,8 +2400,8 @@ button:disabled {
 
 .db-btn-red {
   background: transparent;
-  border: 1px solid #cc1a1a;
-  color: #cc1a1a;
+  border: 1px solid var(--accent);
+  color: var(--accent);
   padding: 8px 24px;
   border-radius: 3px;
   font-size: 12px;
@@ -2410,11 +2417,11 @@ button:disabled {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #cc1a1a, #8b0000);
+  background: linear-gradient(90deg, var(--accent), #8b0000);
   opacity: 0;
   transition: opacity .2s;
 }
-.db-btn-red:hover { color: #fff; box-shadow: 0 0 20px rgba(200,0,0,.4); }
+.db-btn-red:hover { color: #fff; box-shadow: 0 0 20px rgba(var(--accent-rgb),.4); }
 .db-btn-red:hover::before { opacity: 1; }
 .db-btn-red span { position: relative; z-index: 1; }
 
@@ -2422,7 +2429,7 @@ button:disabled {
 .db-badge      { padding:3px 10px; border-radius:2px; font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
 .db-badge-raw  { background:rgba(255,255,255,.08); color:#999; border:1px solid rgba(255,255,255,.12); }
 .db-badge-dev  { background:rgba(74,158,255,.1); color:#4a9eff; border:1px solid rgba(74,158,255,.2); }
-.db-badge-approved { background:rgba(200,0,0,.15); color:#ff4444; border:1px solid rgba(200,0,0,.3); }
+.db-badge-approved { background:rgba(var(--accent-rgb),.15); color:#ff4444; border:1px solid rgba(var(--accent-rgb),.3); }
 .db-badge-active   { background:rgba(255,165,0,.12); color:orange; border:1px solid rgba(255,165,0,.3); }
 .db-badge-done     { background:rgba(0,200,100,.1); color:#00c864; border:1px solid rgba(0,200,100,.2); }
 .db-badge-failed   { background:rgba(255,80,80,.1); color:#ff5050; border:1px solid rgba(255,80,80,.2); }
@@ -2459,16 +2466,16 @@ button:disabled {
   content: "";
   position: absolute;
   inset: 0;
-  box-shadow: inset 0 0 0 0 rgba(180,0,0,.4);
+  box-shadow: inset 0 0 0 0 rgba(var(--accent-rgb),.4);
   transition: box-shadow .2s;
   pointer-events: none;
 }
-.db-clip-card:hover { border-color: #cc1a1a; transform: scale(1.03); }
-.db-clip-card:hover::after { box-shadow: inset 0 0 0 1px rgba(180,0,0,.6); }
+.db-clip-card:hover { border-color: var(--accent); transform: scale(1.03); }
+.db-clip-card:hover::after { box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb),.6); }
 .db-clip-thumb { position:relative; aspect-ratio:16/9; background:#0a0a0a; overflow:hidden; }
 .db-clip-thumb video { width:100%; height:100%; object-fit:cover; display:block; }
 .db-clip-meta { padding:5px 7px; display:flex; flex-direction:column; gap:2px; }
-.db-clip-proj { font-size:11px; color:#cc1a1a; text-transform:uppercase; letter-spacing:.08em; font-weight:800; }
+.db-clip-proj { font-size:11px; color:var(--accent); text-transform:uppercase; letter-spacing:.08em; font-weight:800; }
 .db-clip-name { font-size:13px; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .db-clip-date { font-size:11px; color:#666; }
 
@@ -2484,7 +2491,7 @@ button:disabled {
   background: rgba(0,0,0,.4);
   transition: all .2s;
 }
-.db-proj-card:hover { border-color: rgba(200,0,0,.4); background: rgba(100,0,0,.1); }
+.db-proj-card:hover { border-color: rgba(var(--accent-rgb),.4); background: rgba(100,0,0,.1); }
 .db-proj-thumb {
   width: 80px;
   height: 48px;
@@ -2525,8 +2532,8 @@ button:disabled {
 
 /* ─── Character Lab inline workspace ────────────────────────── */
 #ws-character {
-  background: #07060e;
-  border-top: 1px solid rgba(201,168,76,.15);
+  background: var(--black);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .character-lab-grid {
@@ -2547,10 +2554,10 @@ button:disabled {
 .character-form textarea,
 .character-form select {
   width: 100%;
-  background: rgba(0,0,0,.45);
-  border: 1px solid rgba(201,168,76,.22);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 3px;
-  color: #e0e0e0;
+  color: var(--text);
   font-family: Rajdhani, sans-serif;
   font-size: 14px;
   padding: 9px 12px;
@@ -2561,11 +2568,11 @@ button:disabled {
 .character-form input:focus,
 .character-form textarea:focus,
 .character-form select:focus {
-  border-color: rgba(201,168,76,.6);
+  border-color: var(--border-strong);
 }
 .character-form input::placeholder,
 .character-form textarea::placeholder {
-  color: #555;
+  color: var(--text-dim);
 }
 .character-form textarea {
   resize: vertical;
@@ -2582,9 +2589,9 @@ button:disabled {
 }
 .character-form button#save-character-btn {
   margin-top: 4px;
-  background: rgba(201,168,76,.15);
-  border: 1px solid rgba(201,168,76,.5);
-  color: #c9a84c;
+  background: rgba(var(--accent-rgb), .12);
+  border: 1px solid var(--accent);
+  color: var(--accent);
   font-family: Rajdhani, sans-serif;
   font-size: 13px;
   font-weight: 800;

@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LEVRAM Studios — Manual</title>
+  <script src="config.js"></script>
+  <script src="themes.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: "Rajdhani", sans-serif;
+      background: var(--black, #13112a);
+      color: var(--text, #f0eee8);
+      min-height: 100vh;
+      padding: 0 0 60px;
+    }
+
+    /* Header */
+    .mn-header {
+      background: linear-gradient(180deg, rgba(0,0,0,.9) 0%, rgba(0,0,0,.7) 100%);
+      border-bottom: 1px solid var(--accent, #cc1a1a);
+      padding: 18px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .mn-header-title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .mn-studio { font-size:11px; letter-spacing:.25em; color:var(--accent,#cc1a1a); font-weight:700; text-transform:uppercase; }
+    .mn-title  { font-size:22px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#fff; }
+    .mn-back {
+      background: none;
+      border: 1px solid var(--border, rgba(201,168,76,.32));
+      color: var(--gold, #c9a84c);
+      font-family: Rajdhani, sans-serif;
+      font-size:12px; font-weight:700; letter-spacing:.1em;
+      text-transform:uppercase; padding:8px 20px; border-radius:3px; cursor:pointer;
+      text-decoration:none; display:inline-block;
+      transition: all .2s;
+    }
+    .mn-back:hover { background:rgba(201,168,76,.12); border-color:var(--gold,#c9a84c); }
+
+    /* TOC + content grid */
+    .mn-layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 0;
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Sidebar TOC */
+    .mn-toc {
+      position: sticky;
+      top: 73px;
+      height: calc(100vh - 73px);
+      overflow-y: auto;
+      padding: 28px 0 28px 0;
+      border-right: 1px solid rgba(255,255,255,.06);
+      scrollbar-width: thin;
+    }
+    .mn-toc-section { margin-bottom: 24px; }
+    .mn-toc-heading {
+      font-size:9px; font-weight:800; letter-spacing:.2em;
+      color:var(--accent,#cc1a1a); text-transform:uppercase;
+      padding: 0 16px 8px;
+    }
+    .mn-toc a {
+      display: block;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: var(--text-muted, #9090a8);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all .15s;
+    }
+    .mn-toc a:hover { color:var(--text,#f0eee8); border-left-color:var(--accent,#cc1a1a); background:rgba(255,255,255,.03); }
+
+    /* Main content */
+    .mn-content { padding: 36px 48px; }
+
+    .mn-section {
+      margin-bottom: 52px;
+      scroll-margin-top: 90px;
+    }
+    .mn-section-tag {
+      font-size:9px; font-weight:800; letter-spacing:.22em;
+      color:var(--accent,#cc1a1a); text-transform:uppercase;
+      margin-bottom: 6px;
+    }
+    .mn-section h2 {
+      font-size:22px; font-weight:900; letter-spacing:.06em;
+      text-transform:uppercase; color:#fff;
+      border-bottom: 1px solid rgba(var(--accent-rgb,200,0,0),.25);
+      padding-bottom: 10px; margin-bottom: 20px;
+    }
+    .mn-section h3 {
+      font-size:15px; font-weight:800; letter-spacing:.08em;
+      text-transform:uppercase; color:var(--accent,#cc1a1a);
+      margin: 24px 0 10px;
+    }
+    .mn-section p {
+      font-size:15px; color:var(--text-muted,#9090a8);
+      line-height:1.7; margin-bottom:12px;
+    }
+    .mn-section p strong { color:var(--text,#f0eee8); }
+
+    /* Step list */
+    .mn-steps { list-style:none; display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
+    .mn-step {
+      display:flex; gap:14px; align-items:flex-start;
+      padding:14px 16px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius:4px;
+    }
+    .mn-step-num {
+      flex-shrink:0;
+      width:28px; height:28px;
+      border-radius:50%;
+      border:1px solid var(--accent,#cc1a1a);
+      color:var(--accent,#cc1a1a);
+      display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:900;
+    }
+    .mn-step-body { flex:1; }
+    .mn-step-title { font-size:15px; font-weight:800; color:#fff; margin-bottom:3px; }
+    .mn-step-desc  { font-size:13px; color:var(--text-muted,#9090a8); line-height:1.6; }
+    .mn-step-where {
+      display:inline-block; margin-top:5px;
+      font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+      color:var(--gold,#c9a84c); background:rgba(201,168,76,.08);
+      border:1px solid rgba(201,168,76,.2); border-radius:2px; padding:2px 8px;
+    }
+    .mn-step.mn-manual { border-color:rgba(var(--accent-rgb,200,0,0),.3); }
+    .mn-step.mn-auto   { border-color:rgba(201,168,76,.2); }
+
+    /* Legend */
+    .mn-legend {
+      display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap;
+    }
+    .mn-legend-item {
+      display:flex; align-items:center; gap:8px;
+      font-size:12px; color:var(--text-muted,#9090a8);
+    }
+    .mn-dot { width:10px;height:10px;border-radius:50%; flex-shrink:0; }
+    .mn-dot-manual { background:var(--accent,#cc1a1a); }
+    .mn-dot-auto   { background:var(--gold,#c9a84c); }
+
+    /* Key / tip boxes */
+    .mn-tip {
+      padding:12px 16px;
+      background:rgba(201,168,76,.06);
+      border-left:3px solid var(--gold,#c9a84c);
+      border-radius:0 4px 4px 0;
+      margin:12px 0 18px;
+      font-size:13px; color:var(--text-muted,#9090a8); line-height:1.6;
+    }
+    .mn-tip strong { color:var(--gold,#c9a84c); }
+    .mn-warn {
+      padding:12px 16px;
+      background:rgba(var(--accent-rgb,200,0,0),.06);
+      border-left:3px solid var(--accent,#cc1a1a);
+      border-radius:0 4px 4px 0;
+      margin:12px 0 18px;
+      font-size:13px; color:var(--text-muted,#9090a8); line-height:1.6;
+    }
+    .mn-warn strong { color:var(--accent,#cc1a1a); }
+
+    /* Table */
+    .mn-table { width:100%; border-collapse:collapse; margin:12px 0 20px; }
+    .mn-table th {
+      text-align:left; padding:8px 12px;
+      font-size:10px; font-weight:800; letter-spacing:.15em; text-transform:uppercase;
+      color:var(--text-muted,#9090a8);
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .mn-table td {
+      padding:10px 12px; font-size:13px; color:var(--text-muted,#aaa);
+      border-bottom:1px solid rgba(255,255,255,.04);
+      vertical-align:top;
+    }
+    .mn-table td strong { color:#fff; }
+    .mn-table td em { color:var(--gold,#c9a84c); font-style:normal; font-weight:700; }
+    .mn-table tr:hover td { background:rgba(255,255,255,.02); }
+
+    /* Badge */
+    .badge {
+      display:inline-block; padding:2px 8px; border-radius:2px;
+      font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+    }
+    .badge-free  { background:rgba(0,200,100,.1); color:#00c864; border:1px solid rgba(0,200,100,.2); }
+    .badge-paid  { background:rgba(var(--accent-rgb,200,0,0),.1); color:var(--accent,#cc1a1a); border:1px solid rgba(var(--accent-rgb,200,0,0),.25); }
+    .badge-auto  { background:rgba(201,168,76,.1); color:var(--gold,#c9a84c); border:1px solid rgba(201,168,76,.25); }
+    .badge-manual{ background:rgba(255,255,255,.06); color:#aaa; border:1px solid rgba(255,255,255,.1); }
+
+    @media (max-width:800px) {
+      .mn-layout { grid-template-columns:1fr; }
+      .mn-toc { display:none; }
+      .mn-content { padding:24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="mn-header">
+  <div class="mn-header-title">
+    <span class="mn-studio">LEVRAM STUDIOS</span>
+    <span class="mn-title">Operator Manual</span>
+  </div>
+  <a href="index.html" class="mn-back">← Back to Studio</a>
+</header>
+
+<div class="mn-layout">
+
+  <!-- SIDEBAR TOC -->
+  <nav class="mn-toc">
+    <div class="mn-toc-section">
+      <div class="mn-toc-heading">Getting Started</div>
+      <a href="#overview">Overview</a>
+      <a href="#boot">Power-On Sequence</a>
+    </div>
+    <div class="mn-toc-section">
+      <div class="mn-toc-heading">The Pipeline</div>
+      <a href="#pipeline">Full Pipeline Map</a>
+      <a href="#step-idea">1 — Idea Vault</a>
+      <a href="#step-character">2 — Characters</a>
+      <a href="#step-develop">3 — Develop Story</a>
+      <a href="#step-keyframes">4 — Generate Keyframes</a>
+      <a href="#step-review">5 — Review &amp; Approve</a>
+      <a href="#step-animate">6 — Animate</a>
+      <a href="#step-timeline">7 — Timeline</a>
+      <a href="#step-export">8 — Export Film</a>
+    </div>
+    <div class="mn-toc-section">
+      <div class="mn-toc-heading">Tools</div>
+      <a href="#models">AI Models</a>
+      <a href="#music">Music</a>
+      <a href="#image-gen">Image Gen</a>
+      <a href="#themes">Themes</a>
+    </div>
+    <div class="mn-toc-section">
+      <div class="mn-toc-heading">Reference</div>
+      <a href="#shortcuts">Quick Ref</a>
+      <a href="#costs">Cost Guide</a>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="mn-content">
+
+    <!-- OVERVIEW -->
+    <section class="mn-section" id="overview">
+      <div class="mn-section-tag">// Introduction</div>
+      <h2>What This Studio Does</h2>
+      <p>LEVRAM Studios is an end-to-end AI film pipeline. You write an idea, the system generates a full cinematic script, creates images for every scene, animates them into video clips, adds voice-over, assembles a timeline, and exports a finished film — with you approving at every key step.</p>
+      <div class="mn-legend">
+        <div class="mn-legend-item"><div class="mn-dot mn-dot-auto"></div> <span><strong style="color:var(--gold)">Gold steps</strong> — the AI does it automatically</span></div>
+        <div class="mn-legend-item"><div class="mn-dot mn-dot-manual"></div> <span><strong style="color:var(--accent)">Red steps</strong> — you do it manually</span></div>
+      </div>
+    </section>
+
+    <!-- BOOT -->
+    <section class="mn-section" id="boot">
+      <div class="mn-section-tag">// Getting Started</div>
+      <h2>Power-On Sequence</h2>
+      <p>Every session starts the same way regardless of what you're working on:</p>
+      <ol class="mn-steps">
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">1</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Open the studio URL</div>
+            <div class="mn-step-desc">Navigate to your Railway deployment URL. The launch screen checks all backend services. Wait for <strong>BACKEND LIVE</strong> to appear in the top-right corner before doing anything.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">2</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Check the Dashboard</div>
+            <div class="mn-step-desc">Dashboard loads automatically. Check your stats (Ideas, Characters, Shots, Clips) and the <strong>Where I Left Off</strong> card. If a pipeline job was running before you closed the tab, the active job banner will reappear.</div>
+            <span class="mn-step-where">Dashboard tab</span>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">3</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Pick up where you left off or start fresh</div>
+            <div class="mn-step-desc">Click <strong>CONTINUE →</strong> on the WIP card to jump back into an existing idea, or click <strong>NEW IDEA</strong> to start a new project.</div>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- PIPELINE MAP -->
+    <section class="mn-section" id="pipeline">
+      <div class="mn-section-tag">// The Pipeline</div>
+      <h2>Full Pipeline Map</h2>
+      <table class="mn-table">
+        <thead>
+          <tr><th>Step</th><th>What Happens</th><th>Who Does It</th><th>Tab</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>1. Write Idea</strong></td><td>Describe your concept in plain language</td><td><span class="badge badge-manual">You</span></td><td>Idea Vault</td></tr>
+          <tr><td><strong>2. Set Character</strong></td><td>Create or select the main character for this story</td><td><span class="badge badge-manual">You</span></td><td>Characters</td></tr>
+          <tr><td><strong>3. Develop Story</strong></td><td>GPT-4o breaks your idea into a full scene list with image prompts, dialogue, emotions, act structure</td><td><span class="badge badge-auto">Auto</span></td><td>Idea Vault</td></tr>
+          <tr><td><strong>4. Review Scenes</strong></td><td>Read through each scene, edit any image prompts or dialogue</td><td><span class="badge badge-manual">You</span></td><td>Idea Vault</td></tr>
+          <tr><td><strong>5. Generate Keyframes</strong></td><td>FLUX/LoRA creates a still image for every scene using character LoRA for consistency</td><td><span class="badge badge-auto">Auto</span></td><td>Idea Vault</td></tr>
+          <tr><td><strong>6. Approve Keyframes</strong></td><td>Review all generated images — toggle approve/skip per shot before spending on animation</td><td><span class="badge badge-manual">You</span></td><td>Idea Vault</td></tr>
+          <tr><td><strong>7. Animate</strong></td><td>Wan 2.1 (free) or Kling 2.6 Pro ($0.28/shot) converts each approved image to a video clip with motion</td><td><span class="badge badge-auto">Auto</span></td><td>Idea Vault</td></tr>
+          <tr><td><strong>8. Voice-over</strong></td><td>ElevenLabs generates TTS for each scene's dialogue using the character's cloned voice</td><td><span class="badge badge-auto">Auto</span></td><td>Idea Vault</td></tr>
+          <tr><td><strong>9. Timeline</strong></td><td>All completed shots appear in order — drag to reorder, preview individual clips</td><td><span class="badge badge-manual">You</span></td><td>Timeline ↗</td></tr>
+          <tr><td><strong>10. Export Film</strong></td><td>FFmpeg stitches all clips together with captions and voice-over into a single MP4</td><td><span class="badge badge-auto">Auto</span></td><td>Timeline ↗</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- STEP 1 -->
+    <section class="mn-section" id="step-idea">
+      <div class="mn-section-tag">// Step 1</div>
+      <h2>Idea Vault — Write Your Idea</h2>
+      <h3>What you do manually</h3>
+      <ol class="mn-steps">
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">1</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Type your title</div>
+            <div class="mn-step-desc">Short name for this story (e.g. "Hulk's Death"). Used to label all generated clips and exports.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">2</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Write the raw idea</div>
+            <div class="mn-step-desc">Describe the concept in natural language. The more specific you are (setting, tone, conflict, characters involved), the better the AI breaks it down. Minimum 1-2 sentences — more detail = better scenes. The textarea auto-expands as you type.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">3</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Set genre, target runtime, scene length</div>
+            <div class="mn-step-desc">Genre affects the tone of image prompts and dialogue. Target runtime + scene length determines how many scenes get generated. <strong>8 min @ 5s/scene = ~106 scenes.</strong></div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">4</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Click Save Idea</div>
+            <div class="mn-step-desc">Idea is stored. It appears in the saved ideas list on the right. You can edit it later with the Edit button.</div>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="mn-section" id="step-character">
+      <div class="mn-section-tag">// Step 2</div>
+      <h2>Characters — Set Up Your Cast</h2>
+      <div class="mn-warn"><strong>Do this before generating.</strong> The pipeline uses the selected character's LoRA model for image consistency and their cloned voice for TTS. Without a character set up, images will be generic and voice-over will use a default.</div>
+      <ol class="mn-steps">
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">1</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Go to Characters tab</div>
+            <div class="mn-step-desc">Fill in: Name, Gender, Age, Appearance description, Wardrobe, Voice description, Personality, Notes.</div>
+            <span class="mn-step-where">Characters tab</span>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">2</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Upload reference photos (5+ for LoRA)</div>
+            <div class="mn-step-desc">Click <strong>+ Upload Photos</strong>. Add at least 5 clear face images. Once you have 5+, the Train LoRA button activates. LoRA training takes 10-20 minutes in the background.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">3</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Set Default Voice Profile</div>
+            <div class="mn-step-desc">Select a cloned voice from the dropdown. Voices are created in <strong>Voice Clone ↗</strong>. The selected voice is used for all TTS in the pipeline for this character.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">4</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Save Character</div>
+            <div class="mn-step-desc">Click Save. The character now appears in Idea Vault's character selector when you develop a story.</div>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="mn-section" id="step-develop">
+      <div class="mn-section-tag">// Step 3</div>
+      <h2>Develop Story — AI Writes the Script</h2>
+      <p>In the Idea Vault, click the idea card → then click <strong>Develop Story</strong>. GPT-4o-mini reads your raw idea and generates:</p>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:6px;margin:0 0 16px;padding-left:8px;">
+        <li style="font-size:14px;color:var(--text-muted);"><strong style="color:#fff">Title</strong> — cinematic title for the film</li>
+        <li style="font-size:14px;color:var(--text-muted);"><strong style="color:#fff">Logline</strong> — one-sentence hook</li>
+        <li style="font-size:14px;color:var(--text-muted);"><strong style="color:#fff">Act Structure</strong> — 3-act breakdown</li>
+        <li style="font-size:14px;color:var(--text-muted);"><strong style="color:#fff">Scene list</strong> — one entry per clip: description, image prompt, dialogue, emotion, reel weight</li>
+      </ul>
+      <div class="mn-tip"><strong>Tip:</strong> After development, scroll through the scene list in Idea Vault. You can manually edit any scene's image prompt or dialogue before generating — fixing a bad prompt here saves a re-run later.</div>
+      <div class="mn-tip"><strong>Tip:</strong> Reel weight (1-10) determines which scenes get picked for 60s / 30s / 15s highlight reels. High-weight scenes = most cinematic moments.</div>
+    </section>
+
+    <!-- STEP 4 -->
+    <section class="mn-section" id="step-keyframes">
+      <div class="mn-section-tag">// Step 4</div>
+      <h2>Generate Keyframes — Images First</h2>
+      <p>In the Idea Vault approve bar, click <strong>🖼 Keyframes → Review</strong>.</p>
+      <div class="mn-tip"><strong>Always use the two-phase flow.</strong> Keyframes are free (FLUX). Animation costs money (Kling $0.28/shot). Reviewing keyframes first lets you skip bad shots before spending.</div>
+      <ol class="mn-steps">
+        <li class="mn-step mn-auto">
+          <div class="mn-step-num">1</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Orchestrator runs image generation</div>
+            <div class="mn-step-desc">For each scene: uses FLUX with character LoRA (if trained) + PuLID face injection. One image per scene. Progress shows in real-time — each shot checks in as it completes. Takes ~30s–2min per scene depending on queue.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-auto">
+          <div class="mn-step-num">2</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Dashboard shows active job</div>
+            <div class="mn-step-desc">The red pulsing banner on the Dashboard shows step + progress. You can leave this tab — come back and refresh.</div>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- STEP 5 -->
+    <section class="mn-section" id="step-review">
+      <div class="mn-section-tag">// Step 5</div>
+      <h2>Review &amp; Approve Keyframes — Your Quality Gate</h2>
+      <p>When keyframes finish, the scene list updates with thumbnails and toggle controls.</p>
+      <ol class="mn-steps">
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">1</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Review each keyframe image</div>
+            <div class="mn-step-desc">Check face accuracy, composition, lighting. Each scene shows the generated image with an <strong>Approve/Skip</strong> toggle.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">2</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Toggle shots you want animated</div>
+            <div class="mn-step-desc">Default is all approved. Click a shot to skip it (bad face, wrong composition). Use <strong>Select All / Deselect All</strong> for bulk control.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">3</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Pick your animation model</div>
+            <div class="mn-step-desc">Set the model selector in the approve bar before clicking Animate.<br><br>
+              <span class="badge badge-free">Free</span> <strong>Wan 2.1</strong> — fast, good for drafts and testing<br>
+              <span class="badge badge-free">Free</span> <strong>Wan 2.1 Best</strong> — slower, higher quality open model<br>
+              <span class="badge badge-paid">$0.28/shot</span> <strong>Kling 2.6 Pro</strong> — production quality, use for final renders
+            </div>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- STEP 6 -->
+    <section class="mn-section" id="step-animate">
+      <div class="mn-section-tag">// Step 6</div>
+      <h2>Animate — Image to Video</h2>
+      <p>Click <strong>⚡ Animate Selected</strong>. This fires the <code>/orchestrate/reanimate</code> pipeline.</p>
+      <ol class="mn-steps">
+        <li class="mn-step mn-auto">
+          <div class="mn-step-num">1</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">I2V: Image → 5s video clip</div>
+            <div class="mn-step-desc">Each approved keyframe is sent to the selected model. Motion prompt is derived from the scene description. Output is a 5-second MP4 per shot.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-auto">
+          <div class="mn-step-num">2</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">TTS: Dialogue → voice-over audio</div>
+            <div class="mn-step-desc">ElevenLabs generates the scene's dialogue using the character's cloned voice. Audio is saved alongside the clip.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-auto">
+          <div class="mn-step-num">3</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Timeline auto-updates</div>
+            <div class="mn-step-desc">Each completed shot is saved to the timeline as it finishes — no waiting for the whole job. Open Timeline ↗ at any point to see shots coming in live.</div>
+          </div>
+        </li>
+      </ol>
+      <div class="mn-warn"><strong>Don't close the backend tab</strong> during animation. The Railway server process runs the job — if it restarts mid-job you'll need to re-animate remaining shots.</div>
+    </section>
+
+    <!-- STEP 7 -->
+    <section class="mn-section" id="step-timeline">
+      <div class="mn-section-tag">// Step 7</div>
+      <h2>Timeline — Arrange Your Film</h2>
+      <span class="mn-step-where">Timeline ↗ (opens in new tab)</span>
+      <ol class="mn-steps" style="margin-top:16px;">
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">1</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Review shot order</div>
+            <div class="mn-step-desc">Shots load in scene index order. Drag cards to reorder. Click a card to preview the clip.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">2</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Delete or replace bad shots</div>
+            <div class="mn-step-desc">Remove any shot you don't want in the final cut. Go back to Idea Vault → Keyframes to regenerate individual shots if needed.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">3</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Save order</div>
+            <div class="mn-step-desc">Click <strong>Save Order</strong> to lock in your cut. This writes to MongoDB so it persists across sessions.</div>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- STEP 8 -->
+    <section class="mn-section" id="step-export">
+      <div class="mn-section-tag">// Step 8</div>
+      <h2>Export Film</h2>
+      <p>In Timeline, click <strong>Export Film</strong>. The export modal opens.</p>
+      <ol class="mn-steps">
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">1</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Set options</div>
+            <div class="mn-step-desc">
+              <strong>Title Card</strong> — optional video file prepended as an opening title sequence<br>
+              <strong>Include Captions</strong> — burns dialogue text onto each clip<br>
+              <strong>Include Voice-Over</strong> — mixes TTS audio with each clip<br>
+              <strong>Music Track</strong> — background music from your Music library
+            </div>
+          </div>
+        </li>
+        <li class="mn-step mn-auto">
+          <div class="mn-step-num">2</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">FFmpeg stitches the film</div>
+            <div class="mn-step-desc">Backend concatenates all clips in order, adds captions, mixes voice-over and music, outputs a single MP4. Takes ~1-3 minutes for a full film.</div>
+          </div>
+        </li>
+        <li class="mn-step mn-manual">
+          <div class="mn-step-num">3</div>
+          <div class="mn-step-body">
+            <div class="mn-step-title">Preview and download</div>
+            <div class="mn-step-desc">Video player appears in the export modal. Watch it, then click Download to save the MP4.</div>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- MODELS -->
+    <section class="mn-section" id="models">
+      <div class="mn-section-tag">// Reference</div>
+      <h2>AI Models</h2>
+      <table class="mn-table">
+        <thead>
+          <tr><th>Model</th><th>Use For</th><th>Cost</th><th>Speed</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>FLUX Dev</strong></td><td>Image generation (all scenes)</td><td><em>Free</em></td><td>~30s/image</td></tr>
+          <tr><td><strong>FLUX + LoRA</strong></td><td>Images with character consistency (trained face)</td><td><em>Free</em></td><td>~45s/image</td></tr>
+          <tr><td><strong>Wan 2.1</strong></td><td>Draft animation — fast, good for reviewing motion</td><td><em>Free</em></td><td>~2-3min/clip</td></tr>
+          <tr><td><strong>Wan 2.1 Best (14B)</strong></td><td>Best open-source animation quality</td><td><em>Free</em></td><td>~5-8min/clip</td></tr>
+          <tr><td><strong>Kling 2.6 Pro</strong></td><td>Production-ready animation — use for final renders</td><td><em>$0.28/5s clip</em></td><td>~1-2min/clip</td></tr>
+          <tr><td><strong>GPT-4o-mini</strong></td><td>Story development, scene breakdown</td><td><em>~$0.01/story</em></td><td>~10-30s</td></tr>
+          <tr><td><strong>ElevenLabs</strong></td><td>TTS voice-over per scene</td><td><em>Character credits</em></td><td>~5s/line</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- MUSIC -->
+    <section class="mn-section" id="music">
+      <div class="mn-section-tag">// Tools</div>
+      <h2>Music</h2>
+      <p>Go to the <strong>Music</strong> tab. Three options:</p>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+        <li style="font-size:14px;color:var(--text-muted)"><strong style="color:#fff">Upload Track</strong> — drag in any MP3/WAV. It goes into your library and is available in the export modal's music selector.</li>
+        <li style="font-size:14px;color:var(--text-muted)"><strong style="color:#fff">AI Generate</strong> — type a mood/style prompt, get a generated music track.</li>
+        <li style="font-size:14px;color:var(--text-muted)"><strong style="color:#fff">Mix</strong> — blend two tracks with a crossfade slider.</li>
+      </ul>
+      <div class="mn-tip"><strong>Tip:</strong> Music is mixed at 30% volume behind voice-over during export so dialogue stays audible.</div>
+    </section>
+
+    <!-- IMAGE GEN -->
+    <section class="mn-section" id="image-gen">
+      <div class="mn-section-tag">// Tools</div>
+      <h2>Image Gen — Manual Shot Creation</h2>
+      <p>The <strong>Image Gen</strong> tab is for one-off image + animation work outside the main pipeline. Use it to:</p>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+        <li style="font-size:14px;color:var(--text-muted)">• Regenerate a single bad keyframe with an edited prompt</li>
+        <li style="font-size:14px;color:var(--text-muted)">• Test image styles before committing to a full story</li>
+        <li style="font-size:14px;color:var(--text-muted)">• Generate standalone images for thumbnails, covers, or social posts</li>
+        <li style="font-size:14px;color:var(--text-muted)">• Animate any existing image with a custom motion prompt</li>
+      </ul>
+    </section>
+
+    <!-- THEMES -->
+    <section class="mn-section" id="themes">
+      <div class="mn-section-tag">// Tools</div>
+      <h2>Themes</h2>
+      <p>Click the theme button in the top-right nav to open the picker. Theme is saved to <code>localStorage</code> and persists across all pages.</p>
+      <table class="mn-table">
+        <thead><tr><th>Theme</th><th>Look</th><th>Accent</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Dark Studio</strong></td><td>Sapphire-black, default</td><td>Red</td></tr>
+          <tr><td><strong>Royal Crimson</strong></td><td>Deep burgundy — House of Kel</td><td>Deep red</td></tr>
+          <tr><td><strong>Federal</strong></td><td>Navy + crimson — Imperio</td><td>Blue</td></tr>
+          <tr><td><strong>Ivory</strong></td><td>Warm parchment, light mode</td><td>Gold</td></tr>
+          <tr><td><strong>Navy</strong></td><td>Deep ocean blue</td><td>Blue</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- QUICK REF -->
+    <section class="mn-section" id="shortcuts">
+      <div class="mn-section-tag">// Reference</div>
+      <h2>Quick Reference</h2>
+      <table class="mn-table">
+        <thead><tr><th>Task</th><th>Where</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Start new project</strong></td><td>Idea Vault</td><td>Fill form → Save Idea</td></tr>
+          <tr><td><strong>Develop an idea</strong></td><td>Idea Vault → click card</td><td>Set character → Develop Story</td></tr>
+          <tr><td><strong>Generate images only</strong></td><td>Idea Vault → approve bar</td><td>🖼 Keyframes → Review</td></tr>
+          <tr><td><strong>Full auto to timeline</strong></td><td>Idea Vault → approve bar</td><td>⚡ Full Auto → Timeline</td></tr>
+          <tr><td><strong>Animate approved shots</strong></td><td>Idea Vault → keyframe review</td><td>Set model → ⚡ Animate Selected</td></tr>
+          <tr><td><strong>Check pipeline progress</strong></td><td>Dashboard</td><td>Active job banner (auto-updates)</td></tr>
+          <tr><td><strong>Reorder shots</strong></td><td>Timeline ↗</td><td>Drag cards → Save Order</td></tr>
+          <tr><td><strong>Export final film</strong></td><td>Timeline ↗</td><td>Export Film → set options → Export</td></tr>
+          <tr><td><strong>Edit a saved idea</strong></td><td>Idea Vault</td><td>Edit button on idea card</td></tr>
+          <tr><td><strong>Train character LoRA</strong></td><td>Characters</td><td>Upload 5+ photos → Train LoRA</td></tr>
+          <tr><td><strong>Clone a voice</strong></td><td>Voice Clone ↗</td><td>Upload audio samples → Clone</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- COSTS -->
+    <section class="mn-section" id="costs">
+      <div class="mn-section-tag">// Reference</div>
+      <h2>Cost Guide</h2>
+      <div class="mn-tip"><strong>Rule of thumb:</strong> A 10-scene film with Kling 2.6 Pro = ~$2.80 in animation costs. Images + story + TTS together are near-zero. Use Wan first to validate, Kling for the final cut.</div>
+      <table class="mn-table">
+        <thead><tr><th>Operation</th><th>Cost</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Story development</strong></td><td><em>~$0.01</em></td><td>GPT-4o-mini per story, regardless of scene count</td></tr>
+          <tr><td><strong>Keyframe image</strong></td><td><em>Free</em></td><td>FLUX via fal.ai free tier</td></tr>
+          <tr><td><strong>Wan 2.1 animation</strong></td><td><em>Free</em></td><td>Free open-source model on fal.ai</td></tr>
+          <tr><td><strong>Wan 2.1 Best animation</strong></td><td><em>Free</em></td><td>Free, higher quality, slower</td></tr>
+          <tr><td><strong>Kling 2.6 Pro animation</strong></td><td><em>$0.28/clip</em></td><td>5-second clip. 20 scenes = $5.60</td></tr>
+          <tr><td><strong>ElevenLabs TTS</strong></td><td><em>Character credits</em></td><td>Depends on your ElevenLabs plan</td></tr>
+          <tr><td><strong>Export (FFmpeg)</strong></td><td><em>Free</em></td><td>Runs on Railway server compute</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+</body>
+</html>

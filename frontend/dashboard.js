@@ -7,9 +7,24 @@
   // ── Entry point called when tab is shown ─────────────────────
   window.dbLoad = function () {
     clearTimeout(_refreshTimer);
+    _startClock();
     _fetchAll();
-    _refreshTimer = setTimeout(dbLoad, 30_000); // auto-refresh every 30s
+    _refreshTimer = setTimeout(dbLoad, 30_000);
   };
+
+  let _clockInterval = null;
+  function _startClock() {
+    if (_clockInterval) return; // already running
+    const clockEl = document.getElementById("db-clock");
+    const dateEl  = document.getElementById("db-date");
+    function _tick() {
+      const now = new Date();
+      if (clockEl) clockEl.textContent = now.toLocaleTimeString("en-US", { hour12: false });
+      if (dateEl)  dateEl.textContent  = now.toLocaleDateString("en-US", { weekday:"long", month:"short", day:"numeric", year:"numeric" }).toUpperCase();
+    }
+    _tick();
+    _clockInterval = setInterval(_tick, 1000);
+  }
 
   // ── Parallel fetch everything ─────────────────────────────────
   async function _fetchAll() {
@@ -84,17 +99,26 @@
 
   // ── Stats bar ─────────────────────────────────────────────────
   function _renderStats(ideas, chars, shots, vids) {
-    const films = vids.filter(v => v.project && v.name.includes("export")).length;
-    _setStat("db-stat-ideas",  ideas.length);
-    _setStat("db-stat-chars",  chars.length);
-    _setStat("db-stat-shots",  shots.length);
-    _setStat("db-stat-films",  vids.length);
+    _countUp("db-stat-ideas", ideas.length);
+    _countUp("db-stat-chars", chars.length);
+    _countUp("db-stat-shots", shots.length);
+    _countUp("db-stat-films", vids.length);
 
-    // Runtime estimate from shots
-    const avgSec = 5;
-    const totalMin = Math.round((shots.length * avgSec) / 60 * 10) / 10;
+    const totalMin = Math.round((shots.length * 5) / 60 * 10) / 10;
     const runtimeEl = document.getElementById("db-stat-runtime");
-    if (runtimeEl) runtimeEl.textContent = totalMin + " min";
+    if (runtimeEl) runtimeEl.textContent = totalMin > 0 ? totalMin + "m" : "0m";
+  }
+
+  function _countUp(id, target) {
+    const el = document.getElementById(id);
+    if (!el || target === 0) { if (el) el.textContent = target; return; }
+    let cur = 0;
+    const step = Math.ceil(target / 20);
+    const timer = setInterval(() => {
+      cur = Math.min(cur + step, target);
+      el.textContent = cur;
+      if (cur >= target) clearInterval(timer);
+    }, 30);
   }
 
   // ── "Where I left off" card ───────────────────────────────────
@@ -129,7 +153,7 @@
           ${wip.genre ? `<span>${_esc(wip.genre)}</span>` : ""}
         </div>
         <div class="db-wip-actions">
-          <button class="db-btn-gold" onclick="dbGoToIdea('${wip.id}')">Continue →</button>
+          <button class="db-btn-red" onclick="dbGoToIdea('${wip.id}')"><span>CONTINUE →</span></button>
           ${shots.length ? `<span class="db-wip-shots">${shots.length} shots in timeline</span>` : ""}
         </div>
       </div>

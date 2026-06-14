@@ -2144,7 +2144,7 @@ button:disabled {
   border-bottom: 1px solid rgba(180, 0, 0, 0.3);
 }
 .db-studio-label {
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: .25em;
   color: #cc1a1a;
   font-weight: 700;
@@ -2178,7 +2178,7 @@ button:disabled {
   text-shadow: 0 0 20px rgba(200,0,0,.5);
 }
 .db-date {
-  font-size: 11px;
+  font-size: 14px;
   color: #888;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -2232,8 +2232,8 @@ button:disabled {
   animation: pulse 1.2s ease-in-out infinite;
   flex-shrink:0;
 }
-.db-job-title { font-weight:800; color:#cc1a1a; font-size:13px; letter-spacing:.06em; text-transform:uppercase; }
-.db-job-step  { color:#bbb; font-size:12px; max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.db-job-title { font-weight:800; color:#cc1a1a; font-size:15px; letter-spacing:.06em; text-transform:uppercase; }
+.db-job-step  { color:#ccc; font-size:14px; max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .db-job-bar-wrap { width:180px; height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; }
 .db-job-bar-fill { height:100%; background:linear-gradient(90deg,#8b0000,#cc1a1a,#ff4444); border-radius:2px; transition:width .4s; }
 .db-job-pct   { font-size:11px; color:#ccc; white-space:nowrap; font-weight:700; }
@@ -2285,11 +2285,11 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 .db-stat-card--accent .db-stat-num {
-  color: #ff4444;
-  text-shadow: 0 0 20px rgba(200,0,0,.6), 0 0 40px rgba(200,0,0,.25);
+  color: #fff;
+  text-shadow: 0 0 18px rgba(255,60,60,.9), 0 0 40px rgba(200,0,0,.5);
 }
 .db-stat-label {
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: .2em;
   color: #666;
@@ -2346,11 +2346,11 @@ button:disabled {
 .db-launch-btn:hover .db-launch-icon {
   text-shadow: 0 0 20px rgba(255,60,60,.9), 0 0 40px rgba(200,0,0,.4);
 }
-.db-launch-text { position: relative; z-index: 1; }
+.db-launch-text { position: relative; z-index: 1; font-size: 13px; }
 
 /* ── Section panels ───────────────────────────────────────────── */
 .db-panel {
-  background: rgba(0,0,0,.7);
+  background: rgba(0,0,0,.82);
   border: 1px solid rgba(255,255,255,.07);
   border-radius: 4px;
   padding: 18px 20px;
@@ -2363,7 +2363,7 @@ button:disabled {
   margin-bottom: 16px;
 }
 .db-panel-label {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: .2em;
   color: #cc1a1a;
@@ -2371,8 +2371,8 @@ button:disabled {
   white-space: nowrap;
 }
 .db-panel-sub {
-  font-size: 10px;
-  color: #555;
+  font-size: 13px;
+  color: #666;
   margin-right: auto;
 }
 .db-panel-line {
@@ -2385,11 +2385,11 @@ button:disabled {
 .db-left-off-wrap { min-height: 60px; }
 .db-wip-card { display:flex; flex-direction:column; gap:10px; }
 .db-wip-top  { display:flex; align-items:center; gap:12px; }
-.db-wip-title { font-size:18px; font-weight:800; color:#fff; letter-spacing:.02em; text-shadow: 0 0 20px rgba(200,0,0,.3); }
-.db-wip-logline { font-size:13px; color:#999; margin:0; line-height:1.6; font-style:italic; max-width:800px; }
-.db-wip-meta { display:flex; gap:16px; font-size:10px; color:#666; flex-wrap:wrap; letter-spacing:.08em; text-transform:uppercase; }
+.db-wip-title { font-size:20px; font-weight:800; color:#fff; letter-spacing:.02em; text-shadow: 0 0 20px rgba(200,0,0,.3); }
+.db-wip-logline { font-size:15px; color:#bbb; margin:0; line-height:1.6; font-style:italic; max-width:800px; }
+.db-wip-meta { display:flex; gap:16px; font-size:13px; color:#888; flex-wrap:wrap; letter-spacing:.06em; text-transform:uppercase; }
 .db-wip-actions { display:flex; align-items:center; gap:16px; margin-top:4px; }
-.db-wip-shots { font-size:11px; color:#555; }
+.db-wip-shots { font-size:13px; color:#777; }
 
 .db-btn-red {
   background: transparent;
@@ -2419,8 +2419,8 @@ button:disabled {
 .db-btn-red span { position: relative; z-index: 1; }
 
 /* ── Status badges ────────────────────────────────────────────── */
-.db-badge      { padding:2px 9px; border-radius:2px; font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
-.db-badge-raw  { background:rgba(255,255,255,.06); color:#666; border:1px solid rgba(255,255,255,.06); }
+.db-badge      { padding:3px 10px; border-radius:2px; font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.db-badge-raw  { background:rgba(255,255,255,.08); color:#999; border:1px solid rgba(255,255,255,.12); }
 .db-badge-dev  { background:rgba(74,158,255,.1); color:#4a9eff; border:1px solid rgba(74,158,255,.2); }
 .db-badge-approved { background:rgba(200,0,0,.15); color:#ff4444; border:1px solid rgba(200,0,0,.3); }
 .db-badge-active   { background:rgba(255,165,0,.12); color:orange; border:1px solid rgba(255,165,0,.3); }
@@ -2468,9 +2468,9 @@ button:disabled {
 .db-clip-thumb { position:relative; aspect-ratio:16/9; background:#0a0a0a; overflow:hidden; }
 .db-clip-thumb video { width:100%; height:100%; object-fit:cover; display:block; }
 .db-clip-meta { padding:5px 7px; display:flex; flex-direction:column; gap:2px; }
-.db-clip-proj { font-size:8px; color:#cc1a1a; text-transform:uppercase; letter-spacing:.1em; font-weight:800; }
-.db-clip-name { font-size:10px; color:#ccc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.db-clip-date { font-size:8px; color:#444; }
+.db-clip-proj { font-size:11px; color:#cc1a1a; text-transform:uppercase; letter-spacing:.08em; font-weight:800; }
+.db-clip-name { font-size:13px; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.db-clip-date { font-size:11px; color:#666; }
 
 /* ── Project/saga cards ───────────────────────────────────────── */
 .db-projects-grid { display:flex; flex-direction:column; gap:8px; }
@@ -2497,15 +2497,15 @@ button:disabled {
   display:flex; align-items:center; justify-content:center;
   border: 1px solid rgba(255,255,255,.05);
 }
-.db-proj-no-thumb span { font-size:9px; color:#333; }
+.db-proj-no-thumb span { font-size:11px; color:#444; }
 .db-proj-info { display:flex; flex-direction:column; gap:5px; min-width:0; }
-.db-proj-name { font-size:12px; font-weight:800; color:#e0e0e0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:.04em; }
-.db-proj-meta { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:9px; color:#555; letter-spacing:.06em; text-transform:uppercase; }
-.db-proj-date { font-size:9px; color:#444; }
+.db-proj-name { font-size:15px; font-weight:800; color:#e0e0e0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:.04em; }
+.db-proj-meta { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:#777; letter-spacing:.05em; text-transform:uppercase; }
+.db-proj-date { font-size:11px; color:#555; }
 
 .db-empty {
-  color: #444;
-  font-size: 12px;
+  color: #666;
+  font-size: 15px;
   font-style: italic;
   margin: 0;
   letter-spacing: .04em;

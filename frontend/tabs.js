@@ -2,6 +2,7 @@
 (function () {
   // Tabs that render inline in the row-2 content area
   const TAB_PANELS = {
+    "dashboard":    { id: "tab-dashboard",   display: "flex", onShow: () => window.dbLoad?.() },
     "idea-vault":   { id: "tab-idea-vault",  display: "flex" },
     "shot-builder": { id: "tab-main",        display: "grid" },
     "image-gen":    { id: "tab-image-gen",   display: "flex" },
@@ -38,9 +39,10 @@
     const cfg = TAB_PANELS[tabKey];
     if (!cfg) return;
     hideAllTabPanels();
-    hideCharacterWorkspace(); // row-4 character panel should close when switching tabs
+    hideCharacterWorkspace();
     const el = document.getElementById(cfg.id);
     if (el) el.style.display = cfg.display;
+    cfg.onShow?.();
   }
 
   function setActiveNav(btn) {
@@ -79,9 +81,17 @@
       });
     });
 
-    // Default: show Production (Shot Builder + Voice Lab) on load
-    showTab("shot-builder");
+    // Default: show Dashboard on load
+    showTab("dashboard");
   });
 
   window.showTab = showTab;
+
+  // Public helper: switch tab AND update nav highlight
+  window.switchTab = function (tabKey) {
+    showTab(tabKey);
+    document.querySelectorAll(".nav-btn[data-tab]").forEach(b => {
+      b.classList.toggle("active", b.dataset.tab === tabKey);
+    });
+  };
 })();

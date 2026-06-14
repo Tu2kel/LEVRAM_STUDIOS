@@ -18,9 +18,10 @@
         <span class="logo-sub">Generator v2</span>
       </div>
       <nav class="top-nav">
+        <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
         <button class="nav-btn" data-tab="idea-vault">Idea Vault</button>
         <button class="nav-btn" data-tab="characters">Characters</button>
-        <button class="nav-btn active" data-tab="shot-builder">Production</button>
+        <button class="nav-btn" data-tab="shot-builder">Production</button>
         <button class="nav-btn" data-tab="image-gen">Image Gen</button>
         <button class="nav-btn" data-tab="music">Music</button>
         <button class="nav-btn" data-tab="timeline">Timeline ↗</button>
@@ -42,8 +43,99 @@
         style="grid-column: 1/-1; grid-row: 1"
       ></div>
 
+      <!-- TAB: Dashboard (default landing) -->
+      <div id="tab-dashboard" class="tab-panel" style="grid-column:1/-1;grid-row:2;display:flex;flex-direction:column;gap:18px;padding:16px 20px;overflow-y:auto;">
+
+        <!-- Active Pipeline Job Banner -->
+        <div id="db-active-job" style="display:none;" class="db-job-banner"></div>
+
+        <!-- Stats Row + Quick Actions -->
+        <div class="db-top-row">
+          <!-- Stats -->
+          <div class="db-stats-bar">
+            <div class="db-stat-block">
+              <span class="db-stat-num" id="db-stat-ideas">—</span>
+              <span class="db-stat-label">Ideas</span>
+            </div>
+            <div class="db-stat-divider"></div>
+            <div class="db-stat-block">
+              <span class="db-stat-num" id="db-stat-chars">—</span>
+              <span class="db-stat-label">Characters</span>
+            </div>
+            <div class="db-stat-divider"></div>
+            <div class="db-stat-block">
+              <span class="db-stat-num" id="db-stat-shots">—</span>
+              <span class="db-stat-label">Timeline Shots</span>
+            </div>
+            <div class="db-stat-divider"></div>
+            <div class="db-stat-block">
+              <span class="db-stat-num" id="db-stat-films">—</span>
+              <span class="db-stat-label">Clips Generated</span>
+            </div>
+            <div class="db-stat-divider"></div>
+            <div class="db-stat-block">
+              <span class="db-stat-num" id="db-stat-runtime">—</span>
+              <span class="db-stat-label">Est. Runtime</span>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="db-quick-actions">
+            <button class="db-qa-btn" onclick="switchTab('idea-vault')">
+              <span class="db-qa-icon">💡</span>New Idea
+            </button>
+            <button class="db-qa-btn" onclick="document.querySelector('[data-tab=characters]').click()">
+              <span class="db-qa-icon">🎭</span>Characters
+            </button>
+            <button class="db-qa-btn" onclick="window.open('timeline.html','_blank')">
+              <span class="db-qa-icon">🎬</span>Timeline
+            </button>
+            <button class="db-qa-btn" onclick="switchTab('shot-builder')">
+              <span class="db-qa-icon">📤</span>Production
+            </button>
+          </div>
+        </div>
+
+        <!-- Where I Left Off -->
+        <div class="db-section">
+          <div class="db-section-header">
+            <span class="db-section-title">Where I Left Off</span>
+            <button class="db-refresh-btn" onclick="dbLoad()">↻ Refresh</button>
+          </div>
+          <div id="db-left-off" class="db-left-off-wrap"></div>
+        </div>
+
+        <!-- Recent Clips + Projects side by side -->
+        <div class="db-lower-row">
+          <!-- Recent Clips -->
+          <div class="db-section db-section-clips">
+            <div class="db-section-header">
+              <span class="db-section-title">Recent Clips</span>
+              <span class="db-section-sub">hover to preview</span>
+            </div>
+            <div id="db-clips-grid" class="db-clips-grid"></div>
+          </div>
+
+          <!-- Projects / Sagas -->
+          <div class="db-section db-section-projects">
+            <div class="db-section-header">
+              <span class="db-section-title">Projects & Sagas</span>
+            </div>
+            <div id="db-projects-grid" class="db-projects-grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Video Preview Modal -->
+      <div id="db-clip-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)dbCloseClip()">
+        <div style="position:relative;max-width:860px;width:90%;">
+          <video id="db-clip-modal-video" controls autoplay style="width:100%;border-radius:8px;"></video>
+          <button onclick="dbCloseClip()" style="position:absolute;top:-14px;right:-14px;background:var(--gold,#c9a84c);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;font-weight:700;">✕</button>
+        </div>
+      </div>
+
       <!-- TAB: Voice Lab + Shot Builder (shared main panel) -->
-      <div id="tab-main" class="tab-panel" style="grid-column: 1/-1; grid-row: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div id="tab-main" class="tab-panel" style="grid-column: 1/-1; grid-row: 2; display: none; grid-template-columns: 1fr 1fr; gap: 12px;">
 
       <!-- LEFT — Voice Lab -->
       <div class="left-panel">
@@ -1233,6 +1325,7 @@
     <script src="timeline.js"></script>
     <script src="preview-drawer.js"></script>
     <script src="tabs.js"></script>
+    <script src="dashboard.js"></script>
     <script src="idea-vault.js"></script>
     <script src="image-gen.js"></script>
     <script src="orchestrate.js"></script>

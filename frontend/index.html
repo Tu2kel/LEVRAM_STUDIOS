@@ -44,7 +44,7 @@
       ></div>
 
       <!-- TAB: Dashboard (default landing) -->
-      <div id="tab-dashboard" class="tab-panel db-root">
+      <div id="tab-dashboard" class="tab-panel db-root" style="grid-column:1/-1;grid-row:2/span 4;display:flex;">
 
         <!-- Full-bleed background: logo image + red lightning overlay -->
         <div class="db-bg">
@@ -124,24 +124,15 @@
             </button>
           </div>
 
-          <!-- WHERE I LEFT OFF -->
-          <div class="db-panel db-wip-panel">
-            <div class="db-panel-header">
-              <span class="db-panel-label">// WHERE I LEFT OFF</span>
-              <div class="db-panel-line"></div>
-            </div>
-            <div id="db-left-off" class="db-left-off-wrap"></div>
-          </div>
-
-          <!-- LOWER ROW: clips + projects -->
-          <div class="db-lower-row">
-            <div class="db-panel db-panel-clips">
+          <!-- MID ROW: WIP (left-center) + Sagas (right) -->
+          <div class="db-mid-row">
+            <div class="db-panel db-wip-panel">
               <div class="db-panel-header">
-                <span class="db-panel-label">// RECENT CLIPS</span>
-                <span class="db-panel-sub">hover to preview</span>
+                <span class="db-panel-label">// WHERE I LEFT OFF</span>
+                <button class="db-refresh-btn-hero" onclick="dbLoad()" title="Refresh" style="border-radius:3px;width:auto;padding:0 10px;font-size:10px;letter-spacing:.08em;">↻ REFRESH</button>
                 <div class="db-panel-line"></div>
               </div>
-              <div id="db-clips-grid" class="db-clips-grid"></div>
+              <div id="db-left-off" class="db-left-off-wrap"></div>
             </div>
 
             <div class="db-panel db-panel-projects">
@@ -151,6 +142,16 @@
               </div>
               <div id="db-projects-grid" class="db-projects-grid"></div>
             </div>
+          </div>
+
+          <!-- BOTTOM ROW: Recent Clips full width -->
+          <div class="db-panel db-panel-clips">
+            <div class="db-panel-header">
+              <span class="db-panel-label">// RECENT CLIPS</span>
+              <span class="db-panel-sub">hover to preview</span>
+              <div class="db-panel-line"></div>
+            </div>
+            <div id="db-clips-grid" class="db-clips-grid"></div>
           </div>
 
         </div><!-- /.db-content -->

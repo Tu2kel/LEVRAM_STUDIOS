@@ -2081,12 +2081,14 @@ button:disabled {
    DASHBOARD — LEVRAM COMMAND CENTER
    ═══════════════════════════════════════════════════════════════ */
 
-/* Root wrapper — fills the grid cell */
+/* Root wrapper — escapes the main-grid, covers full viewport below header */
 .db-root {
-  position: relative;
-  grid-column: 1/-1;
-  grid-row: 2;
-  min-height: 0;
+  position: fixed !important;
+  top: 73px;        /* below .top-bar (min-height: 70px + 3px gap) */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
   overflow: hidden;
 }
 
@@ -2120,12 +2122,15 @@ button:disabled {
 .db-content {
   position: relative;
   z-index: 1;
+  width: 100%;
   height: 100%;
   overflow-y: auto;
-  padding: 20px 28px 32px;
+  overflow-x: hidden;
+  padding: 22px 36px 40px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
+  box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: #cc1a1a #0a0a0a;
 }
@@ -2425,19 +2430,23 @@ button:disabled {
 .db-badge-failed   { background:rgba(255,80,80,.1); color:#ff5050; border:1px solid rgba(255,80,80,.2); }
 
 /* ── Lower row ────────────────────────────────────────────────── */
-.db-lower-row {
+/* Mid row: WIP wide-left + sagas narrow-right */
+.db-mid-row {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
+  align-items: stretch;
 }
-.db-panel-clips    { flex: 2 1 0; min-width: 0; }
-.db-panel-projects { flex: 1 1 0; min-width: 0; }
+.db-wip-panel      { flex: 3 1 0; min-width: 0; }
+.db-panel-projects { flex: 1 1 220px; min-width: 200px; max-width: 340px; }
+
+/* Recent clips: full-width strip at bottom */
+.db-panel-clips { width: 100%; }
 
 /* ── Recent clips grid ────────────────────────────────────────── */
 .db-clips-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
 }
 .db-clip-card {
   border: 1px solid rgba(255,255,255,.06);
@@ -2507,7 +2516,8 @@ button:disabled {
 /* ── Responsive ───────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .db-stat-grid { grid-template-columns: repeat(3, 1fr); }
-  .db-lower-row { flex-direction: column; }
+  .db-mid-row { flex-direction: column; }
+  .db-panel-projects { max-width: 100%; }
   .db-launch-bar { flex-wrap: wrap; }
 }
 @media (max-width: 640px) {

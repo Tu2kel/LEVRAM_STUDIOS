@@ -2100,9 +2100,9 @@ button:disabled {
   inset: 0;
   background-image: url("Levram_Studios.png");
   background-size: cover;
-  background-position: center 20%;
+  background-position: center 5%;
   background-repeat: no-repeat;
-  opacity: 0.28;
+  opacity: 0.35;
   filter: saturate(1.4) contrast(1.1);
 }
 /* Vignette: dark at edges, slightly open in center */

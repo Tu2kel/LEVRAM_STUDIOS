@@ -299,17 +299,19 @@
             </div>
 
             <div class="shot-field">
-              <div class="field-label">Saga / Universe</div>
-              <select id="shot-project">
-                <option value="">— Select Saga —</option>
+              <div class="field-label">Project</div>
+              <select id="shot-project" onchange="igToggleCustomProject(this)">
+                <option value="">— Select Project —</option>
                 <option>Kelz Saga</option>
                 <option>Hulk Saga</option>
                 <option>Flash Saga</option>
                 <option>Batman Saga</option>
                 <option>Alpha Centurium</option>
                 <option>Hero Fallout</option>
-                <option>Custom Saga</option>
+                <option>Chicago Skit</option>
+                <option>Custom</option>
               </select>
+              <input id="shot-project-custom" type="text" placeholder="Project name…" style="display:none;margin-top:4px;width:100%;box-sizing:border-box;" />
             </div>
             <div class="shot-field">
               <div class="field-label">Scene #</div>
@@ -731,6 +733,9 @@
               <!-- Person 1 -->
               <div style="margin-bottom:10px;">
                 <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:5px;">Person 1</div>
+                <select id="ig-char-pick-1" style="width:100%;margin-bottom:6px;font-size:12px;" onchange="igLoadCharacterFaceRefs(this.value,1)">
+                  <option value="">From Character…</option>
+                </select>
                 <div id="ig-face-drop-1"
                   style="border:2px dashed rgba(201,168,76,0.2);border-radius:4px;padding:10px;text-align:center;cursor:pointer;transition:border-color .2s;"
                   ondragover="event.preventDefault();this.style.borderColor='rgba(201,168,76,0.6)'"
@@ -746,6 +751,9 @@
               <!-- Person 2 -->
               <div>
                 <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.6);margin-bottom:5px;">Person 2 <span style="font-size:9px;color:var(--text-dim);text-transform:none;letter-spacing:0;">(optional)</span></div>
+                <select id="ig-char-pick-2" style="width:100%;margin-bottom:6px;font-size:12px;" onchange="igLoadCharacterFaceRefs(this.value,2)">
+                  <option value="">From Character…</option>
+                </select>
                 <div id="ig-face-drop-2"
                   style="border:2px dashed rgba(201,168,76,0.12);border-radius:4px;padding:10px;text-align:center;cursor:pointer;transition:border-color .2s;"
                   ondragover="event.preventDefault();this.style.borderColor='rgba(201,168,76,0.5)'"
@@ -1364,6 +1372,21 @@
     <script src="idea-vault.js"></script>
     <script src="image-gen.js"></script>
     <script src="orchestrate.js"></script>
+
+    <!-- Shot builder custom project toggle -->
+    <script>
+    window.igToggleCustomProject = function(sel) {
+      const inp = document.getElementById("shot-project-custom");
+      if (!inp) return;
+      if (sel.value === "Custom") {
+        inp.style.display = "block";
+        inp.focus();
+      } else {
+        inp.style.display = "none";
+        inp.value = "";
+      }
+    };
+    </script>
 
     <!-- Music Studio tab logic -->
     <script>

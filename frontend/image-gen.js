@@ -209,12 +209,54 @@ async function igLoadCharacters() {
     const res  = await levFetch(`${IG_BASE}/characters`);
     const data = await res.json();
     igCharacterCache = data.characters || [];
-    sel.innerHTML = '<option value="">None / Standalone</option>' +
+    const opts = '<option value="">None / Standalone</option>' +
       igCharacterCache.map(c => `<option value="${c.id}" data-name="${c.name}">${c.name}${c.lora_status === "ready" ? " ★" : ""}</option>`).join("");
+    sel.innerHTML = opts;
+    // Populate Person 1 / Person 2 character pickers
+    const pickerOpts = '<option value="">From Character…</option>' +
+      igCharacterCache.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+    const p1 = document.getElementById("ig-char-pick-1");
+    const p2 = document.getElementById("ig-char-pick-2");
+    if (p1) p1.innerHTML = pickerOpts;
+    if (p2) p2.innerHTML = pickerOpts;
   } catch (err) {
     console.error("IG CHAR LOAD ERROR:", err);
   }
 }
+
+// Load a character's reference images into a face slot
+window.igLoadCharacterFaceRefs = async function(charId, person) {
+  if (!charId) return;
+  const char = igCharacterCache.find(c => c.id === charId);
+  if (!char) return;
+  const refs = char.reference_images || [];
+  if (!refs.length) {
+    levShowError(`${char.name} has no reference photos uploaded yet.`);
+    return;
+  }
+  const thumbEl = document.getElementById(`ig-face-thumbs-${person}`);
+  if (thumbEl) thumbEl.innerHTML = `<div style="font-size:10px;color:var(--gold);letter-spacing:1px;">Loading ${refs.length} refs from ${char.name}…</div>`;
+  // Fetch each ref image as base64 and add to face slot
+  const slot = person === 1 ? igFaceRefs1 : igFaceRefs2;
+  slot.length = 0;
+  for (const url of refs.slice(0, 5)) {
+    try {
+      const fullUrl = url.startsWith("http") ? url : IG_BASE + url;
+      const r = await fetch(fullUrl);
+      const blob = await r.blob();
+      await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const b64 = e.target.result.split(",")[1];
+          slot.push({ base64: b64, mediaType: blob.type || "image/jpeg" });
+          resolve();
+        };
+        reader.readAsDataURL(blob);
+      });
+    } catch (_) {}
+  }
+  igRenderFaceThumbs(person);
+};
 
 function igRenderCharacterImages(charId) {
   const row = document.getElementById("ig-char-images-row");
@@ -365,6 +407,8 @@ async function igGenerateVideo() {
     if (videoPlayer) videoPlayer.src = videoUrl;
     if (videoDl) { videoDl.href = videoUrl; videoDl.download = outPath.split("/").pop() || "levram_video.mp4"; }
     if (statusEl) statusEl.textContent = `Video ready — ${engineLabel}`;
+    const vgSection = document.getElementById("ig-video-gallery-section");
+    if (vgSection) vgSection.style.display = "block";
     igLoadVideoGallery();
     if (btn) { btn.disabled = false; btn.textContent = "Generate Video"; }
   }
@@ -843,6 +887,8 @@ async function igRunI2V() {
     if (videoDl)     { videoDl.href = videoUrl; videoDl.download = outPath.split("/").pop() || "levram_i2v.mp4"; }
     if (statusEl) statusEl.textContent = `Video ready — ${label}`;
     if (btn) { btn.disabled = false; btn.textContent = "Generate Video"; }
+    const vgSection = document.getElementById("ig-video-gallery-section");
+    if (vgSection) vgSection.style.display = "block";
     igLoadVideoGallery();
   }
 

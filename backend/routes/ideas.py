@@ -204,8 +204,13 @@ async def _gpt_develop(
     loop   = asyncio.get_event_loop()
 
     system = (
-        "You are a cinematic story developer for LEVRAM Studios. "
-        "Return ONLY valid JSON — no markdown fences, no commentary."
+        "You are a scene breakdown writer for LEVRAM Studios. "
+        "CRITICAL RULES:\n"
+        "1. Execute the concept LITERALLY — do not reimagine, upgrade, or add lore not mentioned.\n"
+        "2. If lyrics or dialogue are provided in the concept, use them VERBATIM as the dialogue field — do not paraphrase.\n"
+        "3. Do not invent settings (no space, no future, no fantasy) unless the concept explicitly says so.\n"
+        "4. Keep tone/genre exactly as described. A comedy skit stays a comedy skit.\n"
+        "5. Return ONLY valid JSON — no markdown fences, no commentary."
     )
     user = (
         f"Concept: {concept}\n"
@@ -214,17 +219,17 @@ async def _gpt_develop(
         f"Target runtime: {target_minutes} minutes\n"
         f"Scenes needed: {num_scenes} scenes × {scene_seconds}s each\n\n"
         f"Return a JSON object with:\n"
-        f"  title         – story title\n"
+        f"  title         – story title (taken from concept, not invented)\n"
         f"  logline       – one sentence summary\n"
         f"  act_structure – brief 3-act breakdown (string)\n"
         f"  scenes        – array of exactly {num_scenes} scene objects, each with:\n"
         f"    index        (int, 0-based)\n"
         f"    act          (1, 2, or 3)\n"
-        f"    description  (one sentence)\n"
-        f"    image_prompt (detailed visual prompt — setting, action, lighting, costume)\n"
-        f"    dialogue     (optional short spoken line or narration, or empty string)\n"
+        f"    description  (one sentence, literal to the concept)\n"
+        f"    image_prompt (visual prompt — body language, setting, lighting, costume only — NO face descriptions, the face comes from a reference photo)\n"
+        f"    dialogue     (exact lyric line or spoken line from the concept — use verbatim if provided, empty string if none)\n"
         f"    reel_weight  (int 1-10 — impact value for highlight reel)\n"
-        f"    emotion      (single word: tension, triumph, mystery, etc.)\n"
+        f"    emotion      (single word: tension, triumph, comedy, fear, etc.)\n"
     )
 
     def _call():

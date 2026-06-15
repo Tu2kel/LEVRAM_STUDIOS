@@ -183,7 +183,7 @@ def _fal_upload(data: bytes, media_type: str) -> str:
 
 
 # ── Consistent Character — locks appearance across scenes ────
-def _generate_consistent_character(prompt: str, face_refs: list[RefImage], aspect: str) -> dict:
+def _generate_consistent_character(prompt: str, face_refs: list[RefImage], aspect: str, style: str = "") -> dict:
     try:
         import fal_client
     except ImportError:
@@ -198,10 +198,11 @@ def _generate_consistent_character(prompt: str, face_refs: list[RefImage], aspec
     primary_bytes = _b64.b64decode(face_refs[0].base64)
     subject_url   = _fal_upload(primary_bytes, face_refs[0].mediaType)
 
+    full_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
     image_size = FAL_SIZES.get(aspect, "landscape_16_9")
     result = fal_client.run("fal-ai/flux-pulid", arguments={
         "reference_image_url": subject_url,
-        "prompt":              prompt,
+        "prompt":              full_prompt,
         "image_size":          image_size,
         "num_inference_steps": 28,
         "guidance_scale":      4.0,
@@ -343,7 +344,7 @@ async def generate_image(payload: ImageGenPayload):
             # Consistent Character — engine-selected, locks appearance across scenes
             if engine == "consistent_character" and face1:
                 result = await loop.run_in_executor(
-                    None, _generate_consistent_character, prompt, face1, payload.aspect
+                    None, _generate_consistent_character, prompt, face1, payload.aspect, payload.style
                 )
                 return {"success": True, **result}
 

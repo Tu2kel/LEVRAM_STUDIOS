@@ -206,7 +206,7 @@ def _generate_consistent_character(prompt: str, face_refs: list[RefImage], aspec
         "num_inference_steps": 28,
         "guidance_scale":      4.0,
         "id_weight":           1.0,
-        "negative_prompt":     "cartoon, illustration, stylized, anime, unrealistic",
+        "negative_prompt":     "cartoon, illustration, stylized, anime, unrealistic, extra fingers, too many fingers, six fingers, fused fingers, deformed hands, mutated hands, malformed hands",
         "enable_safety_checker": False,
     })
     imgs        = result.get("images") or []

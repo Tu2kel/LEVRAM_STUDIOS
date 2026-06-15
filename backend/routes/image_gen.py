@@ -198,17 +198,24 @@ def _generate_consistent_character(prompt: str, face_refs: list[RefImage], aspec
     primary_bytes = _b64.b64decode(face_refs[0].base64)
     subject_url   = _fal_upload(primary_bytes, face_refs[0].mediaType)
 
-    result = fal_client.run("fal-ai/consistent-character", arguments={
-        "subject":           subject_url,
-        "prompt":            prompt,
-        "num_images":        1,
-        "randomize_poses":   False,
-        "output_format":     "jpeg",
+    image_size = FAL_SIZES.get(aspect, "landscape_16_9")
+    result = fal_client.run("fal-ai/flux-pulid", arguments={
+        "reference_image_url": subject_url,
+        "prompt":              prompt,
+        "image_size":          image_size,
+        "num_inference_steps": 28,
+        "guidance_scale":      4.0,
+        "id_weight":           1.0,
+        "negative_prompt":     "cartoon, illustration, stylized, anime, unrealistic",
+        "enable_safety_checker": False,
     })
-    img_url     = result["images"][0]["url"]
+    imgs        = result.get("images") or []
+    img_url     = (imgs[0].get("url") if imgs else None) or result.get("image", {}).get("url") or ""
+    if not img_url:
+        raise RuntimeError(f"No image URL from flux-pulid: {list(result.keys())}")
     image_bytes = _download_url(img_url)
     _, output_url = _save_bytes(image_bytes, prefix="consistent")
-    return {"imageUrl": output_url, "prompt": prompt, "engine": "consistent_character", "model": "fal-ai/consistent-character"}
+    return {"imageUrl": output_url, "prompt": prompt, "engine": "consistent_character", "model": "fal-ai/flux-pulid"}
 
 
 # ── InstantID — high-fidelity single-person face identity ────
@@ -396,6 +403,8 @@ async def generate_image(payload: ImageGenPayload):
         fn = lambda: _generate_dalle3(prompt, payload.aspect, payload.style)
     elif engine == "comfy":
         fn = lambda: _generate_comfy(prompt, payload.aspect, payload.style, payload.character)
+    elif engine == "consistent_character":
+        raise HTTPException(status_code=400, detail="Consistent Character requires a Person 1 face photo — drop one in the face reference box and try again.")
     else:
         raise HTTPException(status_code=400, detail=f"Unknown engine: {engine}")
 
@@ -414,7 +423,7 @@ def list_models():
         "success": True,
         "default": "fal_flux",
         "engines": [
-            {"id": "consistent_character", "label": "★ Consistent Character",      "provider": "fal.ai", "speed": "fast",   "quality": "best",   "note": "Requires Person 1 face photo — same character every generation"},
+            {"id": "consistent_character", "label": "★ Consistent Character",      "provider": "fal.ai", "speed": "fast",   "quality": "best",   "note": "Requires Person 1 face photo — FLUX PuLID keeps same face every generation"},
             {"id": "fal_flux_lora",        "label": "FLUX LoRA (character-locked)", "provider": "fal.ai", "speed": "fast",   "quality": "best",   "note": "Requires trained LoRA — auto-selected when character has one"},
             {"id": "fal_flux",             "label": "FLUX.1 Dev",                   "provider": "fal.ai", "speed": "fast",   "quality": "high"},
             {"id": "fal_flux_schnell",     "label": "FLUX.1 Schnell",               "provider": "fal.ai", "speed": "turbo",  "quality": "good"},

@@ -204,9 +204,9 @@ def _generate_consistent_character(prompt: str, face_refs: list[RefImage], aspec
         "reference_image_url": subject_url,
         "prompt":              full_prompt,
         "image_size":          image_size,
-        "num_inference_steps": 28,
-        "guidance_scale":      4.0,
-        "id_weight":           1.0,
+        "num_inference_steps": 35,
+        "guidance_scale":      6.0,
+        "id_weight":           0.8,
         "negative_prompt":     "cartoon, illustration, stylized, anime, unrealistic, extra fingers, too many fingers, six fingers, fused fingers, deformed hands, mutated hands, malformed hands",
         "enable_safety_checker": False,
     })

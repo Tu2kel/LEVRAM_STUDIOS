@@ -1275,7 +1275,7 @@
               <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(201,168,76,0.15);">
                 <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Reference Images — LoRA Training</div>
                 <input type="file" id="cl-ref-upload" multiple accept="image/*" style="display:none;" onchange="clUploadReferences()" />
-                <button type="button" onclick="if(!window.editingCharacterId){const s=document.getElementById('cl-lora-status');if(s){s.style.color='#ff6b6b';s.textContent='Save the character first, then upload photos.';}return;}document.getElementById('cl-ref-upload').click()"
+                <button type="button" onclick="clUploadPhotosGuarded()"
                         style="width:100%;background:rgba(0,0,0,0.3);border:1px dashed rgba(201,168,76,0.3);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:7px;border-radius:2px;cursor:pointer;margin-bottom:6px;">
                   + Upload Photos
                 </button>

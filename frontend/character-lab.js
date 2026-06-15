@@ -174,10 +174,10 @@ window.saveCharacter = async function saveCharacter() {
       return;
     }
 
-    // PHASE 8F.4 — reset edit state after successful save
-    editingCharacterId = null;
+    // Stay in edit mode with the saved/returned ID so uploads work immediately
+    editingCharacterId = data.character?.id || editingCharacterId;
     const badge = document.getElementById("cl-edit-badge");
-    if (badge) badge.style.display = "none";
+    if (badge) badge.style.display = editingCharacterId ? "inline-block" : "none";
 
     if (saveBtn) {
       saveBtn.classList.add("character-save-confirmed");
@@ -346,6 +346,15 @@ window.newCharacter = function newCharacter() {
 };
 
 // ── Reference Images + LoRA Training ──────────────────────────
+
+window.clUploadPhotosGuarded = function() {
+  if (!editingCharacterId) {
+    const s = document.getElementById("cl-lora-status");
+    if (s) { s.style.color = "#ff6b6b"; s.textContent = "Save the character first, then upload photos."; }
+    return;
+  }
+  document.getElementById("cl-ref-upload")?.click();
+};
 
 async function clUploadReferences() {
   const input = document.getElementById("cl-ref-upload");

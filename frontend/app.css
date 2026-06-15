@@ -382,13 +382,15 @@ textarea.script-input {
   border: 1px solid var(--border);
   border-bottom: 1px solid var(--border-strong);
   color: var(--text);
-  font-family: "Share Tech Mono", monospace;
-  font-size: 21px;
+  font-family: Rajdhani, sans-serif;
+  font-size: 14px;
   line-height: 1.6;
-  padding: 14px;
+  padding: 12px 14px;
   border-radius: 4px;
-  resize: none;
+  resize: vertical;
   outline: none;
+  word-wrap: break-word;
+  white-space: pre-wrap;
   transition:
     border-color 0.2s,
     box-shadow 0.2s;

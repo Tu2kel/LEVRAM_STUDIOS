@@ -228,8 +228,10 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ character_name: charName, target_minutes: minutes, scene_seconds: sceneSec }),
     });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.detail || "Develop failed");
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch (_) { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`); }
+    if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Develop failed");
     ivRenderStory(data.story);
     await ivLoadIdeas();
   } catch (err) {

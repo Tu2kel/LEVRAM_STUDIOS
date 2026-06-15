@@ -228,20 +228,30 @@ async def _gpt_develop(
     )
 
     def _call():
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-            temperature=0.85,
-            max_tokens=6000,
-        )
-        raw = resp.choices[0].message.content.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        return json.loads(raw)
+        try:
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+                temperature=0.85,
+                max_tokens=6000,
+            )
+            raw = resp.choices[0].message.content.strip()
+            # Strip markdown fences
+            if raw.startswith("```"):
+                raw = raw.split("```")[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            raw = raw.strip()
+            return json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"GPT returned invalid JSON: {e} — raw start: {raw[:200]}")
+        except Exception as e:
+            raise RuntimeError(f"GPT develop failed: {type(e).__name__}: {e}")
 
-    return await loop.run_in_executor(None, _call)
+    try:
+        return await loop.run_in_executor(None, _call)
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
 
 
 def _top_scene_indices(scenes: list, reel_sec: int, scene_sec: int) -> list[int]:

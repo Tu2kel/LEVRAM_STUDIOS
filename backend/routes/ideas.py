@@ -92,6 +92,27 @@ def _get_idea(idea_id: str) -> dict | None:
     return next((i for i in data["ideas"] if i["id"] == idea_id), None)
 
 
+async def _get_idea_any(idea_id: str) -> dict | None:
+    """Read from MongoDB if available, else fall back to JSON file."""
+    if ideas_col is not None:
+        doc = await ideas_col.find_one({"id": idea_id})
+        return _strip(doc) if doc else None
+    return _get_idea(idea_id)
+
+
+async def _patch_idea_any(idea_id: str, updates: dict):
+    """Write to MongoDB if available, else fall back to JSON file."""
+    updates["updatedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if ideas_col is not None:
+        await ideas_col.update_one({"id": idea_id}, {"$set": updates})
+        return
+    data = _load()
+    for i in data["ideas"]:
+        if i["id"] == idea_id:
+            i.update(updates)
+    _save(data)
+
+
 def _patch_idea(idea_id: str, updates: dict):
     data = _load()
     for i in data["ideas"]:
@@ -103,7 +124,7 @@ def _patch_idea(idea_id: str, updates: dict):
 
 @router.post("/ideas/{idea_id}/develop")
 async def develop_idea(idea_id: str, body: DevelopRequest):
-    idea = _get_idea(idea_id)
+    idea = await _get_idea_any(idea_id)
     if not idea:
         raise HTTPException(404, "Idea not found")
 
@@ -128,9 +149,9 @@ async def develop_idea(idea_id: str, body: DevelopRequest):
     story["reel_30s"]      = _top_scene_indices(scenes, 30,  body.scene_seconds)
     story["reel_15s"]      = _top_scene_indices(scenes, 15,  body.scene_seconds)
 
-    _patch_idea(idea_id, {"story": story, "status": "developed",
-                          "target_minutes": body.target_minutes,
-                          "scene_seconds": body.scene_seconds})
+    await _patch_idea_any(idea_id, {"story": story, "status": "developed",
+                                    "target_minutes": body.target_minutes,
+                                    "scene_seconds": body.scene_seconds})
     return {"success": True, "story": story}
 
 
@@ -154,21 +175,21 @@ async def update_idea(idea_id: str, body: dict):
 
 @router.patch("/ideas/{idea_id}/story")
 async def update_story(idea_id: str, body: dict):
-    idea = _get_idea(idea_id)
+    idea = await _get_idea_any(idea_id)
     if not idea:
         raise HTTPException(404, "Idea not found")
     story = dict(idea.get("story") or {})
     story.update(body)
-    _patch_idea(idea_id, {"story": story})
+    await _patch_idea_any(idea_id, {"story": story})
     return {"success": True, "story": story}
 
 
 @router.post("/ideas/{idea_id}/approve")
 async def approve_idea(idea_id: str):
-    idea = _get_idea(idea_id)
+    idea = await _get_idea_any(idea_id)
     if not idea:
         raise HTTPException(404, "Idea not found")
-    _patch_idea(idea_id, {"status": "approved"})
+    await _patch_idea_any(idea_id, {"status": "approved"})
     return {"success": True, "idea_id": idea_id}
 
 

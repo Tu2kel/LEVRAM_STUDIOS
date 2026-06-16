@@ -103,7 +103,7 @@ async def save_scene(scene: ScenePayload):
 @router.get("/scenes")
 async def list_scenes():
     if scenes_col is not None:
-        docs = await scenes_col.find({}).sort("saved_at", -1).to_list(None)
+        docs = await scenes_col.find({}).sort("shot_number", 1).to_list(None)
         return {"success": True, "count": len(docs), "scenes": [_strip(d) for d in docs]}
 
     scenes = _json_load_all()

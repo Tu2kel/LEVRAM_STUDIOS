@@ -207,6 +207,7 @@
         <div class="tl-subtitle">Shot Timeline</div>
       </div>
       <div class="tl-header-actions">
+        <button onclick="shots.reverse(); renumberShots(); renderTimeline(); setStatus('Order reversed — click Save Order to keep.')">⇅ Reverse</button>
         <button class="gold" onclick="saveTimelineOrder()">Save Order</button>
         <button onclick="window.close()">Close</button>
       </div>

@@ -57,8 +57,12 @@ async function ivLoadIdeas() {
               ✎ Edit
             </button>
             <button onclick="ivDevelopIdea('${idea.id}')"
-              style="flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
-              ${idea.story ? "View / Re-develop" : "⚡ Develop Story"}
+              style="background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
+              ${idea.story ? "Review" : "Develop"}
+            </button>
+            <button onclick="ivOneShotRun('${idea.id}')"
+              style="flex:1;background:linear-gradient(135deg,rgba(201,168,76,0.25),rgba(201,168,76,0.1));border:1px solid rgba(201,168,76,0.7);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border-radius:2px;cursor:pointer;font-weight:700;">
+              ⚡ ONE SHOT
             </button>
           </div>
         </div>`;
@@ -234,6 +238,54 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
     if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Develop failed");
     ivRenderStory(data.story);
     await ivLoadIdeas();
+  } catch (err) {
+    if (metaEl) metaEl.textContent = "Error: " + err.message;
+    if (approveBtn) { approveBtn.disabled = false; approveBtn.classList.remove("lora-scanning"); }
+  }
+};
+
+// ── One Shot: develop → approve → generate (no stops) ─────────
+window.ivOneShotRun = async function ivOneShotRun(id) {
+  ivCurrentIdeaId = id;
+  const panel     = document.getElementById("iv-story-panel");
+  const titleEl   = document.getElementById("iv-story-title");
+  const metaEl    = document.getElementById("iv-story-meta");
+  const sceneEl   = document.getElementById("iv-scene-list");
+  const reelEl    = document.getElementById("iv-reel-row");
+  const statusEl  = document.getElementById("iv-approve-status");
+  const approveBtn = document.getElementById("iv-approve-btn");
+
+  if (panel) panel.style.display = "block";
+  if (titleEl) titleEl.textContent = "One Shot — Writing Story…";
+  if (metaEl) metaEl.textContent = "GPT building story breakdown…";
+  if (sceneEl) sceneEl.innerHTML = "";
+  if (reelEl) reelEl.innerHTML = "";
+  if (statusEl) statusEl.textContent = "";
+  if (approveBtn) { approveBtn.disabled = true; approveBtn.classList.add("lora-scanning"); }
+  panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const charSel  = document.getElementById("iv-dev-character");
+  const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
+  const minutes  = parseFloat(document.getElementById("iv-minutes")?.value || "2");
+  const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "8");
+
+  try {
+    const res  = await levFetch(`${IV_BASE}/ideas/${id}/develop`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ character_name: charName, target_minutes: minutes, scene_seconds: sceneSec }),
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch (_) { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`); }
+    if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Develop failed");
+
+    ivRenderStory(data.story);
+    await ivLoadIdeas();
+
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--gold);letter-spacing:1px;">Story ready — launching pipeline…</span>`;
+    await ivApproveAndGenerate();
+
   } catch (err) {
     if (metaEl) metaEl.textContent = "Error: " + err.message;
     if (approveBtn) { approveBtn.disabled = false; approveBtn.classList.remove("lora-scanning"); }

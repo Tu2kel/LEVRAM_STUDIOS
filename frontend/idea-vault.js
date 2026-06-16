@@ -1,9 +1,15 @@
 // ─── Idea Vault ───────────────────────────────────────────────
 const IV_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
-let ivCurrentIdeaId  = null;
+let ivCurrentIdeaId  = sessionStorage.getItem("ivCurrentIdeaId") || null;
 let ivEditingIdeaId  = null;   // non-null when the capture form is in edit mode
 let _ivIdeasCache    = [];     // latest loaded ideas list
+
+function _ivSetCurrentId(id) {
+  ivCurrentIdeaId = id;
+  if (id) sessionStorage.setItem("ivCurrentIdeaId", id);
+  else sessionStorage.removeItem("ivCurrentIdeaId");
+}
 
 // ── Load character dropdown ────────────────────────────────────
 async function ivLoadCharacters() {
@@ -199,7 +205,7 @@ async function ivDeleteIdea(id) {
     if (ivCurrentIdeaId === id) {
       const panel = document.getElementById("iv-story-panel");
       if (panel) panel.style.display = "none";
-      ivCurrentIdeaId = null;
+      _ivSetCurrentId(null);
     }
     await ivLoadIdeas();
   } catch (err) {
@@ -209,7 +215,7 @@ async function ivDeleteIdea(id) {
 
 // ── View existing story (no API call) ─────────────────────────
 window.ivViewStory = function ivViewStory(id) {
-  ivCurrentIdeaId = id;
+  _ivSetCurrentId(id);
   const idea = _ivIdeasCache.find(i => i.id === id);
   if (!idea?.story) { ivDevelopIdea(id); return; }
   const panel = document.getElementById("iv-story-panel");
@@ -222,7 +228,7 @@ window.ivViewStory = function ivViewStory(id) {
 
 // ── Develop ────────────────────────────────────────────────────
 window.ivDevelopIdea = async function ivDevelopIdea(id) {
-  ivCurrentIdeaId = id;
+  _ivSetCurrentId(id);
   const panel    = document.getElementById("iv-story-panel");
   const titleEl  = document.getElementById("iv-story-title");
   const durEl    = document.getElementById("iv-story-duration");
@@ -267,7 +273,7 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
 
 // ── One Shot: develop → approve → generate (no stops) ─────────
 window.ivOneShotRun = async function ivOneShotRun(id) {
-  ivCurrentIdeaId = id;
+  _ivSetCurrentId(id);
   const panel     = document.getElementById("iv-story-panel");
   const titleEl   = document.getElementById("iv-story-title");
   const metaEl    = document.getElementById("iv-story-meta");

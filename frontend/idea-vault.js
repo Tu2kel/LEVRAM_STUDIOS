@@ -57,12 +57,8 @@ async function ivLoadIdeas() {
               ✎ Edit
             </button>
             <button onclick="ivDevelopIdea('${idea.id}')"
-              style="background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
-              ${idea.story ? "Review" : "Develop"}
-            </button>
-            <button onclick="ivOneShotRun('${idea.id}')"
-              style="flex:1;background:linear-gradient(135deg,rgba(201,168,76,0.25),rgba(201,168,76,0.1));border:1px solid rgba(201,168,76,0.7);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border-radius:2px;cursor:pointer;font-weight:700;">
-              ⚡ ONE SHOT
+              style="flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
+              ${idea.story ? "⚡ View / Re-develop" : "⚡ Develop Story"}
             </button>
           </div>
         </div>`;

@@ -342,7 +342,7 @@
 .character-card-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 3px;
 }
 
@@ -388,7 +388,6 @@
 }
 
 .cl-btn-edit {
-  flex: 1;
   background: var(--imperial-blue-dim);
   color: #7eb3f5;
   border: 1px solid var(--imperial-border-blue);

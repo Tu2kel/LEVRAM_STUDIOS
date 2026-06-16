@@ -402,7 +402,7 @@ function clRefreshLoraPanel(character) {
 
   if (thumbGrid) {
     thumbGrid.innerHTML = refs.map((url, i) => {
-      const src      = url.startsWith("http") ? url : BASE + url;
+      const src      = url.startsWith("http") ? url : CL_BASE + url;
       const filename = url.split("/").pop();
       const isFirst  = i === 0;
       return `<div draggable="true" data-index="${i}" data-url="${url}"

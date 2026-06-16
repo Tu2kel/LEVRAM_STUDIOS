@@ -235,20 +235,27 @@ async function loadCharacters() {
       return;
     }
 
-    list.innerHTML = characters.map(c => `
-      <div class="character-card${c.default_voice_profile ? " has-voice" : ""}">
-        <div class="character-card-header">
-          <span class="character-card-name">⚜ ${c.name || "Unnamed"}</span>
-          ${c.default_voice_profile ? `<span class="character-card-voice-badge">Voice</span>` : ""}
-        </div>
-        <div class="character-card-meta">${[c.gender, c.age].filter(Boolean).join(" · ") || "No details"}</div>
-        ${c.default_voice_profile ? `<div class="character-card-voice">⚡ ${c.default_voice_profile}</div>` : ""}
-        <div class="character-card-actions">
-          <button type="button" class="cl-btn-edit" onclick="loadCharacterIntoForm('${c.id || ""}')">Edit</button>
-          <button type="button" class="cl-btn-delete" onclick="deleteCharacter('${c.id || ""}')">Delete</button>
-        </div>
-      </div>
-    `).join("");
+    list.innerHTML = characters.map(c => {
+      const hasLora = c.lora_status === "ready";
+      const hasRefs = (c.reference_images || []).length > 0;
+      const dot = hasLora
+        ? `<span style="width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;box-shadow:0 0 4px var(--gold);" title="LoRA trained"></span>`
+        : hasRefs
+        ? `<span style="width:7px;height:7px;border-radius:50%;background:#7eb3f5;flex-shrink:0;" title="Reference photos"></span>`
+        : `<span style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.15);flex-shrink:0;" title="No photos"></span>`;
+      return `
+        <div class="character-card${c.default_voice_profile ? " has-voice" : ""}">
+          <div class="character-card-header">
+            ${dot}
+            <span class="character-card-name">${c.name || "Unnamed"}</span>
+          </div>
+          <div class="character-card-meta">${[c.gender, c.age].filter(Boolean).join(" · ") || ""}</div>
+          <div class="character-card-actions">
+            <button type="button" class="cl-btn-edit" onclick="loadCharacterIntoForm('${c.id || ""}')">Edit</button>
+            <button type="button" class="cl-btn-delete" onclick="deleteCharacter('${c.id || ""}')">Delete</button>
+          </div>
+        </div>`;
+    }).join("");
   } catch (err) {
     console.error("LOAD CHARACTERS ERROR:", err);
     list.innerHTML = `<div class="character-empty">Could not load saved characters.</div>`;
@@ -315,6 +322,7 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
   _clShowActivePreviewImg(prevImages, activeIdx);
 
   clRefreshLoraPanel(c);
+  clShowPreviewCol(c);
 };
 
 // PHASE 8F.4 — delete a character by id
@@ -391,6 +399,30 @@ async function clUploadReferences() {
   await loadCharacters();
   const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
   clRefreshLoraPanel(cached);
+  clShowPreviewCol(cached);
+}
+
+function clShowPreviewCol(character) {
+  const empty  = document.getElementById("cl-preview-empty");
+  const active = document.getElementById("cl-preview-active");
+  if (!empty || !active) return;
+
+  const refs = (character?.reference_images || []);
+  if (!refs.length) {
+    empty.style.display  = "flex";
+    active.style.display = "none";
+    empty.textContent    = character ? "No photos yet — upload some" : "Select a character";
+    return;
+  }
+
+  empty.style.display  = "none";
+  active.style.display = "block";
+
+  const imgEl = document.getElementById("cl-active-img");
+  if (imgEl) {
+    const src = refs[0].startsWith("http") ? refs[0] : CL_BASE + refs[0];
+    imgEl.src = src;
+  }
 }
 
 function clRefreshLoraPanel(character) {

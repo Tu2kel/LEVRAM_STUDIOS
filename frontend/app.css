@@ -2540,13 +2540,23 @@ button:disabled {
 
 .character-lab-grid {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 180px 380px 1fr;
   gap: 20px;
   align-items: start;
   height: 100%;
 }
 
-/* Left column: the form */
+.cl-roster {
+  display: flex;
+  flex-direction: column;
+}
+
+.cl-preview-col {
+  position: sticky;
+  top: 0;
+}
+
+/* Middle column: the form */
 .character-form {
   display: flex;
   flex-direction: column;

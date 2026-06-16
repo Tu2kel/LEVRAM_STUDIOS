@@ -209,6 +209,7 @@
       <div class="tl-header-actions">
         <button onclick="shots.reverse(); renumberShots(); renderTimeline(); setStatus('Order reversed — click Save Order to keep.')">⇅ Reverse</button>
         <button class="gold" onclick="saveTimelineOrder()">Save Order</button>
+        <button class="gold" onclick="exportTimeline()">⬇ Export Video</button>
         <button onclick="window.close()">Close</button>
       </div>
     </div>
@@ -393,11 +394,20 @@
             <button class="tl-del-btn" title="Move Down" onclick="moveShot('${s.id}', 1)">↓</button>
             <button class="tl-del-btn" title="Delete"    onclick="deleteShot('${s.id}')">✕</button>
           </div>
-          ${s.dialogue   ? `<div class="tl-dialogue">"${s.dialogue}"</div>` : ""}
-          ${s.shotDesc || s.shot_description ? `<div class="tl-desc">${s.shotDesc || s.shot_description}</div>` : ""}
-          ${s.shotPrompt || s.shot_prompt ? `<div class="tl-prompt">${s.shotPrompt || s.shot_prompt}</div>` : ""}
-          ${s.fxUrl  ? `<audio controls src="${s.fxUrl}"  style="width:100%;margin-top:6px;"></audio>` :
-            s.rawUrl ? `<audio controls src="${s.rawUrl}" style="width:100%;margin-top:6px;"></audio>` : ""}
+          <div style="display:flex;gap:12px;align-items:flex-start;margin-top:6px;">
+            ${s.videoUrl
+              ? `<video controls src="${s.videoUrl}" style="width:220px;min-width:220px;border-radius:4px;background:#000;" preload="metadata"></video>`
+              : s.imageUrl
+              ? `<img src="${s.imageUrl}" style="width:220px;min-width:220px;border-radius:4px;object-fit:cover;" />`
+              : ""}
+            <div style="flex:1;min-width:0;">
+              ${s.dialogue   ? `<div class="tl-dialogue">"${s.dialogue}"</div>` : ""}
+              ${s.shotDesc   ? `<div class="tl-desc">${s.shotDesc}</div>` : ""}
+              ${s.shotPrompt ? `<div class="tl-prompt">${s.shotPrompt}</div>` : ""}
+              ${s.fxUrl  ? `<audio controls src="${s.fxUrl}"  style="width:100%;margin-top:6px;"></audio>` :
+                s.rawUrl ? `<audio controls src="${s.rawUrl}" style="width:100%;margin-top:6px;"></audio>` : ""}
+            </div>
+          </div>
         </div>
       `).join("");
     }
@@ -408,16 +418,19 @@
         const data = await res.json();
         if (!data.success) throw new Error("Failed to load scenes");
         shots = data.scenes.map(s => ({
-          id:           s.id || s.scene_number || String(Date.now()),
-          shot_number:  s.scene_number || s.id || "UNKNOWN",
-          character:    s.character || s.voice_character || "Unknown",
+          id:           s.id || String(Date.now()),
+          shot_number:  s.shot_number || s.scene_number || s.id || "UNKNOWN",
+          character:    s.character || s.voice_character || "None",
           dialogue:     s.dialogue || "",
-          shotDesc:     s.shot_description || "",
-          shotPrompt:   s.shot_prompt || "",
+          shotDesc:     s.shotDesc || s.shot_description || "",
+          shotPrompt:   s.shotPrompt || s.shot_prompt || "",
           preset:       s.voice_preset || "",
           rawUrl:       s.rawUrl || "",
           fxUrl:        s.fxUrl || "",
-          createdAt:    s.saved_at || "",
+          videoUrl:     s.videoUrl || "",
+          imageUrl:     s.imageUrl || s.renderOutputUrl || "",
+          duration:     parseFloat(s.duration) || 5,
+          createdAt:    s.createdAt || s.saved_at || "",
         }));
         renderTimeline();
         const total = getTotalDuration();
@@ -469,6 +482,31 @@
         setStatus(`Order saved. ${shots.length} shots sequenced.`);
       } catch (e) {
         setStatus("Failed to save order.", true);
+      }
+    }
+
+    async function exportTimeline() {
+      const btn = document.querySelector("button.gold[onclick='exportTimeline()']");
+      if (btn) { btn.disabled = true; btn.textContent = "Exporting…"; }
+      setStatus("Exporting — this may take a minute…");
+      try {
+        const res  = await levFetch(`${BASE}/video/export-timeline`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ shots, title: "LEVRAM Export", transition: "cut",
+                                 transition_dur: 0.3, include_voice: true }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.detail || "Export failed");
+        const url = (window.LEVRAM_CONFIG?.api || "http://localhost:8000") + data.exportUrl;
+        setStatus(`✔ Export done — ${data.clips} clips`);
+        const a = document.createElement("a");
+        a.href = url; a.download = data.exportUrl.split("/").pop();
+        a.click();
+      } catch (e) {
+        setStatus("Export failed: " + e.message, true);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "⬇ Export Video"; }
       }
     }
 

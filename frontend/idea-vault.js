@@ -364,38 +364,47 @@ function ivRenderStory(story) {
   const reel15  = new Set(story.reel_15s  || []);
 
   if (sceneEl) {
+    const esc = s => (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
     sceneEl.innerHTML = scenes.map((sc, i) => {
       const isReel15 = reel15.has(sc.index ?? i);
       const isReel30 = reel30.has(sc.index ?? i);
       const isReel60 = reel60.has(sc.index ?? i);
       const reelDots = [
-        isReel15 ? `<span title="15s reel" style="color:#4caaff;font-size:9px;">●15s</span>` : "",
-        isReel30 ? `<span title="30s reel" style="color:#4caf7a;font-size:9px;">●30s</span>` : "",
-        isReel60 ? `<span title="60s reel" style="color:#c9a84c;font-size:9px;">●60s</span>` : "",
+        isReel15 ? `<span style="color:#4caaff;font-size:9px;">●15s</span>` : "",
+        isReel30 ? `<span style="color:#4caf7a;font-size:9px;">●30s</span>` : "",
+        isReel60 ? `<span style="color:#c9a84c;font-size:9px;">●60s</span>` : "",
       ].filter(Boolean).join(" ");
       const actColor = { 1: "rgba(255,100,100,0.5)", 2: "rgba(201,168,76,0.5)", 3: "rgba(100,200,100,0.5)" }[sc.act] || "rgba(255,255,255,0.2)";
       return `
-        <div data-scene-idx="${i}" style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-left:3px solid ${actColor};border-radius:3px;padding:8px 10px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <div data-scene-idx="${i}" style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-left:3px solid ${actColor};border-radius:3px;padding:8px 10px;margin-bottom:4px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
             <span style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;min-width:28px;">S${(sc.index ?? i) + 1}</span>
             <span style="font-size:9px;color:${actColor.replace("0.5", "0.9")};letter-spacing:1px;text-transform:uppercase;">Act ${sc.act}</span>
-            <span style="font-size:9px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;">${sc.emotion || ""}</span>
+            <input data-field="emotion" value="${esc(sc.emotion)}"
+              style="width:80px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-family:Rajdhani,sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:1px 2px;outline:none;"
+              placeholder="emotion" />
             <span style="margin-left:auto;display:flex;gap:4px;">${reelDots}</span>
-            <span style="font-size:9px;color:rgba(255,255,255,0.35);">⚡${sc.reel_weight || 0}</span>
-            <button onclick="ivTrimFromScene(${i})" title="Delete this scene and all after it"
+            <button onclick="ivTrimFromScene(${i})" title="Delete this and all after"
               style="background:rgba(180,30,30,0.25);border:1px solid rgba(255,80,80,0.3);color:rgba(255,100,100,0.7);font-size:9px;letter-spacing:1px;padding:2px 5px;border-radius:2px;cursor:pointer;font-family:Rajdhani,sans-serif;text-transform:uppercase;">
-              ✂ trim
+              ✂
             </button>
             <button onclick="ivDeleteScene(${i})" title="Delete this scene only"
               style="background:rgba(80,0,0,0.3);border:1px solid rgba(255,60,60,0.25);color:rgba(255,80,80,0.6);font-size:10px;padding:2px 6px;border-radius:2px;cursor:pointer;">
               ✕
             </button>
           </div>
-          <div style="font-size:12px;color:var(--text);margin-bottom:4px;">${sc.description || ""}</div>
-          ${sc.dialogue ? `<div style="font-size:11px;color:var(--gold);font-style:italic;margin-bottom:4px;">"${sc.dialogue}"</div>` : ""}
-          <details style="margin-top:4px;">
+          <textarea data-field="description" rows="2"
+            style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:2px;color:var(--text);font-family:Rajdhani,sans-serif;font-size:12px;padding:4px 6px;resize:vertical;outline:none;margin-bottom:4px;"
+            >${esc(sc.description)}</textarea>
+          <textarea data-field="dialogue" rows="2"
+            style="width:100%;box-sizing:border-box;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:2px;color:var(--gold);font-family:Rajdhani,sans-serif;font-style:italic;font-size:11px;padding:4px 6px;resize:vertical;outline:none;margin-bottom:4px;"
+            placeholder="dialogue / lyric line"
+            >${esc(sc.dialogue)}</textarea>
+          <details style="margin-top:2px;">
             <summary style="font-size:10px;color:var(--text-dim);letter-spacing:1px;cursor:pointer;">Image Prompt ▾</summary>
-            <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.5;">${sc.image_prompt || ""}</div>
+            <textarea data-field="image_prompt" rows="3"
+              style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:2px;color:rgba(255,255,255,0.45);font-family:Rajdhani,sans-serif;font-size:10px;padding:4px 6px;resize:vertical;outline:none;margin-top:4px;"
+              >${esc(sc.image_prompt)}</textarea>
           </details>
         </div>`;
     }).join("");
@@ -403,6 +412,24 @@ function ivRenderStory(story) {
 
   if (approveBtn) { approveBtn.disabled = false; approveBtn.classList.remove("lora-scanning"); }
 }
+
+// ── Save scene edits from DOM ──────────────────────────────────
+window.ivSaveSceneEdits = async function ivSaveSceneEdits() {
+  if (!_ivCurrentStory || !ivCurrentIdeaId) return;
+  const sceneEl = document.getElementById("iv-scene-list");
+  if (!sceneEl) return;
+  const cards = sceneEl.querySelectorAll("[data-scene-idx]");
+  const scenes = [...(_ivCurrentStory.scenes || [])];
+  cards.forEach(card => {
+    const idx = parseInt(card.dataset.sceneIdx);
+    if (isNaN(idx) || !scenes[idx]) return;
+    const get = f => card.querySelector(`[data-field="${f}"]`)?.value ?? scenes[idx][f];
+    scenes[idx] = { ...scenes[idx], description: get("description").trim(),
+      dialogue: get("dialogue").trim(), emotion: get("emotion").trim(),
+      image_prompt: get("image_prompt").trim() };
+  });
+  await _ivPatchScenes(scenes);
+};
 
 // ── Scene delete / trim ────────────────────────────────────────
 let _ivCurrentStory = null;

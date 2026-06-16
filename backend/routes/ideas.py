@@ -207,10 +207,11 @@ async def _gpt_develop(
         "You are a scene breakdown writer for LEVRAM Studios. "
         "CRITICAL RULES:\n"
         "1. Execute the concept LITERALLY — do not reimagine, upgrade, or add lore not mentioned.\n"
-        "2. If lyrics or dialogue are provided in the concept, use them VERBATIM as the dialogue field — do not paraphrase.\n"
-        "3. Do not invent settings (no space, no future, no fantasy) unless the concept explicitly says so.\n"
-        "4. Keep tone/genre exactly as described. A comedy skit stays a comedy skit.\n"
-        "5. Return ONLY valid JSON — no markdown fences, no commentary."
+        "2. If lyrics or dialogue are provided, assign EXACTLY one lyric line per scene in order — use them VERBATIM as the dialogue field. Do not paraphrase.\n"
+        "3. When lyrics are provided, the number of scenes = number of lyric lines. Do NOT add intro scenes, outro scenes, or filler scenes beyond the lyrics. Stop exactly when the lyrics end.\n"
+        "4. Do not invent settings (no space, no future, no fantasy) unless the concept explicitly says so.\n"
+        "5. Keep tone/genre exactly as described. A comedy skit stays a comedy skit.\n"
+        "6. Return ONLY valid JSON — no markdown fences, no commentary."
     )
     user = (
         f"Concept: {concept}\n"

@@ -419,20 +419,54 @@ function ivRenderStory(story) {
 
 // ── Save scene edits from DOM ──────────────────────────────────
 window.ivSaveSceneEdits = async function ivSaveSceneEdits() {
-  if (!_ivCurrentStory || !ivCurrentIdeaId) return;
+  const saveBtn = document.querySelector("[onclick='ivSaveSceneEdits()']");
+  const showStatus = (msg, color) => {
+    if (saveBtn) { saveBtn.textContent = msg; saveBtn.style.color = color; }
+  };
+
+  if (!ivCurrentIdeaId) {
+    showStatus("⚠ Open a story first", "var(--imperial-red)");
+    setTimeout(() => { if (saveBtn) { saveBtn.textContent = "💾 Save Edits"; saveBtn.style.color = "var(--gold)"; } }, 3000);
+    return;
+  }
+
   const sceneEl = document.getElementById("iv-scene-list");
   if (!sceneEl) return;
   const cards = sceneEl.querySelectorAll("[data-scene-idx]");
-  const scenes = [...(_ivCurrentStory.scenes || [])];
+  if (!cards.length) { showStatus("⚠ No scenes", "var(--imperial-red)"); return; }
+
+  showStatus("Saving…", "rgba(255,255,255,0.6)");
+
+  // Build scenes from DOM — don't rely on _ivCurrentStory being populated
+  const scenes = [];
   cards.forEach(card => {
     const idx = parseInt(card.dataset.sceneIdx);
-    if (isNaN(idx) || !scenes[idx]) return;
-    const get = f => card.querySelector(`[data-field="${f}"]`)?.value ?? scenes[idx][f];
-    scenes[idx] = { ...scenes[idx], description: get("description").trim(),
-      dialogue: get("dialogue").trim(), emotion: get("emotion").trim(),
-      image_prompt: get("image_prompt").trim() };
+    const get = f => card.querySelector(`[data-field="${f}"]`)?.value?.trim() ?? "";
+    const existing = _ivCurrentStory?.scenes?.[idx] || {};
+    scenes.push({ ...existing, index: idx,
+      description:  get("description"),
+      dialogue:     get("dialogue"),
+      emotion:      get("emotion"),
+      image_prompt: get("image_prompt") });
   });
-  await _ivPatchScenes(scenes);
+
+  try {
+    const res = await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/story`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenes }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Save failed");
+
+    // Update in-memory cache without re-rendering (preserves scroll + focus)
+    if (_ivCurrentStory) _ivCurrentStory = { ..._ivCurrentStory, scenes };
+    showStatus("✔ Saved", "#4caf50");
+    setTimeout(() => { if (saveBtn) { saveBtn.textContent = "💾 Save Edits"; saveBtn.style.color = "var(--gold)"; } }, 2000);
+  } catch (err) {
+    showStatus("✕ " + err.message, "var(--imperial-red)");
+    setTimeout(() => { if (saveBtn) { saveBtn.textContent = "💾 Save Edits"; saveBtn.style.color = "var(--gold)"; } }, 4000);
+  }
 };
 
 // ── Scene delete / trim ────────────────────────────────────────
@@ -444,23 +478,28 @@ function _ivGetCurrentStoryFromDOM() {
 }
 
 async function _ivPatchScenes(newScenes) {
-  if (!ivCurrentIdeaId || !_ivCurrentStory) return;
-  // Re-index scenes
+  if (!ivCurrentIdeaId) return;
   newScenes = newScenes.map((sc, i) => ({ ...sc, index: i }));
-  _ivCurrentStory = { ..._ivCurrentStory, scenes: newScenes,
+  const secPer = _ivCurrentStory?.scene_seconds || 8;
+  const updated = { ...(_ivCurrentStory || {}), scenes: newScenes,
     num_scenes: newScenes.length,
-    est_seconds: newScenes.length * (_ivCurrentStory.scene_seconds || 8),
-    est_minutes: parseFloat((newScenes.length * (_ivCurrentStory.scene_seconds || 8) / 60).toFixed(1)) };
+    est_seconds: newScenes.length * secPer,
+    est_minutes: parseFloat((newScenes.length * secPer / 60).toFixed(1)) };
   try {
-    await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/story`, {
+    const res = await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/story`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenes: newScenes, num_scenes: _ivCurrentStory.num_scenes,
-        est_seconds: _ivCurrentStory.est_seconds, est_minutes: _ivCurrentStory.est_minutes }),
+      body: JSON.stringify({ scenes: newScenes, num_scenes: updated.num_scenes,
+        est_seconds: updated.est_seconds, est_minutes: updated.est_minutes }),
     });
+    if (!res.ok) throw new Error("Patch failed");
+    _ivCurrentStory = updated;
+    // Full re-render only for structural changes (add/delete/trim)
     ivRenderStory(_ivCurrentStory);
   } catch (err) {
-    console.error("Patch scenes failed:", err);
+    const metaEl = document.getElementById("iv-story-meta");
+    if (metaEl) metaEl.insertAdjacentHTML("beforeend",
+      `<div style="color:var(--imperial-red);font-size:11px;margin-top:4px;">Save failed: ${err.message}</div>`);
   }
 }
 

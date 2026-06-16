@@ -193,6 +193,23 @@ async def approve_idea(idea_id: str):
     return {"success": True, "idea_id": idea_id}
 
 
+def _count_lyric_lines(concept: str) -> int:
+    """Count numbered lyric lines in concept (lines after a LYRICS: marker)."""
+    lines = concept.splitlines()
+    in_lyrics = False
+    count = 0
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if "LYRICS" in stripped.upper() and stripped.upper().endswith(":"):
+            in_lyrics = True
+            continue
+        if in_lyrics and stripped:
+            count += 1
+    return count
+
+
 # ── GPT developer ──────────────────────────────────────────────
 
 async def _gpt_develop(
@@ -203,32 +220,36 @@ async def _gpt_develop(
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     loop   = asyncio.get_event_loop()
 
+    # Count lyric lines in the concept so GPT can't pad with filler
+    lyric_lines = _count_lyric_lines(concept)
+    locked_scenes = lyric_lines if lyric_lines else num_scenes
+
     system = (
         "You are a scene breakdown writer for LEVRAM Studios. "
         "CRITICAL RULES:\n"
         "1. Execute the concept LITERALLY — do not reimagine, upgrade, or add lore not mentioned.\n"
-        "2. If lyrics or dialogue are provided, assign EXACTLY one lyric line per scene in order — use them VERBATIM as the dialogue field. Do not paraphrase.\n"
-        "3. When lyrics are provided, the number of scenes = number of lyric lines. Do NOT add intro scenes, outro scenes, or filler scenes beyond the lyrics. Stop exactly when the lyrics end.\n"
+        "2. If a LYRICS section is present, assign EXACTLY one lyric line per scene in order — use them VERBATIM as the dialogue field. Do not paraphrase or combine lines.\n"
+        f"3. SCENE COUNT IS LOCKED AT {locked_scenes}. Do NOT add intro scenes, outro scenes, or filler. Do NOT exceed the lyric line count. Stop exactly when the lyrics end.\n"
         "4. Do not invent settings (no space, no future, no fantasy) unless the concept explicitly says so.\n"
         "5. Keep tone/genre exactly as described. A comedy skit stays a comedy skit.\n"
-        "6. Return ONLY valid JSON — no markdown fences, no commentary."
+        "6. The 'Scene setup' in the concept describes the ACTION happening during the lyrics — apply it progressively across scenes, do not make it a separate scene.\n"
+        "7. Return ONLY valid JSON — no markdown fences, no commentary."
     )
     user = (
         f"Concept: {concept}\n"
         f"Genre: {genre}\n"
         f"Main character: {character_name or 'unnamed'}\n"
-        f"Target runtime: {target_minutes} minutes\n"
-        f"Scenes needed: {num_scenes} scenes × {scene_seconds}s each\n\n"
+        f"Scene length: {scene_seconds}s each\n\n"
         f"Return a JSON object with:\n"
         f"  title         – story title (taken from concept, not invented)\n"
         f"  logline       – one sentence summary\n"
         f"  act_structure – brief 3-act breakdown (string)\n"
-        f"  scenes        – array of exactly {num_scenes} scene objects, each with:\n"
+        f"  scenes        – array of EXACTLY {locked_scenes} scene objects (no more, no less), each with:\n"
         f"    index        (int, 0-based)\n"
         f"    act          (1, 2, or 3)\n"
-        f"    description  (one sentence, literal to the concept)\n"
-        f"    image_prompt (visual prompt — body language, setting, lighting, costume only — NO face descriptions, the face comes from a reference photo)\n"
-        f"    dialogue     (exact lyric line or spoken line from the concept — use verbatim if provided, empty string if none)\n"
+        f"    description  (one sentence — what is physically happening in this scene, literal to the concept)\n"
+        f"    image_prompt (visual prompt — body language, setting, lighting, costume only — NO face descriptions)\n"
+        f"    dialogue     (VERBATIM lyric line for this scene — copy it exactly as written)\n"
         f"    reel_weight  (int 1-10 — impact value for highlight reel)\n"
         f"    emotion      (single word: tension, triumph, comedy, fear, etc.)\n"
     )

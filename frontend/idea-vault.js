@@ -3,6 +3,7 @@ const IV_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 let ivCurrentIdeaId  = null;
 let ivEditingIdeaId  = null;   // non-null when the capture form is in edit mode
+let _ivIdeasCache    = [];     // latest loaded ideas list
 
 // ── Load character dropdown ────────────────────────────────────
 async function ivLoadCharacters() {
@@ -27,6 +28,7 @@ async function ivLoadIdeas() {
     const res  = await levFetch(`${IV_BASE}/ideas`);
     const data = await res.json();
     const ideas = data.ideas || [];
+    _ivIdeasCache = ideas;
     if (!ideas.length) {
       list.innerHTML = `<p style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;">No ideas saved yet.</p>`;
       return;
@@ -56,10 +58,20 @@ async function ivLoadIdeas() {
               style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
               ✎ Edit
             </button>
-            <button onclick="ivDevelopIdea('${idea.id}')"
-              style="flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
-              ${idea.story ? "⚡ View / Re-develop" : "⚡ Develop Story"}
-            </button>
+            ${idea.story
+              ? `<button onclick="ivViewStory('${idea.id}')"
+                  style="flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
+                  📋 View Story
+                </button>
+                <button onclick="ivDevelopIdea('${idea.id}')" title="Re-run GPT to regenerate story"
+                  style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
+                  ↺
+                </button>`
+              : `<button onclick="ivDevelopIdea('${idea.id}')"
+                  style="flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
+                  ⚡ Develop Story
+                </button>`
+            }
           </div>
         </div>`;
     }).join("");
@@ -194,6 +206,19 @@ async function ivDeleteIdea(id) {
     console.error("IV DELETE ERROR:", err);
   }
 }
+
+// ── View existing story (no API call) ─────────────────────────
+window.ivViewStory = function ivViewStory(id) {
+  ivCurrentIdeaId = id;
+  const idea = _ivIdeasCache.find(i => i.id === id);
+  if (!idea?.story) { ivDevelopIdea(id); return; }
+  const panel = document.getElementById("iv-story-panel");
+  if (panel) panel.style.display = "block";
+  const approveEl = document.getElementById("iv-approve-status");
+  if (approveEl) approveEl.textContent = "";
+  panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+  ivRenderStory(idea.story);
+};
 
 // ── Develop ────────────────────────────────────────────────────
 window.ivDevelopIdea = async function ivDevelopIdea(id) {

@@ -395,11 +395,17 @@
             <button class="tl-del-btn" title="Delete"    onclick="deleteShot('${s.id}')">✕</button>
           </div>
           <div style="display:flex;gap:12px;align-items:flex-start;margin-top:6px;">
-            ${s.videoUrl
-              ? `<video controls src="${s.videoUrl}" style="width:220px;min-width:220px;border-radius:4px;background:#000;" preload="metadata"></video>`
-              : s.imageUrl
-              ? `<img src="${s.imageUrl}" style="width:220px;min-width:220px;border-radius:4px;object-fit:cover;" />`
-              : ""}
+            <div style="display:flex;flex-direction:column;gap:6px;min-width:220px;width:220px;">
+              ${s.videoUrl
+                ? `<video controls src="${s.videoUrl}" style="width:100%;border-radius:4px;background:#000;" preload="metadata"></video>`
+                : s.imageUrl
+                ? `<img src="${s.imageUrl}" style="width:100%;border-radius:4px;object-fit:cover;" />`
+                : `<div style="width:100%;height:120px;border-radius:4px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:12px;letter-spacing:1px;">NO MEDIA</div>`}
+              <div style="display:flex;gap:6px;">
+                ${s.videoUrl ? `<a href="${s.videoUrl}" download style="flex:1;text-align:center;padding:4px 0;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:1px;border-radius:3px;text-decoration:none;">⬇ VIDEO</a>` : ""}
+                ${s.imageUrl ? `<a href="${s.imageUrl}" download style="flex:1;text-align:center;padding:4px 0;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:1px;border-radius:3px;text-decoration:none;">⬇ IMG</a>` : ""}
+              </div>
+            </div>
             <div style="flex:1;min-width:0;">
               ${s.dialogue   ? `<div class="tl-dialogue">"${s.dialogue}"</div>` : ""}
               ${s.shotDesc   ? `<div class="tl-desc">${s.shotDesc}</div>` : ""}

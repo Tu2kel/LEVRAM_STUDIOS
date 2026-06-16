@@ -290,6 +290,7 @@ window.ivOneShotRun = async function ivOneShotRun(id) {
 
 // ── Render story ───────────────────────────────────────────────
 function ivRenderStory(story) {
+  _ivCurrentStory = story;
   const titleEl   = document.getElementById("iv-story-title");
   const durEl     = document.getElementById("iv-story-duration");
   const metaEl    = document.getElementById("iv-story-meta");
@@ -349,13 +350,21 @@ function ivRenderStory(story) {
       ].filter(Boolean).join(" ");
       const actColor = { 1: "rgba(255,100,100,0.5)", 2: "rgba(201,168,76,0.5)", 3: "rgba(100,200,100,0.5)" }[sc.act] || "rgba(255,255,255,0.2)";
       return `
-        <div style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-left:3px solid ${actColor};border-radius:3px;padding:8px 10px;">
+        <div data-scene-idx="${i}" style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-left:3px solid ${actColor};border-radius:3px;padding:8px 10px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
             <span style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;min-width:28px;">S${(sc.index ?? i) + 1}</span>
             <span style="font-size:9px;color:${actColor.replace("0.5", "0.9")};letter-spacing:1px;text-transform:uppercase;">Act ${sc.act}</span>
             <span style="font-size:9px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;">${sc.emotion || ""}</span>
             <span style="margin-left:auto;display:flex;gap:4px;">${reelDots}</span>
             <span style="font-size:9px;color:rgba(255,255,255,0.35);">⚡${sc.reel_weight || 0}</span>
+            <button onclick="ivTrimFromScene(${i})" title="Delete this scene and all after it"
+              style="background:rgba(180,30,30,0.25);border:1px solid rgba(255,80,80,0.3);color:rgba(255,100,100,0.7);font-size:9px;letter-spacing:1px;padding:2px 5px;border-radius:2px;cursor:pointer;font-family:Rajdhani,sans-serif;text-transform:uppercase;">
+              ✂ trim
+            </button>
+            <button onclick="ivDeleteScene(${i})" title="Delete this scene only"
+              style="background:rgba(80,0,0,0.3);border:1px solid rgba(255,60,60,0.25);color:rgba(255,80,80,0.6);font-size:10px;padding:2px 6px;border-radius:2px;cursor:pointer;">
+              ✕
+            </button>
           </div>
           <div style="font-size:12px;color:var(--text);margin-bottom:4px;">${sc.description || ""}</div>
           ${sc.dialogue ? `<div style="font-size:11px;color:var(--gold);font-style:italic;margin-bottom:4px;">"${sc.dialogue}"</div>` : ""}
@@ -369,6 +378,48 @@ function ivRenderStory(story) {
 
   if (approveBtn) { approveBtn.disabled = false; approveBtn.classList.remove("lora-scanning"); }
 }
+
+// ── Scene delete / trim ────────────────────────────────────────
+let _ivCurrentStory = null;
+
+function _ivGetCurrentStoryFromDOM() {
+  const sceneEls = document.querySelectorAll("#iv-scene-list [data-scene-idx]");
+  return _ivCurrentStory;
+}
+
+async function _ivPatchScenes(newScenes) {
+  if (!ivCurrentIdeaId || !_ivCurrentStory) return;
+  // Re-index scenes
+  newScenes = newScenes.map((sc, i) => ({ ...sc, index: i }));
+  _ivCurrentStory = { ..._ivCurrentStory, scenes: newScenes,
+    num_scenes: newScenes.length,
+    est_seconds: newScenes.length * (_ivCurrentStory.scene_seconds || 8),
+    est_minutes: parseFloat((newScenes.length * (_ivCurrentStory.scene_seconds || 8) / 60).toFixed(1)) };
+  try {
+    await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/story`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenes: newScenes, num_scenes: _ivCurrentStory.num_scenes,
+        est_seconds: _ivCurrentStory.est_seconds, est_minutes: _ivCurrentStory.est_minutes }),
+    });
+    ivRenderStory(_ivCurrentStory);
+  } catch (err) {
+    console.error("Patch scenes failed:", err);
+  }
+}
+
+window.ivDeleteScene = async function ivDeleteScene(idx) {
+  if (!_ivCurrentStory) return;
+  const scenes = [...(_ivCurrentStory.scenes || [])];
+  scenes.splice(idx, 1);
+  await _ivPatchScenes(scenes);
+};
+
+window.ivTrimFromScene = async function ivTrimFromScene(idx) {
+  if (!_ivCurrentStory) return;
+  const scenes = (_ivCurrentStory.scenes || []).slice(0, idx);
+  await _ivPatchScenes(scenes);
+};
 
 // ── Approve & Generate ─────────────────────────────────────────
 window.ivApproveAndGenerate = async function ivApproveAndGenerate() {

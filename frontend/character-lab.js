@@ -407,21 +407,27 @@ function clShowPreviewCol(character) {
   const active = document.getElementById("cl-preview-active");
   if (!empty || !active) return;
 
-  const refs = (character?.reference_images || []);
-  if (!refs.length) {
+  if (!character) {
     empty.style.display  = "flex";
     active.style.display = "none";
-    empty.textContent    = character ? "No photos yet — upload some" : "Select a character";
+    empty.textContent    = "Select a character";
     return;
   }
 
+  // Always show the active panel so upload button is accessible
   empty.style.display  = "none";
   active.style.display = "block";
 
+  const refs  = (character.reference_images || []);
   const imgEl = document.getElementById("cl-active-img");
-  if (imgEl) {
+  const imgWrap = imgEl?.parentElement;
+
+  if (refs.length && imgEl) {
     const src = refs[0].startsWith("http") ? refs[0] : CL_BASE + refs[0];
     imgEl.src = src;
+    if (imgWrap) imgWrap.style.display = "block";
+  } else {
+    if (imgWrap) imgWrap.style.display = "none";
   }
 }
 

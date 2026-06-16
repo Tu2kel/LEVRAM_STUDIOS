@@ -388,6 +388,10 @@ function ivRenderStory(story) {
               style="background:rgba(180,30,30,0.25);border:1px solid rgba(255,80,80,0.3);color:rgba(255,100,100,0.7);font-size:9px;letter-spacing:1px;padding:2px 5px;border-radius:2px;cursor:pointer;font-family:Rajdhani,sans-serif;text-transform:uppercase;">
               ✂
             </button>
+            <button onclick="ivAddScene(${i})" title="Insert scene after this one"
+              style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.35);font-size:10px;padding:2px 6px;border-radius:2px;cursor:pointer;">
+              +
+            </button>
             <button onclick="ivDeleteScene(${i})" title="Delete this scene only"
               style="background:rgba(80,0,0,0.3);border:1px solid rgba(255,60,60,0.25);color:rgba(255,80,80,0.6);font-size:10px;padding:2px 6px;border-radius:2px;cursor:pointer;">
               ✕
@@ -470,6 +474,18 @@ window.ivDeleteScene = async function ivDeleteScene(idx) {
 window.ivTrimFromScene = async function ivTrimFromScene(idx) {
   if (!_ivCurrentStory) return;
   const scenes = (_ivCurrentStory.scenes || []).slice(0, idx);
+  await _ivPatchScenes(scenes);
+};
+
+window.ivAddScene = async function ivAddScene(afterIdx) {
+  if (!_ivCurrentStory) return;
+  // Save any pending edits first so we don't lose in-progress text
+  await ivSaveSceneEdits();
+  const scenes = [...(_ivCurrentStory.scenes || [])];
+  const insertAt = (afterIdx !== undefined) ? afterIdx + 1 : scenes.length;
+  const blank = { index: insertAt, act: scenes[insertAt - 1]?.act || 3,
+    description: "", dialogue: "", emotion: "tension", image_prompt: "", reel_weight: 5 };
+  scenes.splice(insertAt, 0, blank);
   await _ivPatchScenes(scenes);
 };
 

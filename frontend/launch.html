@@ -329,11 +329,18 @@
           <div class="svc-status" id="st-comfyui">Waiting…</div>
         </div>
       </div>
-      <div class="svc" id="svc-fal">
+      <div class="svc" id="svc-wavespeed">
         <div class="svc-dot"></div>
         <div class="svc-info">
-          <div class="svc-name">fal.ai</div>
-          <div class="svc-status" id="st-fal">Waiting…</div>
+          <div class="svc-name">WaveSpeed ⚡</div>
+          <div class="svc-status" id="st-wavespeed">Waiting…</div>
+        </div>
+      </div>
+      <div class="svc" id="svc-fal" style="opacity:0.4;">
+        <div class="svc-dot"></div>
+        <div class="svc-info">
+          <div class="svc-name">fal.ai <span style="font-size:9px;letter-spacing:1px;opacity:0.6;">STANDBY</span></div>
+          <div class="svc-status" id="st-fal">Inactive</div>
         </div>
       </div>
     </div>
@@ -431,17 +438,19 @@
         const res  = await fetch(`${apiBase}/settings/status`, { signal: AbortSignal.timeout(6000) });
         const data = await res.json();
 
-        setSvc("backend",     data.backend    ? "ok"  : "err",  data.backend    ? "Connected"    : "Offline");
-        setSvc("mongodb",     data.mongodb    ? "ok"  : "warn", data.mongodb    ? "Connected"    : "Not configured");
-        setSvc("openai",      data.openai     ? "ok"  : "warn", data.openai     ? "Active"       : "No Key");
-        setSvc("elevenlabs",  data.elevenlabs ? "ok"  : "warn", data.elevenlabs ? "Active"       : "No Key");
-        setSvc("comfyui",     data.comfy_connected ? "ok" : "warn", data.comfy_connected ? "Online" : "Offline (optional)");
-        setSvc("fal",         data.fal        ? "ok"  : "warn", data.fal        ? "Active"       : "No Key");
+        setSvc("backend",     data.backend       ? "ok"   : "err",  data.backend       ? "Connected"         : "Offline");
+        setSvc("mongodb",     data.mongodb       ? "ok"   : "warn", data.mongodb       ? "Connected"         : "Not configured");
+        setSvc("openai",      data.openai        ? "ok"   : "warn", data.openai        ? "Active"            : "No Key");
+        setSvc("elevenlabs",  data.elevenlabs    ? "ok"   : "warn", data.elevenlabs    ? "Active"            : "No Key");
+        setSvc("comfyui",     data.comfy_connected ? "ok" : "warn", data.comfy_connected ? "Online"          : "Offline (optional)");
+        setSvc("wavespeed",   data.wavespeed     ? "ok"   : "warn", data.wavespeed     ? "Active — Primary"  : "No Key");
+        setSvc("fal",         "warn",                                                    "Standby (inactive)");
 
         if (data.backend)    ok++;
         if (data.mongodb)    ok++;
         if (data.openai)     ok++;
         if (data.elevenlabs) ok++;
+        if (data.wavespeed)  ok++;
 
         await delay(400);
 

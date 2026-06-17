@@ -559,8 +559,8 @@ FAL_I2V_MODELS = {
 # WaveSpeed I2V models — cloud GPU, no local VRAM needed, cheaper than fal.ai
 WAVESPEED_API_BASE = "https://api.wavespeed.ai/api/v3"
 WAVESPEED_I2V_MODELS = {
-    "ws_wan22_fast":    "wavespeed-ai/wan2.2-i2v-480p",   # $0.01/s — ultra fast draft
-    "ws_wan22_animate": "wavespeed-ai/wan2.2-i2v-720p",   # $0.04/s — better quality
+    "ws_wan22":  "wavespeed-ai/wan-2.2-image-to-video",   # $0.01/s — fast, cinematic
+    "ws_wan27":  "wavespeed-ai/wan-2.7-image-to-video",   # latest Wan model
 }
 
 FAL_VIDEO_MODELS = {**FAL_T2V_MODELS, **FAL_I2V_MODELS}  # keep for backward compat
@@ -847,11 +847,10 @@ def _wavespeed_i2v(image_url: str, prompt: str, model_key: str, duration: int) -
         raise RuntimeError("WaveSpeed requires a public image URL. Use fal.ai upload or a CDN link.")
 
     payload = json.dumps({
-        "image":        image_url,
+        "image_url":    image_url,
         "prompt":       prompt or "cinematic motion, smooth camera",
         "duration":     duration,
         "aspect_ratio": "16:9",
-        "resolution":   "720p",
     }).encode()
 
     req = urllib.request.Request(
@@ -1007,8 +1006,8 @@ def list_fal_video_models():
             "models": [
                 {"id": "wan21_i2v",       "label": "Wan 2.1 Fast",           "speed": "fast",   "paid": False, "note": "fal.ai — free draft/preview"},
                 {"id": "wan21_14b_i2v",   "label": "Wan 2.1 Best",           "speed": "slow",   "paid": False, "note": "fal.ai — best open-source quality"},
-                {"id": "ws_wan22_fast",   "label": "Wan 2.2 Ultra Fast ⚡",   "speed": "fast",   "paid": True,  "note": "WaveSpeed — $0.01/s, 5× cheaper than fal"},
-                {"id": "ws_wan22_animate","label": "Wan 2.2 Animate ⚡",      "speed": "medium", "paid": True,  "note": "WaveSpeed — $0.04/s, production quality"},
+                {"id": "ws_wan22", "label": "Wan 2.2 ⚡",  "speed": "fast",   "paid": True, "note": "WaveSpeed — $0.01/s, cinematic motion"},
+                {"id": "ws_wan27", "label": "Wan 2.7 ⚡",  "speed": "medium", "paid": True, "note": "WaveSpeed — latest Wan model"},
                 {"id": "kling_26",        "label": "Kling 2.6 Pro ✦",        "speed": "medium", "paid": True,  "note": "fal.ai — best quality I2V"},
                 {"id": "kling_o1",        "label": "Kling O1 Dual-frame ✦",  "speed": "medium", "paid": True,  "note": "fal.ai — start+end keyframe synthesis"},
                 {"id": "runway_turbo",    "label": "Runway Gen-4 Turbo ✦",   "speed": "fast",   "paid": True,  "note": "fal.ai — fast Runway I2V"},

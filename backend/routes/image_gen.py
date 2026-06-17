@@ -37,7 +37,7 @@ COMFY_SIZES = {
 }
 
 # ── Provider flag ─────────────────────────────────────────────
-FAL_DISABLED = True  # fal.ai on standby — WaveSpeed is active provider
+FAL_DISABLED = False  # fal.ai temporarily active — draining remaining credits
 
 # ── WaveSpeed ─────────────────────────────────────────────────
 WAVESPEED_API_BASE = "https://api.wavespeed.ai/api/v3"

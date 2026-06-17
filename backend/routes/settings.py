@@ -26,7 +26,6 @@ async def get_settings_status():
         "elevenlabs":      bool(os.environ.get("ELEVENLABS_API_KEY")),
         "wavespeed":       bool((os.environ.get("WAVESPEED_KEY") or "").strip()),
         "fal":             bool(os.environ.get("FAL_KEY")),
-        "fal_active":      False,  # fal.ai inactive — WaveSpeed is primary provider
         "rvc_model":       bool(os.environ.get("RVC_MODEL_PATH")),
         "mongodb":         mongo_ok,
         "mongodb_url":     "configured" if MONGODB_URL else "not configured",

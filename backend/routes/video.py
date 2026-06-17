@@ -556,6 +556,13 @@ FAL_I2V_MODELS = {
     "runway_gen4_i2v": "fal-ai/runway-gen4.5/image-to-video",         # Runway Gen-4.5 — paid, best
 }
 
+# WaveSpeed I2V models — cloud GPU, no local VRAM needed, cheaper than fal.ai
+WAVESPEED_API_BASE = "https://api.wavespeed.ai/api/v3"
+WAVESPEED_I2V_MODELS = {
+    "ws_wan22_fast":    "wavespeed-ai/wan2.2-i2v-480p",   # $0.01/s — ultra fast draft
+    "ws_wan22_animate": "wavespeed-ai/wan2.2-i2v-720p",   # $0.04/s — better quality
+}
+
 FAL_VIDEO_MODELS = {**FAL_T2V_MODELS, **FAL_I2V_MODELS}  # keep for backward compat
 
 FAL_VIDEO_SIZES = {
@@ -823,6 +830,92 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
     }
 
 
+def _wavespeed_i2v(image_url: str, prompt: str, model_key: str, duration: int) -> dict:
+    import os, json, time, urllib.request, uuid
+    from datetime import datetime
+
+    api_key = os.getenv("WAVESPEED_KEY")
+    if not api_key:
+        raise RuntimeError("WAVESPEED_KEY not set — add it to Railway Variables.")
+
+    model_id = WAVESPEED_I2V_MODELS.get(model_key)
+    if not model_id:
+        raise RuntimeError(f"Unknown WaveSpeed model: {model_key}")
+
+    # Resolve local paths to absolute URL — WaveSpeed needs a public URL
+    if image_url.startswith("/output/") or image_url.startswith("output/"):
+        raise RuntimeError("WaveSpeed requires a public image URL. Use fal.ai upload or a CDN link.")
+
+    payload = json.dumps({
+        "image":        image_url,
+        "prompt":       prompt or "cinematic motion, smooth camera",
+        "duration":     duration,
+        "aspect_ratio": "16:9",
+        "resolution":   "720p",
+    }).encode()
+
+    req = urllib.request.Request(
+        f"{WAVESPEED_API_BASE}/{model_id}",
+        data=payload,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as r:
+        submit = json.loads(r.read())
+
+    pred_id = (submit.get("data") or {}).get("id") or submit.get("id")
+    if not pred_id:
+        raise RuntimeError(f"WaveSpeed did not return a prediction ID: {submit}")
+
+    # Poll up to 10 minutes
+    for _ in range(600):
+        time.sleep(1)
+        poll_req = urllib.request.Request(
+            f"{WAVESPEED_API_BASE}/predictions/{pred_id}",
+            headers={"Authorization": f"Bearer {api_key}"},
+        )
+        with urllib.request.urlopen(poll_req, timeout=30) as r:
+            poll = json.loads(r.read())
+
+        status  = (poll.get("data") or {}).get("status") or poll.get("status", "")
+        outputs = (poll.get("data") or {}).get("outputs") or []
+
+        if status == "completed":
+            video_url = outputs[0] if outputs else ""
+            if not video_url:
+                raise RuntimeError(f"WaveSpeed completed but returned no output: {poll}")
+            break
+        if status in ("failed", "error", "cancelled"):
+            raise RuntimeError(f"WaveSpeed generation {status}: {poll}")
+    else:
+        raise RuntimeError("WaveSpeed timed out (>10 min)")
+
+    # Download locally to persistent volume
+    VID_DIR.mkdir(parents=True, exist_ok=True)
+    ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"i2v_{model_key}_{ts}_{uuid.uuid4().hex[:8]}.mp4"
+    out_path = VID_DIR / filename
+    local_url = None
+    try:
+        dl_req = urllib.request.Request(video_url, headers={"User-Agent": "LEVRAM/1.0"})
+        with urllib.request.urlopen(dl_req, timeout=300) as r:
+            out_path.write_bytes(r.read())
+        local_url = "/output/videos/" + filename
+    except Exception as e:
+        print(f"[WaveSpeed] local download failed ({e}); using CDN URL")
+
+    return {
+        "videoUrl":     local_url or video_url,
+        "outputUrl":    local_url or video_url,
+        "remoteUrl":    video_url,
+        "prompt":       prompt,
+        "model":        model_id,
+        "engine":       "wavespeed_i2v",
+        "source_image": image_url,
+        "filename":     filename,
+    }
+
+
 @router.delete("/video/delete")
 async def delete_video(url: str):
     """Delete a generated video file by its /output/videos/... URL."""
@@ -912,12 +1005,14 @@ def list_fal_video_models():
             "default": "wan21_i2v",
             "note": "Animate a FLUX+LoRA keyframe — character face is locked",
             "models": [
-                {"id": "wan21_i2v",       "label": "Wan 2.1 Fast",          "speed": "fast",   "paid": False, "note": "Free — fast draft/preview"},
-                {"id": "wan21_14b_i2v",   "label": "Wan 2.1 Best",          "speed": "slow",   "paid": False, "note": "Free — best open-source quality"},
-                {"id": "kling_26",        "label": "Kling 2.6 Pro ✦",       "speed": "medium", "paid": True,  "note": "Production — best quality I2V"},
-                {"id": "kling_o1",        "label": "Kling O1 Dual-frame ✦", "speed": "medium", "paid": True,  "note": "Start+end keyframe synthesis"},
-                {"id": "runway_turbo",    "label": "Runway Gen-4 Turbo ✦",  "speed": "fast",   "paid": True,  "note": "Fast Runway I2V"},
-                {"id": "runway_gen4_i2v", "label": "Runway Gen-4.5 ✦",      "speed": "fast",   "paid": True,  "note": "Runway flagship I2V"},
+                {"id": "wan21_i2v",       "label": "Wan 2.1 Fast",           "speed": "fast",   "paid": False, "note": "fal.ai — free draft/preview"},
+                {"id": "wan21_14b_i2v",   "label": "Wan 2.1 Best",           "speed": "slow",   "paid": False, "note": "fal.ai — best open-source quality"},
+                {"id": "ws_wan22_fast",   "label": "Wan 2.2 Ultra Fast ⚡",   "speed": "fast",   "paid": True,  "note": "WaveSpeed — $0.01/s, 5× cheaper than fal"},
+                {"id": "ws_wan22_animate","label": "Wan 2.2 Animate ⚡",      "speed": "medium", "paid": True,  "note": "WaveSpeed — $0.04/s, production quality"},
+                {"id": "kling_26",        "label": "Kling 2.6 Pro ✦",        "speed": "medium", "paid": True,  "note": "fal.ai — best quality I2V"},
+                {"id": "kling_o1",        "label": "Kling O1 Dual-frame ✦",  "speed": "medium", "paid": True,  "note": "fal.ai — start+end keyframe synthesis"},
+                {"id": "runway_turbo",    "label": "Runway Gen-4 Turbo ✦",   "speed": "fast",   "paid": True,  "note": "fal.ai — fast Runway I2V"},
+                {"id": "runway_gen4_i2v", "label": "Runway Gen-4.5 ✦",       "speed": "fast",   "paid": True,  "note": "fal.ai — Runway flagship I2V"},
             ],
         },
     }

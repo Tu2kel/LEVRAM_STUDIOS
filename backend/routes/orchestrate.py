@@ -161,12 +161,17 @@ async def _gen_image(prompt: str, character_id: str) -> str:
 
 async def _animate(image_url: str, motion_prompt: str, model: str, duration: int) -> str:
     """Returns local /output/videos/... URL or CDN URL."""
-    from backend.routes.video import _fal_image_to_video
-    loop   = asyncio.get_event_loop()
-    result = await loop.run_in_executor(
-        None, lambda: _fal_image_to_video(image_url, motion_prompt, model, duration)
-    )
-    # _fal_image_to_video returns videoUrl / outputUrl / remoteUrl
+    loop = asyncio.get_event_loop()
+    if model.startswith("ws_"):
+        from backend.routes.video import _wavespeed_i2v
+        result = await loop.run_in_executor(
+            None, lambda: _wavespeed_i2v(image_url, motion_prompt, model, duration)
+        )
+    else:
+        from backend.routes.video import _fal_image_to_video
+        result = await loop.run_in_executor(
+            None, lambda: _fal_image_to_video(image_url, motion_prompt, model, duration)
+        )
     return result.get("videoUrl") or result.get("outputUrl") or result.get("remoteUrl") or ""
 
 

@@ -62,13 +62,12 @@ async def _plan_shots(concept: str, num_shots: int, character_name: str) -> list
 # ── Image generation ──────────────────────────────────────────────────────────
 
 async def _gen_image(prompt: str, character_id: str) -> str:
-    """Returns local /output/renders/images/... URL."""
-    import fal_client, urllib.request
+    """Returns local /output/renders/images/... URL. Routes through WaveSpeed."""
+    from backend.routes.image_gen import (
+        _ws_generate_image, _ws_pulid, WS_IMG_SIZES, _ws_to_public_url
+    )
+    import base64 as _b64mod
     loop = asyncio.get_event_loop()
-
-    api_key = os.getenv("FAL_KEY")
-    if api_key:
-        os.environ["FAL_KEY"] = api_key
 
     from backend.db import characters_col
     db_char = None
@@ -93,68 +92,61 @@ async def _gen_image(prompt: str, character_id: str) -> str:
     byo_ref_url  = (byo_entry or {}).get("url", "") if byo_entry else ""
 
     if lora_url:
-        full_prompt = f"{lora_trigger}, {prompt}" if lora_trigger else prompt
-        result = await loop.run_in_executor(None, lambda: fal_client.run(
-            "fal-ai/flux-lora",
-            arguments={"prompt": full_prompt, "loras": [{"path": lora_url, "scale": 1.0}],
-                       "image_size": "landscape_16_9", "num_inference_steps": 30,
-                       "guidance_scale": 3.5, "enable_safety_checker": False}
-        ))
+        # LoRA trained — use WaveSpeed FLUX with LoRA weights
+        result = await loop.run_in_executor(
+            None, lambda: _ws_generate_image(prompt, "widescreen", "cinematic photorealistic",
+                                             "ws_flux", lora_url, lora_trigger)
+        )
     elif byo_ref_url or refs:
-        # Resolve face reference URL
+        # Build a public URL for the face reference so WaveSpeed can fetch it
+        domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
         face_url = ""
-        if byo_ref_url:
-            if byo_ref_url.startswith("http"):
-                face_url = byo_ref_url
-            else:
-                p = Path(byo_ref_url.lstrip("/"))
-                if p.exists():
-                    face_url = await loop.run_in_executor(
-                        None, lambda: fal_client.upload(p.read_bytes(), "image/jpeg"))
-        if not face_url and refs:
-            ref_path = next((Path(r.lstrip("/")) for r in refs if Path(r.lstrip("/")).exists()), None)
-            if ref_path:
-                face_url = await loop.run_in_executor(
-                    None, lambda: fal_client.upload(ref_path.read_bytes(), "image/jpeg"))
+        if byo_ref_url and byo_ref_url.startswith("http"):
+            face_url = byo_ref_url
+        elif byo_ref_url:
+            p = Path(byo_ref_url.lstrip("/"))
+            if p.exists() and domain:
+                face_url = f"https://{domain}/{byo_ref_url.lstrip('/')}"
+        if not face_url and refs and domain:
+            ref = refs[0].lstrip("/")
+            face_url = f"https://{domain}/{ref}"
 
         if face_url:
-            result = await loop.run_in_executor(None, lambda: fal_client.run(
-                "fal-ai/flux-pulid",
-                arguments={"reference_image_url": face_url, "prompt": prompt,
-                           "image_size": "landscape_16_9", "num_inference_steps": 28,
-                           "guidance_scale": 4.0, "id_weight": 1.0,
-                           "negative_prompt": "cartoon, illustration, stylized, anime, unrealistic",
-                           "enable_safety_checker": False}
+            # Use WaveSpeed PuLID with public URL directly
+            from backend.routes.image_gen import _ws_submit_poll, _download_url, _save_bytes, IMAGE_DIR
+            import json as _json, datetime as _dt
+            outputs = await loop.run_in_executor(None, lambda: _ws_submit_poll(
+                "wavespeed-ai/flux-pulid", {
+                    "prompt":                f"{prompt}, cinematic photorealistic",
+                    "id_image_url":          face_url,
+                    "width":                 1280, "height": 720,
+                    "num_inference_steps":   28,
+                    "guidance_scale":        3.5,
+                    "true_cfg":              1.0,
+                    "enable_safety_checker": False,
+                }
             ))
+            remote_url = outputs[0] if outputs else ""
+            if not remote_url:
+                raise RuntimeError("WaveSpeed PuLID returned no image")
+            import urllib.request as _ur
+            IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+            ts    = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+            fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
+            req   = _ur.Request(remote_url, headers={"User-Agent": "LEVRAM/1.0"})
+            with _ur.urlopen(req, timeout=60) as r:
+                (IMAGE_DIR / fname).write_bytes(r.read())
+            return "/output/renders/images/" + fname
         else:
-            result = await loop.run_in_executor(None, lambda: fal_client.run(
-                "fal-ai/flux/dev",
-                arguments={"prompt": prompt, "image_size": "landscape_16_9",
-                           "num_inference_steps": 28, "guidance_scale": 3.5,
-                           "num_images": 1, "enable_safety_checker": False}
-            ))
+            result = await loop.run_in_executor(
+                None, lambda: _ws_generate_image(prompt, "widescreen", "cinematic photorealistic")
+            )
     else:
-        result = await loop.run_in_executor(None, lambda: fal_client.run(
-            "fal-ai/flux/dev",
-            arguments={"prompt": prompt, "image_size": "landscape_16_9",
-                       "num_inference_steps": 28, "guidance_scale": 3.5,
-                       "num_images": 1, "enable_safety_checker": False}
-        ))
+        result = await loop.run_in_executor(
+            None, lambda: _ws_generate_image(prompt, "widescreen", "cinematic photorealistic")
+        )
 
-    imgs       = result.get("images") or []
-    remote_url = (imgs[0].get("url") if imgs else None) or \
-                 result.get("image", {}).get("url") or result.get("url") or ""
-    if not remote_url:
-        raise RuntimeError(f"No image URL from fal: {list(result.keys())}")
-
-    out_dir = Path("output/renders/images")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    ts    = datetime.now().strftime("%Y%m%d_%H%M%S")
-    fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
-    req   = urllib.request.Request(remote_url, headers={"User-Agent": "LEVRAM/1.0"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        (out_dir / fname).write_bytes(r.read())
-    return "/output/renders/images/" + fname
+    return result["imageUrl"]
 
 
 # ── I2V animation ─────────────────────────────────────────────────────────────

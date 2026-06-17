@@ -36,7 +36,26 @@ COMFY_SIZES = {
     "square":     (512, 512),
 }
 
-# fal.ai model IDs
+# ── Provider flag ─────────────────────────────────────────────
+FAL_DISABLED = True  # fal.ai on standby — WaveSpeed is active provider
+
+# ── WaveSpeed ─────────────────────────────────────────────────
+WAVESPEED_API_BASE = "https://api.wavespeed.ai/api/v3"
+
+WS_IMG_SIZES = {
+    "widescreen": {"width": 1280, "height": 720},
+    "cinematic":  {"width": 1280, "height": 544},
+    "portrait":   {"width": 720,  "height": 1280},
+    "square":     {"width": 1024, "height": 1024},
+}
+
+WS_IMG_MODELS = {
+    "ws_flux":         "wavespeed-ai/flux-dev",
+    "ws_flux_schnell": "wavespeed-ai/flux-1-schnell",
+    "ws_pulid":        "wavespeed-ai/flux-pulid",
+}
+
+# fal.ai model IDs (standby — do not route here while FAL_DISABLED)
 FAL_MODELS = {
     "fal_flux":         "fal-ai/flux/dev",
     "fal_flux_lora":    "fal-ai/flux-lora",
@@ -85,7 +104,136 @@ def _download_url(url: str) -> bytes:
         return r.read()
 
 
-# ── fal.ai (FLUX family + SD3) ────────────────────────────────
+# ══════════════════════════════════════════════════════════════
+# WaveSpeed — Primary image provider
+# ══════════════════════════════════════════════════════════════
+
+def _ws_to_public_url(b64data: str, media_type: str, prefix: str = "ref") -> str:
+    """Save base64 bytes to output dir and return a public Railway URL."""
+    import json as _json
+    ext      = "jpg" if "jpeg" in media_type else media_type.split("/")[-1]
+    filename = f"{prefix}_{uuid.uuid4().hex[:12]}.{ext}"
+    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    (IMAGE_DIR / filename).write_bytes(_b64.b64decode(b64data))
+    domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+    if not domain:
+        raise RuntimeError("RAILWAY_PUBLIC_DOMAIN not set — WaveSpeed needs a public image URL")
+    return f"https://{domain}/output/renders/images/{filename}"
+
+
+def _ws_submit_poll(model_id: str, payload: dict, timeout_secs: int = 120) -> list:
+    """Submit to WaveSpeed, poll until complete. Returns list of output URLs."""
+    import json, time
+    api_key = os.getenv("WAVESPEED_KEY")
+    if not api_key:
+        raise RuntimeError("WAVESPEED_KEY not set")
+
+    data = json.dumps(payload).encode()
+    req  = urllib.request.Request(
+        f"{WAVESPEED_API_BASE}/{model_id}",
+        data=data,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as r:
+        submit = json.loads(r.read())
+
+    pred_id = (submit.get("data") or {}).get("id") or submit.get("id")
+    if not pred_id:
+        raise RuntimeError(f"WaveSpeed returned no prediction ID: {submit}")
+
+    for _ in range(timeout_secs):
+        time.sleep(1)
+        poll_req = urllib.request.Request(
+            f"{WAVESPEED_API_BASE}/predictions/{pred_id}/result",
+            headers={"Authorization": f"Bearer {api_key}"},
+        )
+        with urllib.request.urlopen(poll_req, timeout=30) as r:
+            poll = json.loads(r.read())
+
+        pdata  = poll.get("data") or {}
+        status = pdata.get("status", "")
+        if status == "completed":
+            return pdata.get("outputs") or []
+        if status in ("failed", "error", "cancelled"):
+            raise RuntimeError(f"WaveSpeed {status}: {pdata.get('error', 'unknown')}")
+
+    raise RuntimeError("WaveSpeed image generation timed out")
+
+
+def _ws_generate_image(prompt: str, aspect: str, style: str,
+                       engine: str = "ws_flux", lora_url: str = "", lora_trigger: str = "") -> dict:
+    model_id    = WS_IMG_MODELS.get(engine, WS_IMG_MODELS["ws_flux"])
+    size        = WS_IMG_SIZES.get(aspect, WS_IMG_SIZES["widescreen"])
+    full_prompt = f"{lora_trigger} {prompt}".strip() if lora_trigger else prompt
+    if style:
+        full_prompt = f"{full_prompt}, {style}"
+
+    payload = {
+        "prompt":                full_prompt,
+        "width":                 size["width"],
+        "height":                size["height"],
+        "num_inference_steps":   20 if "schnell" in engine else 28,
+        "guidance_scale":        3.5,
+        "num_images":            1,
+        "enable_safety_checker": False,
+    }
+    if lora_url:
+        payload["loras"] = [{"path": lora_url, "scale": 0.9}]
+
+    outputs = _ws_submit_poll(model_id, payload)
+    if not outputs:
+        raise RuntimeError("WaveSpeed returned no image")
+
+    image_bytes = _download_url(outputs[0])
+    _, output_url = _save_bytes(image_bytes, prefix=engine.replace("ws_", "ws"))
+    return {"imageUrl": output_url, "prompt": prompt, "engine": engine, "model": model_id}
+
+
+def _ws_pulid(prompt: str, face_refs: list, aspect: str, style: str = "") -> dict:
+    """WaveSpeed FLUX PuLID — character-locked generation from face reference."""
+    face_url    = _ws_to_public_url(face_refs[0].base64, face_refs[0].mediaType, prefix="pulid")
+    size        = WS_IMG_SIZES.get(aspect, WS_IMG_SIZES["widescreen"])
+    full_prompt = f"{prompt}, {style}" if style else prompt
+
+    outputs = _ws_submit_poll("wavespeed-ai/flux-pulid", {
+        "prompt":                full_prompt,
+        "id_image_url":          face_url,
+        "width":                 size["width"],
+        "height":                size["height"],
+        "num_inference_steps":   28,
+        "guidance_scale":        3.5,
+        "true_cfg":              1.0,
+        "enable_safety_checker": False,
+    })
+    if not outputs:
+        raise RuntimeError("WaveSpeed PuLID returned no image")
+
+    image_bytes = _download_url(outputs[0])
+    _, output_url = _save_bytes(image_bytes, prefix="pulid")
+    return {"imageUrl": output_url, "prompt": prompt, "engine": "ws_pulid", "model": "wavespeed-ai/flux-pulid"}
+
+
+def _ws_face_swap(base_image_path: str, face_ref) -> tuple:
+    """WaveSpeed face swap — replace face in base image with reference face."""
+    import base64 as _b64mod
+    base_b64 = _b64mod.b64encode(Path(base_image_path).read_bytes()).decode()
+    base_url = _ws_to_public_url(base_b64, "image/png", prefix="swap_base")
+    face_url = _ws_to_public_url(face_ref.base64, face_ref.mediaType, prefix="swap_face")
+
+    outputs = _ws_submit_poll("wavespeed-ai/image-face-swap", {
+        "image":      base_url,
+        "face_image": face_url,
+    })
+    if not outputs:
+        raise RuntimeError("WaveSpeed face swap returned no image")
+
+    image_bytes = _download_url(outputs[0])
+    saved_path, output_url = _save_bytes(image_bytes, prefix="faceswap")
+    return saved_path, output_url
+
+
+# ── fal.ai (FLUX family + SD3) — STANDBY while FAL_DISABLED ──
 def _generate_fal(prompt: str, aspect: str, style: str, engine: str,
                   lora_url: str = "", lora_trigger: str = "") -> dict:
     try:
@@ -341,6 +489,31 @@ async def generate_image(payload: ImageGenPayload):
                 None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
             )
         try:
+            if FAL_DISABLED:
+                # Single person — WaveSpeed PuLID
+                if face1 and not face2:
+                    result = await loop.run_in_executor(
+                        None, _ws_pulid, prompt, face1, payload.aspect, payload.style
+                    )
+                    return {"success": True, **result}
+
+                # Two people — cheap base image then face swap each person in
+                base_result = await loop.run_in_executor(
+                    None, _ws_generate_image, prompt, payload.aspect, payload.style
+                )
+                base_path  = str(IMAGE_DIR / Path(base_result["imageUrl"]).name)
+                saved_path, swap1_url = await loop.run_in_executor(
+                    None, _ws_face_swap, base_path, face1[0]
+                )
+                if face2:
+                    _, final_url = await loop.run_in_executor(
+                        None, _ws_face_swap, saved_path, face2[0]
+                    )
+                else:
+                    final_url = swap1_url
+                return {"success": True, "imageUrl": final_url, "engine": "ws_faceswap-2p", "model": "wavespeed-ai/image-face-swap"}
+
+            # ── fal.ai path (FAL_DISABLED = False) ───────────────
             # Consistent Character — engine-selected, locks appearance across scenes
             if engine == "consistent_character" and face1:
                 result = await loop.run_in_executor(
@@ -360,15 +533,12 @@ async def generate_image(payload: ImageGenPayload):
             base_result = await loop.run_in_executor(
                 None, _generate_fal, prompt, payload.aspect, payload.style, base_engine, "", ""
             )
-            # base_result["imageUrl"] is like /output/renders/images/flux_....png
             base_path = str(IMAGE_DIR / Path(base_result["imageUrl"]).name)
 
-            # Face swap Person 1 (use first/best reference photo)
             saved_path, swap1_url = await loop.run_in_executor(
                 None, _face_swap, base_path, face1[0]
             )
 
-            # Face swap Person 2 on top of Person 1 result
             if face2:
                 _, final_url = await loop.run_in_executor(
                     None, _face_swap, saved_path, face2[0]
@@ -397,7 +567,18 @@ async def generate_image(payload: ImageGenPayload):
             lora_url    = char["lora_url"]
             lora_trigger = char.get("lora_trigger", "")
 
-    if engine in FAL_MODELS or (lora_url and engine not in ("dalle3", "comfy")):
+    if FAL_DISABLED:
+        # Route everything to WaveSpeed
+        if engine == "consistent_character":
+            raise HTTPException(status_code=400, detail="Consistent Character requires a Person 1 face photo")
+        if engine == "comfy":
+            raise HTTPException(status_code=400, detail="ComfyUI is local-only and not available on Railway")
+        if engine == "dalle3":
+            fn = lambda: _generate_dalle3(prompt, payload.aspect, payload.style)
+        else:
+            ws_engine = engine if engine in WS_IMG_MODELS else "ws_flux"
+            fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, ws_engine, lora_url, lora_trigger)
+    elif engine in FAL_MODELS or (lora_url and engine not in ("dalle3", "comfy")):
         fn = lambda: _generate_fal(prompt, payload.aspect, payload.style,
                                    engine, lora_url, lora_trigger)
     elif engine == "dalle3":
@@ -422,17 +603,19 @@ def list_models():
     """Return available image generation engines."""
     return {
         "success": True,
-        "default": "fal_flux",
+        "default": "ws_flux",
         "engines": [
-            {"id": "consistent_character", "label": "★ Consistent Character",      "provider": "fal.ai", "speed": "fast",   "quality": "best",   "note": "Requires Person 1 face photo — FLUX PuLID keeps same face every generation"},
-            {"id": "fal_flux_lora",        "label": "FLUX LoRA (character-locked)", "provider": "fal.ai", "speed": "fast",   "quality": "best",   "note": "Requires trained LoRA — auto-selected when character has one"},
-            {"id": "fal_flux",             "label": "FLUX.1 Dev",                   "provider": "fal.ai", "speed": "fast",   "quality": "high"},
-            {"id": "fal_flux_schnell",     "label": "FLUX.1 Schnell",               "provider": "fal.ai", "speed": "turbo",  "quality": "good"},
-            {"id": "fal_flux_pro",         "label": "FLUX.1 Pro",                   "provider": "fal.ai", "speed": "medium", "quality": "best"},
-            {"id": "fal_flux_pro11",       "label": "FLUX.1 Pro v1.1",             "provider": "fal.ai", "speed": "medium", "quality": "best"},
-            {"id": "fal_sd3",              "label": "Stable Diffusion 3",           "provider": "fal.ai", "speed": "medium", "quality": "high"},
-            {"id": "dalle3",               "label": "DALL-E 3",                     "provider": "openai", "speed": "medium", "quality": "high"},
-            {"id": "comfy",                "label": "ComfyUI (local)",              "provider": "local",  "speed": "varies", "quality": "varies"},
+            {"id": "ws_pulid",        "label": "★ PuLID — Character Lock ⚡",    "provider": "WaveSpeed", "speed": "fast",   "quality": "best",  "note": "Drop a face photo → FLUX PuLID locks identity. $0.03/img"},
+            {"id": "ws_flux",         "label": "FLUX Dev ⚡",                     "provider": "WaveSpeed", "speed": "fast",   "quality": "high",  "note": "$0.012/img"},
+            {"id": "ws_flux_schnell", "label": "FLUX Schnell ⚡ (draft)",         "provider": "WaveSpeed", "speed": "turbo",  "quality": "good",  "note": "Fastest + cheapest draft. $0.003/img"},
+            {"id": "dalle3",          "label": "DALL-E 3",                        "provider": "OpenAI",    "speed": "medium", "quality": "high",  "note": "Uses OpenAI key"},
+            # fal.ai engines — inactive while FAL_DISABLED = True
+            # {"id": "consistent_character", "label": "Consistent Character (fal)",  "provider": "fal.ai"},
+            # {"id": "fal_flux_lora",        "label": "FLUX LoRA (fal)",            "provider": "fal.ai"},
+            # {"id": "fal_flux",             "label": "FLUX Dev (fal)",             "provider": "fal.ai"},
+            # {"id": "fal_flux_schnell",     "label": "FLUX Schnell (fal)",         "provider": "fal.ai"},
+            # {"id": "fal_flux_pro",         "label": "FLUX Pro (fal)",             "provider": "fal.ai"},
+            # {"id": "fal_sd3",              "label": "Stable Diffusion 3 (fal)",   "provider": "fal.ai"},
         ],
     }
 
@@ -494,17 +677,20 @@ async def face_swap_on_image(payload: FaceSwapPayload):
     try:
         current_path = base_path
 
+        swap_fn = _ws_face_swap if FAL_DISABLED else _face_swap
+
         if face1:
             saved_path, swap_url = await loop.run_in_executor(
-                None, _face_swap, current_path, face1[0]
+                None, swap_fn, current_path, face1[0]
             )
             current_path = saved_path
 
         if face2:
             _, swap_url = await loop.run_in_executor(
-                None, _face_swap, current_path, face2[0]
+                None, swap_fn, current_path, face2[0]
             )
 
-        return {"success": True, "imageUrl": swap_url, "engine": "faceswap", "model": "fal-ai/face-swap"}
+        provider = "wavespeed-ai/image-face-swap" if FAL_DISABLED else "fal-ai/face-swap"
+        return {"success": True, "imageUrl": swap_url, "engine": "faceswap", "model": provider}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

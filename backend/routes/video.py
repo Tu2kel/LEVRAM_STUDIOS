@@ -870,7 +870,7 @@ def _wavespeed_i2v(image_url: str, prompt: str, model_key: str, duration: int) -
     for _ in range(600):
         time.sleep(1)
         poll_req = urllib.request.Request(
-            f"{WAVESPEED_API_BASE}/predictions/{pred_id}",
+            f"{WAVESPEED_API_BASE}/predictions/{pred_id}/result",
             headers={"Authorization": f"Bearer {api_key}"},
         )
         with urllib.request.urlopen(poll_req, timeout=30) as r:

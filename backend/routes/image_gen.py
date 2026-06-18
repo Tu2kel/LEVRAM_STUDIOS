@@ -556,13 +556,8 @@ async def generate_image(payload: ImageGenPayload):
             None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
         )
 
-    # Auto-load character LoRA if character_id is provided
+    # LoRA disabled — character locking uses WaveSpeed PuLID (face reference method)
     lora_url = lora_trigger = ""
-    if payload.character_id:
-        char = await _get_character(payload.character_id)
-        if char and char.get("lora_status") == "ready" and char.get("lora_url"):
-            lora_url    = char["lora_url"]
-            lora_trigger = char.get("lora_trigger", "")
 
     if FAL_DISABLED:
         # Route everything to WaveSpeed

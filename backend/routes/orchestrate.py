@@ -81,9 +81,7 @@ async def _gen_image(prompt: str, character_id: str) -> str:
                 chars = json.loads(data_file.read_text()).get("characters", [])
                 db_char = next((c for c in chars if c.get("id") == character_id), None)
 
-    lora_url     = (db_char or {}).get("lora_url") or ""
-    lora_trigger = (db_char or {}).get("lora_trigger") or ""
-    refs         = (db_char or {}).get("reference_images") or []
+    refs = (db_char or {}).get("reference_images") or []
 
     # BYO preview images take priority as face reference
     preview_imgs = (db_char or {}).get("preview_images") or []
@@ -91,13 +89,8 @@ async def _gen_image(prompt: str, character_id: str) -> str:
     byo_entry    = preview_imgs[active_idx] if preview_imgs else None
     byo_ref_url  = (byo_entry or {}).get("url", "") if byo_entry else ""
 
-    if lora_url:
-        # LoRA trained — use WaveSpeed FLUX with LoRA weights
-        result = await loop.run_in_executor(
-            None, lambda: _ws_generate_image(prompt, "widescreen", "cinematic photorealistic",
-                                             "ws_flux", lora_url, lora_trigger)
-        )
-    elif byo_ref_url or refs:
+    # LoRA disabled — WaveSpeed handles character lock via PuLID face reference
+    if byo_ref_url or refs:
         # Build a public URL for the face reference so WaveSpeed can fetch it
         domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
         face_url = ""

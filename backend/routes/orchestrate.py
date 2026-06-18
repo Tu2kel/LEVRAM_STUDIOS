@@ -111,7 +111,7 @@ async def _gen_image(prompt: str, character_id: str) -> str:
             outputs = await loop.run_in_executor(None, lambda: _ws_submit_poll(
                 "wavespeed-ai/flux-pulid", {
                     "prompt":              f"{prompt}, cinematic photorealistic",
-                    "id_image_url":        face_url,
+                    "image":               face_url,
                     "width":               1280, "height": 720,
                     "num_inference_steps": 28,
                     "guidance_scale":      3.5,

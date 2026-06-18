@@ -202,7 +202,7 @@ def _ws_pulid(prompt: str, face_refs: list, aspect: str, style: str = "") -> dic
 
     outputs = _ws_submit_poll("wavespeed-ai/flux-pulid", {
         "prompt":              full_prompt,
-        "id_image_url":        face_url,
+        "image":               face_url,
         "width":               size["width"],
         "height":              size["height"],
         "num_inference_steps": 28,

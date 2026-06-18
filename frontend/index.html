@@ -1312,7 +1312,7 @@
                 </div>
                 <!-- Thumbnail strip -->
                 <div id="cl-ref-thumbs" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;"></div>
-                <!-- Upload + Train -->
+                <!-- Upload + Face Lock -->
                 <div style="margin-top:10px;border-top:1px solid rgba(201,168,76,0.12);padding-top:10px;">
                   <input type="file" id="cl-ref-upload" multiple accept="image/*" style="display:none;" onchange="clUploadReferences()" />
                   <button type="button" onclick="clUploadPhotosGuarded()"
@@ -1321,12 +1321,13 @@
                   </button>
                   <div style="display:flex;align-items:center;gap:6px;">
                     <span id="cl-ref-count" style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">0 images</span>
-                    <button id="cl-train-btn" type="button" onclick="clTrainLora()" disabled
-                      style="flex:1;background:rgba(139,105,20,0.3);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:5px 8px;border-radius:2px;cursor:pointer;opacity:0.5;">
-                      Train LoRA (need 5+)
-                    </button>
+                    <div id="cl-pulid-badge" style="display:none;flex:1;background:rgba(20,80,30,0.3);border:1px solid rgba(46,204,113,0.35);color:#2ecc71;font-family:Rajdhani,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;text-align:center;">
+                      ⚡ PuLID Active
+                    </div>
                   </div>
-                  <div id="cl-lora-status" style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-top:5px;min-height:14px;"></div>
+                  <!-- hidden stubs so JS doesn't throw on missing IDs -->
+                  <div id="cl-lora-status" style="display:none;"></div>
+                  <div id="cl-train-btn" style="display:none;"></div>
                 </div>
               </div>
             </div>

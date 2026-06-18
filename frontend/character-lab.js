@@ -460,20 +460,13 @@ function clRefreshLoraPanel(character) {
   const count = refs.length;
   if (countEl) countEl.textContent = `${count} image${count !== 1 ? "s" : ""}`;
 
-  if (trainBtn) {
-    const ready = count >= 5;
-    trainBtn.disabled = !ready;
-    trainBtn.style.opacity = ready ? "1" : "0.5";
-    trainBtn.textContent = ready
-      ? (character?.lora_status === "ready" ? "Re-Train LoRA" : "Train LoRA")
-      : `Train LoRA (need ${5 - count} more)`;
-  }
+  // Show PuLID active badge when at least one reference photo exists
+  const pulidBadge = document.getElementById("cl-pulid-badge");
+  if (pulidBadge) pulidBadge.style.display = count > 0 ? "block" : "none";
 
-  if (statusEl && character?.lora_status) {
+  if (false && statusEl && character?.lora_status) {
     if (character.lora_status === "training") {
-      statusEl.innerHTML = `Training in progress<span class="lora-dot">.</span><span class="lora-dot">.</span><span class="lora-dot">.</span>`;
-      statusEl.style.color = "var(--text-dim)";
-      clStartTrainingAnimation();
+      statusEl.innerHTML = "";
       clPollLoraStatus();
     } else if (character.lora_status === "ready") {
       statusEl.innerHTML = "LoRA READY ✔";

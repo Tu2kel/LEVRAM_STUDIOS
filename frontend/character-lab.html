@@ -176,13 +176,13 @@
           <img id="character-preview-img" class="character-preview-img" alt="Character preview" style="display:none;" />
         </div>
 
-        <!-- ── Reference Images + LoRA Training ── -->
+        <!-- ── Reference Images ── -->
         <div class="cl-panel-header" style="margin-top:16px;">
-          <span class="cl-panel-label">Reference Images + LoRA Training</span>
+          <span class="cl-panel-label">Reference Photos — Face Lock</span>
         </div>
         <div class="cl-preview-body" id="cl-lora-section">
           <div style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">
-            Upload 5–20 photos of this character. LEVRAM will train a LoRA to lock their face, build, and style into every generation.
+            Upload face photos. LEVRAM uses WaveSpeed PuLID to lock identity — no training required.
           </div>
 
           <!-- Upload trigger -->
@@ -195,24 +195,18 @@
           <!-- Thumbnail grid -->
           <div id="cl-ref-thumbs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:4px;margin-bottom:8px;"></div>
 
-          <!-- Count + Train button -->
+          <!-- Count + PuLID status -->
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span id="cl-ref-count" style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">0 images</span>
-            <button id="cl-train-btn" type="button" onclick="clTrainLora()" disabled
-                    style="flex:1;background:linear-gradient(90deg,rgba(139,105,20,0.4),rgba(201,168,76,0.4));border:1px solid rgba(201,168,76,0.5);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;opacity:0.5;">
-              Train LoRA (need 5+)
-            </button>
+            <div id="cl-pulid-badge" style="display:none;flex:1;background:rgba(20,80,30,0.35);border:1px solid rgba(46,204,113,0.4);color:#2ecc71;font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:5px 10px;border-radius:3px;text-align:center;">
+              ⚡ PuLID Active — Face Locked
+            </div>
           </div>
-
-          <!-- LoRA progress bar (visible during training) -->
-          <div id="cl-lora-progress"><div id="cl-lora-progress-fill"></div></div>
-
-          <!-- LoRA status -->
-          <div id="cl-lora-status" style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-top:6px;min-height:16px;"></div>
-          <button id="cl-lora-reset-btn" type="button" onclick="clResetLora()"
-                  style="display:none;margin-top:6px;background:rgba(180,30,30,0.25);border:1px solid rgba(255,80,80,0.4);color:#ff6b6b;font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer;">
-            Reset Stuck Training
-          </button>
+          <!-- hidden stubs so JS doesn't throw on missing IDs -->
+          <div id="cl-lora-status" style="display:none;"></div>
+          <div id="cl-lora-reset-btn" style="display:none;"></div>
+          <div id="cl-lora-progress" style="display:none;"><div id="cl-lora-progress-fill"></div></div>
+          <div id="cl-train-btn" style="display:none;"></div>
         </div>
       </section>
 

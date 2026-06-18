@@ -66,7 +66,12 @@
 
         // External pages
         if (EXTERNAL_TABS[tab]) {
-          window.open(EXTERNAL_TABS[tab], "_blank");
+          let extUrl = EXTERNAL_TABS[tab];
+          if (tab === "timeline") {
+            const proj = localStorage.getItem("levram_active_project") || "";
+            if (proj) extUrl += `?project=${encodeURIComponent(proj)}`;
+          }
+          window.open(extUrl, "_blank");
           return;
         }
 

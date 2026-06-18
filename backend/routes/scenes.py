@@ -101,13 +101,34 @@ async def save_scene(scene: ScenePayload):
 
 
 @router.get("/scenes")
-async def list_scenes():
+async def list_scenes(project: str = ""):
     if scenes_col is not None:
-        docs = await scenes_col.find({}).sort("shot_number", 1).to_list(None)
+        query = {"project": project} if project else {}
+        docs = await scenes_col.find(query).sort("shot_number", 1).to_list(None)
         return {"success": True, "count": len(docs), "scenes": [_strip(d) for d in docs]}
 
-    scenes = _json_load_all()
-    return {"success": True, "count": len(scenes), "scenes": scenes}
+    all_scenes = _json_load_all()
+    if project:
+        all_scenes = [s for s in all_scenes if s.get("project", "") == project]
+    return {"success": True, "count": len(all_scenes), "scenes": all_scenes}
+
+
+@router.delete("/scenes/clear")
+async def clear_project_scenes(project: str):
+    """Delete all scenes for a given project — called before a fresh pipeline run."""
+    if not project:
+        return {"success": False, "detail": "project required"}
+    if scenes_col is not None:
+        result = await scenes_col.delete_many({"project": project})
+        return {"success": True, "deleted": result.deleted_count}
+    # JSON fallback: remove matching files
+    deleted = 0
+    if SCENES_DIR.exists():
+        slug = project.replace(" ", "_").replace("/", "_")
+        for f in SCENES_DIR.glob(f"{slug}_*.json"):
+            f.unlink()
+            deleted += 1
+    return {"success": True, "deleted": deleted}
 
 
 @router.put("/scene/{scene_id}")

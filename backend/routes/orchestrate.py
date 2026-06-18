@@ -245,7 +245,22 @@ async def _run_pipeline(job_id: str, payload: dict):
         if tone_notes: parts.append(tone_notes)
         _tone_prefix = ", ".join(parts) + " — "
 
+    clear_project = payload.get("clear_project", False)
+
     try:
+        # ── 0. Clear previous shots for this project (fresh run)
+        if clear_project and project:
+            from backend.db import scenes_col as _sc
+            if _sc is not None:
+                await _sc.delete_many({"project": project})
+            if TIMELINE_FILE.exists():
+                try:
+                    existing = json.loads(TIMELINE_FILE.read_text()).get("shots", [])
+                    existing = [s for s in existing if s.get("project") != project]
+                    TIMELINE_FILE.write_text(json.dumps({"shots": existing}, indent=2))
+                except Exception:
+                    pass
+
         # ── 1. Get shots — use pre-built scenes or GPT planning
         if scenes_input:
             shots = scenes_input

@@ -244,11 +244,19 @@
 
   <script>
     const BASE = window.LEVRAM_CONFIG?.api || "http://localhost:8000";
+    const _urlParams     = new URLSearchParams(window.location.search);
+    const _activeProject = _urlParams.get("project") || "";
     let shots = [];
     let draggedShotId = null;
 
     const shotsList  = document.getElementById("timeline-shots");
     const statusEl   = document.getElementById("tl-status");
+
+    // Show project name in header subtitle if set
+    if (_activeProject) {
+      const sub = document.querySelector(".tl-subtitle");
+      if (sub) sub.textContent = _activeProject.toUpperCase();
+    }
 
     function setStatus(msg, isErr = false) {
       statusEl.style.color = isErr ? "var(--imperial-red)" : "var(--text-dim)";
@@ -420,7 +428,8 @@
 
     async function loadScenes() {
       try {
-        const res  = await levFetch(`${BASE}/scenes`);
+        const url  = _activeProject ? `${BASE}/scenes?project=${encodeURIComponent(_activeProject)}` : `${BASE}/scenes`;
+        const res  = await levFetch(url);
         const data = await res.json();
         if (!data.success) throw new Error("Failed to load scenes");
         shots = data.scenes.map(s => ({

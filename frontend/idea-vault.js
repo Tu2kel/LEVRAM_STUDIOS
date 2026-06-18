@@ -612,6 +612,9 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
       };
     });
 
+    const activeProject = charName || idea?.title || "Default";
+    localStorage.setItem("levram_active_project", activeProject);
+
     if (statusEl) statusEl.innerHTML =
       `<span style="color:var(--gold);">Launching pipeline — ${scenes.length} scenes…</span>`;
 
@@ -628,7 +631,8 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
         duration:       sceneSec,
         model,
         include_tts:    true,
-        project:        charName || idea?.title || "Default",
+        project:        activeProject,
+        clear_project:  true,
       }),
     });
     const orchData = await orchRes.json();
@@ -676,7 +680,7 @@ async function ivPollJob(jobId, totalScenes, statusEl) {
         <div style="font-size:11px;letter-spacing:1px;color:${isFail ? "var(--imperial-red)" : isDone ? "#4caf50" : "var(--text-dim)"};">
           ${step}
         </div>
-        ${isDone ? `<div style="margin-top:8px;font-size:11px;color:#4caf50;letter-spacing:1px;">✔ Film in Timeline — click <strong>Timeline ↗</strong> in the sidebar to review.</div>` : ""}
+        ${isDone ? (() => { const _p = localStorage.getItem("levram_active_project") || ""; const _tlUrl = "timeline.html" + (_p ? `?project=${encodeURIComponent(_p)}` : ""); return `<div style="margin-top:8px;font-size:11px;color:#4caf50;letter-spacing:1px;">✔ Film ready — <a href="${_tlUrl}" target="_blank" style="color:var(--gold);text-decoration:none;">Open Timeline ↗</a></div>`; })() : ""}
         ${isFail ? `<div style="margin-top:4px;font-size:10px;color:var(--imperial-red);">${data.error || ""}</div>` : ""}
       `;
 

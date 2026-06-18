@@ -586,14 +586,27 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
     if (!rawScenes.length) throw new Error("No scenes found — Develop the story first.");
 
     // 3. Build full scene objects for the orchestrator
-    const scenes = rawScenes.map(sc => ({
-      description:   sc.description || "",
-      image_prompt:  sc.image_prompt || sc.description || "",
-      motion_prompt: sc.motion_prompt ||
-        `${sc.emotion || "cinematic"} atmosphere, smooth continuous camera movement, ${(sc.description || "").slice(0, 120)}`,
-      dialogue:      sc.dialogue || "",
-      emotion:       sc.emotion || "",
-    }));
+    const genre     = idea?.genre || "";
+    const toneNotes = idea?.story?.tone_notes || "";
+    const charLower = charName.toLowerCase();
+
+    const scenes = rawScenes.map(sc => {
+      const descText  = (sc.description || "").toLowerCase();
+      const imgText   = (sc.image_prompt || "").toLowerCase();
+      // Only lock the character face to scenes that actually feature them by name
+      const character_lock = charLower
+        ? descText.includes(charLower) || imgText.includes(charLower)
+        : true;
+      return {
+        description:    sc.description || "",
+        image_prompt:   sc.image_prompt || sc.description || "",
+        motion_prompt:  sc.motion_prompt ||
+          `${sc.emotion || "cinematic"} atmosphere, smooth continuous camera movement, ${(sc.description || "").slice(0, 120)}`,
+        dialogue:       sc.dialogue || "",
+        emotion:        sc.emotion || "",
+        character_lock,
+      };
+    });
 
     if (statusEl) statusEl.innerHTML =
       `<span style="color:var(--gold);">Launching pipeline — ${scenes.length} scenes…</span>`;
@@ -606,6 +619,8 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
         scenes,
         character_id:   charId,
         character_name: charName,
+        genre,
+        tone_notes:     toneNotes,
         duration:       sceneSec,
         model,
         include_tts:    true,

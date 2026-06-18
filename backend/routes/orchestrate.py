@@ -229,11 +229,21 @@ async def _run_pipeline(job_id: str, payload: dict):
     concept       = payload.get("concept", "")
     character_id  = payload.get("character_id", "")
     char_name     = payload.get("character_name", "")
+    genre         = payload.get("genre", "")
+    tone_notes    = payload.get("tone_notes", "")
     duration      = int(payload.get("duration", 5))
     model         = payload.get("model", "ws_wan22")
     include_tts   = payload.get("include_tts", True)   # default ON
     project       = payload.get("project", char_name or "Default")
     keyframes_only = payload.get("keyframes_only", False)
+
+    # Build a tone prefix injected into every image prompt so the AI stays on genre
+    _tone_prefix = ""
+    if genre or tone_notes:
+        parts = []
+        if genre:      parts.append(genre)
+        if tone_notes: parts.append(tone_notes)
+        _tone_prefix = ", ".join(parts) + " — "
 
     try:
         # ── 1. Get shots — use pre-built scenes or GPT planning
@@ -255,10 +265,11 @@ async def _run_pipeline(job_id: str, payload: dict):
             _update(job_id, progress=i,
                     step=f"{label} Generating keyframe — {shot.get('description','')[:60]}…")
             try:
-                image_url = await _gen_image(
-                    shot.get("image_prompt") or shot.get("description") or concept,
-                    character_id
-                )
+                raw_prompt   = shot.get("image_prompt") or shot.get("description") or concept
+                image_prompt = _tone_prefix + raw_prompt if _tone_prefix else raw_prompt
+                # Only apply character face lock to scenes that feature the main character
+                shot_char_id = character_id if shot.get("character_lock", True) else ""
+                image_url = await _gen_image(image_prompt, shot_char_id)
             except Exception as e:
                 err_msg = f"Shot {i+1} keyframe failed: {str(e)[:120]}"
                 print(f"[ORCH] {err_msg}")

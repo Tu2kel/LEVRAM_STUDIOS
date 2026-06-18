@@ -219,7 +219,7 @@ async def _submit_lora_training(character_id: str, char: dict):
                     zf.write(local_path, local_path.name)
         buf.seek(0)
 
-        loop    = asyncio.get_event_loop()
+        loop    = asyncio.get_running_loop()
         zip_url = await loop.run_in_executor(
             None, lambda: fal_client.upload(buf.read(), content_type="application/zip")
         )
@@ -281,7 +281,7 @@ async def lora_status(character_id: str):
             api_key = os.getenv("FAL_KEY")
             if api_key:
                 os.environ["FAL_KEY"] = api_key
-                loop       = asyncio.get_event_loop()
+                loop       = asyncio.get_running_loop()
                 request_id = char["lora_request_id"]
                 status_obj = await loop.run_in_executor(
                     None,
@@ -366,7 +366,7 @@ async def generate_character_preview(payload: dict):
             raise RuntimeError("no FAL_KEY")
         os.environ["FAL_KEY"] = api_key
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         if lora_url:
             # LoRA trained — most accurate likeness
@@ -456,11 +456,11 @@ async def generate_character_preview(payload: dict):
         out_dir.mkdir(parents=True, exist_ok=True)
         ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"character-preview_{ts}_{uuid.uuid4().hex[:8]}.png"
-        image_bytes = await loop.run_in_executor(
-            None, lambda: urllib.request.urlopen(
-                urllib.request.Request(remote_url, headers={"User-Agent": "LEVRAM/1.0"}), timeout=60
-            ).read()
-        )
+        def _dl():
+            req = urllib.request.Request(remote_url, headers={"User-Agent": "LEVRAM/1.0"})
+            with urllib.request.urlopen(req, timeout=90) as r:
+                return r.read()
+        image_bytes = await loop.run_in_executor(None, _dl)
         (out_dir / filename).write_bytes(image_bytes)
         local_url = "/output/renders/images/" + filename
 

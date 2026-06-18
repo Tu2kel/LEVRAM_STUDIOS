@@ -12,7 +12,7 @@ async def _ping(url: str, timeout: float = 3.0) -> bool:
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             r = await client.get(url)
-            return r.status_code < 500
+            return r.status_code < 400
     except Exception:
         return False
 

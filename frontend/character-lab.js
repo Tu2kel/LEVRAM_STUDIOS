@@ -272,6 +272,8 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
   }
 
   editingCharacterId = c.id;
+  // Broadcast this character as active across all tabs
+  if (window.LEVRAM_CHAR) LEVRAM_CHAR.set(c.id, c.name);
 
   const fields = {
     "character-name": c.name || "",

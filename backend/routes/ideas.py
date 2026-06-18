@@ -23,6 +23,7 @@ class IdeaPayload(BaseModel):
 
 class DevelopRequest(BaseModel):
     character_name: str = ""
+    character_id: str = ""
     target_minutes: float = 8.0
     scene_seconds: int = 5
 
@@ -149,9 +150,13 @@ async def develop_idea(idea_id: str, body: DevelopRequest):
     story["reel_30s"]      = _top_scene_indices(scenes, 30,  body.scene_seconds)
     story["reel_15s"]      = _top_scene_indices(scenes, 15,  body.scene_seconds)
 
-    await _patch_idea_any(idea_id, {"story": story, "status": "developed",
-                                    "target_minutes": body.target_minutes,
-                                    "scene_seconds": body.scene_seconds})
+    patch = {"story": story, "status": "developed",
+             "target_minutes": body.target_minutes,
+             "scene_seconds": body.scene_seconds}
+    if body.character_id:
+        patch["character_id"]   = body.character_id
+        patch["character_name"] = body.character_name
+    await _patch_idea_any(idea_id, patch)
     return {"success": True, "story": story}
 
 

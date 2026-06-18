@@ -9,11 +9,14 @@ async function orchLoadCharacters() {
     const data = await res.json();
     (data.characters || []).forEach(c => {
       const opt = document.createElement("option");
-      opt.value       = c.id;
-      opt.textContent = c.name;
+      opt.value        = c.id;
+      opt.textContent  = c.name;
       opt.dataset.name = c.name;
       sel.appendChild(opt);
     });
+    // Restore last-used character
+    const saved = window.LEVRAM_CHAR?.getId?.() || localStorage.getItem("levram_active_char_id") || "";
+    if (saved && [...sel.options].some(o => o.value === saved)) sel.value = saved;
   } catch (_) {}
 }
 

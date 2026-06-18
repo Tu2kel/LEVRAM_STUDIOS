@@ -548,7 +548,8 @@
             <div style="margin-top:16px;border-top:1px solid rgba(201,168,76,0.15);padding-top:14px;">
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
                 <div class="field-label" style="margin:0;white-space:nowrap;">Character:</div>
-                <select id="iv-dev-character" class="voice-char-select" style="flex:1;min-width:120px;">
+                <select id="iv-dev-character" class="voice-char-select" style="flex:1;min-width:120px;" data-char-sync
+                  onchange="LEVRAM_CHAR.set(this.value, this.selectedOptions[0]?.textContent)">
                   <option value="">None / Original</option>
                 </select>
                 <div class="field-label" style="margin:0;white-space:nowrap;">Quality:</div>
@@ -616,7 +617,8 @@
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
                   <div>
                     <div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Character</div>
-                    <select id="orch-character" style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 6px;border-radius:2px;">
+                    <select id="orch-character" style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 6px;border-radius:2px;" data-char-sync
+                      onchange="LEVRAM_CHAR.set(this.value, this.selectedOptions[0]?.textContent)">
                       <option value="">None / Standalone</option>
                     </select>
                   </div>

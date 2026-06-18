@@ -11,6 +11,18 @@ function _ivSetCurrentId(id) {
   else sessionStorage.removeItem("ivCurrentIdeaId");
 }
 
+// ── Shared active-character store (persists across tabs via localStorage) ──
+window.LEVRAM_CHAR = {
+  getId:   ()      => localStorage.getItem("levram_active_char_id") || "",
+  getName: ()      => localStorage.getItem("levram_active_char_name") || "",
+  set:     (id, name) => {
+    if (id) { localStorage.setItem("levram_active_char_id", id); localStorage.setItem("levram_active_char_name", name || ""); }
+    else     { localStorage.removeItem("levram_active_char_id"); localStorage.removeItem("levram_active_char_name"); }
+    // Sync all character dropdowns on the page
+    document.querySelectorAll("select[data-char-sync]").forEach(s => { if (s.value !== id) s.value = id; });
+  },
+};
+
 // ── Load character dropdown ────────────────────────────────────
 async function ivLoadCharacters() {
   const sel = document.getElementById("iv-dev-character");
@@ -23,6 +35,9 @@ async function ivLoadCharacters() {
       o.value = c.id; o.textContent = c.name; o.dataset.name = c.name;
       sel.appendChild(o);
     });
+    // Restore last-used character
+    const saved = LEVRAM_CHAR.getId();
+    if (saved && [...sel.options].some(o => o.value === saved)) sel.value = saved;
   } catch (_) {}
 }
 
@@ -224,6 +239,15 @@ window.ivViewStory = function ivViewStory(id) {
   if (approveEl) approveEl.textContent = "";
   panel?.scrollIntoView({ behavior: "smooth", block: "start" });
   ivRenderStory(idea.story);
+
+  // Auto-select character: prefer idea's saved character_id, then localStorage
+  const charSel = document.getElementById("iv-dev-character");
+  if (charSel) {
+    const targetId = idea.character_id || LEVRAM_CHAR.getId();
+    if (targetId && [...charSel.options].some(o => o.value === targetId)) {
+      charSel.value = targetId;
+    }
+  }
 };
 
 // ── Develop ────────────────────────────────────────────────────

@@ -597,6 +597,7 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
 
     // 5. Live progress polling
     ivPollJob(jobId, scenes.length, statusEl);
+    if (window.BC) BC.watchJob(jobId, "Approve + Generate");
 
   } catch (err) {
     if (statusEl) statusEl.textContent = "Error: " + err.message;
@@ -714,6 +715,7 @@ window.ivGenerateKeyframes = async function ivGenerateKeyframes() {
 
     // Poll — when keyframes_ready, show review UI
     ivPollKeyframeJob(orchData.job_id, scenes.length, statusEl, rawScenes);
+    if (window.BC) BC.watchJob(orchData.job_id, "Keyframes → Review");
   } catch (err) {
     if (statusEl) statusEl.textContent = "Error: " + err.message;
     if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
@@ -857,6 +859,7 @@ window.ivAnimateSelected = async function ivAnimateSelected() {
     if (!data.success) throw new Error(data.error || "Reanimate failed");
     if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
     ivPollJob(data.job_id, approved.length, statusEl);
+    if (window.BC) BC.watchJob(data.job_id, "Re-animate approved shots");
   } catch (err) {
     if (statusEl) statusEl.textContent = "Error: " + err.message;
     if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }

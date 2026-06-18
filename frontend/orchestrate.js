@@ -59,6 +59,7 @@ window.orchRun = async function orchRun() {
     if (!data.success) throw new Error(data.error || "Failed to start");
 
     _orchPoll(data.job_id, numShots, btn, stepEl, barEl, resultEl);
+  if (window.BC) BC.watchJob(data.job_id, "Auto-Create Scene");
 
   } catch (err) {
     if (btn)  { btn.disabled = false; btn.textContent = "⚡ Auto-Create Scene"; }
@@ -92,6 +93,8 @@ function _orchPoll(jobId, totalShots, btn, stepEl, barEl, resultEl) {
         if (resultEl) resultEl.textContent = "Failed: " + (data.error || "unknown error");
         if (btn)      { btn.disabled = false; btn.textContent = "⚡ Auto-Create Scene"; btn.classList.remove("lora-scanning"); }
       }
-    } catch (_) {}
-  }, 15000); // poll every 15s — jobs take minutes
+    } catch (e) {
+      if (window.BC) BC.log("Orchestrate poll error: " + e.message, "error");
+    }
+  }, 15000);
 }

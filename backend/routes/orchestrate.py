@@ -283,8 +283,13 @@ async def _run_pipeline(job_id: str, payload: dict):
                 motion = (shot.get("motion_prompt") or
                           f"cinematic motion, {shot.get('emotion','dramatic')}, smooth camera")
                 _update(job_id, step=f"{label} Animating with {model}…")
+                # WaveSpeed needs a public URL — convert local /output/ path
+                _domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+                animate_url = (f"https://{_domain}{image_url}"
+                               if _domain and image_url.startswith("/")
+                               else image_url)
                 try:
-                    video_url = await _animate(image_url, motion, model, duration)
+                    video_url = await _animate(animate_url, motion, model, duration)
                 except Exception as e:
                     print(f"[ORCH] I2V failed shot {i+1}: {e}")
 

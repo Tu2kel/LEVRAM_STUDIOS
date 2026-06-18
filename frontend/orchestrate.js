@@ -28,7 +28,7 @@ window.orchRun = async function orchRun() {
   const charName  = charSel?.selectedOptions?.[0]?.dataset?.name || "";
   const numShots  = parseInt(document.getElementById("orch-shots")?.value  || "3");
   const duration  = parseInt(document.getElementById("orch-duration")?.value || "5");
-  const model     = document.getElementById("orch-model")?.value || "wan21_i2v";
+  const model     = document.getElementById("orch-model")?.value || "ws_wan22";
   const tts       = document.getElementById("orch-tts")?.checked || false;
 
   if (!concept) {

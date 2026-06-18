@@ -556,8 +556,8 @@
                 </select>
                 <div class="field-label" style="margin:0;white-space:nowrap;">Quality:</div>
                 <select id="iv-model" class="voice-char-select" style="flex:2;min-width:160px;" onchange="ivUpdateCostEst()">
-                  <option value="wan21_i2v">Wan 2.1 — Free (draft preview)</option>
-                  <option value="wan21_14b_i2v">Wan 2.1 Best — Free (slow)</option>
+                  <option value="ws_wan22" selected>Wan 2.2 ⚡ — $0.05/clip (WaveSpeed)</option>
+                  <option value="ws_wan27">Wan 2.7 ⚡ — latest model (WaveSpeed)</option>
                   <option value="kling_26">Kling 2.6 Pro — production quality</option>
                 </select>
               </div>
@@ -642,8 +642,8 @@
                   <div>
                     <div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Video Model</div>
                     <select id="orch-model" style="width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 6px;border-radius:2px;">
-                      <option value="wan21_i2v" selected>Wan 2.1 — Free draft</option>
-                      <option value="wan21_14b_i2v">Wan 2.1 Best — Free</option>
+                      <option value="ws_wan22" selected>Wan 2.2 ⚡ — $0.05/clip (WaveSpeed)</option>
+                      <option value="ws_wan27">Wan 2.7 ⚡ — latest (WaveSpeed)</option>
                       <option value="kling_26">Kling 2.6 Pro — production</option>
                     </select>
                   </div>
@@ -862,8 +862,8 @@
                 <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Animate this image</div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
                   <select id="ig-i2v-model" onchange="igHandleI2VModelChange(this.value)" style="background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.25);color:var(--text-primary);font-family:Rajdhani,sans-serif;font-size:13px;padding:4px 8px;border-radius:2px;">
-                    <option value="wan21_i2v" selected>Wan 2.1 — Free (draft)</option>
-                    <option value="wan21_14b_i2v">Wan 2.1 Best — Free</option>
+                    <option value="ws_wan22" selected>Wan 2.2 ⚡ — $0.05/clip (WaveSpeed)</option>
+                    <option value="ws_wan27">Wan 2.7 ⚡ — latest (WaveSpeed)</option>
                     <option value="kling_26">Kling 2.6 Pro — production</option>
                     <option value="kling_o1">Kling O1 — Dual Keyframe (start → end)</option>
                     <option value="runway_turbo">Runway Gen-4 Turbo ✦</option>

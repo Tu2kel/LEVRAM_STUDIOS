@@ -543,7 +543,7 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
   const charId   = charSel?.value || "";
   const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
   const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
-  const model    = "wan21_i2v";
+  const model    = "ws_wan22";
 
   if (btn) { btn.disabled = true; btn.classList.add("lora-scanning"); }
   if (statusEl) statusEl.textContent = "Approving…";
@@ -650,13 +650,13 @@ async function ivPollJob(jobId, totalScenes, statusEl) {
 
 // ── Cost estimator ─────────────────────────────────────────────
 const IV_MODEL_COSTS = {
-  "wan21_i2v":     { label: "Wan 2.1",       cost: 0,    note: "free — fast draft" },
-  "wan21_14b_i2v": { label: "Wan 2.1 Best",  cost: 0,    note: "free — best open quality (slow)" },
+  "ws_wan22":      { label: "Wan 2.2 ⚡",     cost: 0.05, note: "~$0.05/5s clip — WaveSpeed" },
+  "ws_wan27":      { label: "Wan 2.7 ⚡",     cost: 0.05, note: "~$0.05/5s clip — WaveSpeed latest" },
   "kling_26":      { label: "Kling 2.6 Pro",  cost: 0.28, note: "~$0.28/5s clip — production" },
 };
 
 window.ivUpdateCostEst = function ivUpdateCostEst() {
-  const model   = document.getElementById("iv-model")?.value || "wan21_i2v";
+  const model   = document.getElementById("iv-model")?.value || "ws_wan22";
   const estEl   = document.getElementById("iv-cost-est");
   const sceneEl = document.getElementById("iv-scene-list");
   if (!estEl) return;
@@ -703,7 +703,7 @@ window.ivGenerateKeyframes = async function ivGenerateKeyframes() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         scenes, character_id: charId, character_name: charName,
-        duration: sceneSec, model: "wan21_i2v", keyframes_only: true,
+        duration: sceneSec, model: "ws_wan22", keyframes_only: true,
         project: charName || idea?.title || "Default",
       }),
     });

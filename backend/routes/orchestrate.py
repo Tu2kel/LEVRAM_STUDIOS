@@ -121,13 +121,11 @@ async def _gen_image(prompt: str, character_id: str) -> str:
             remote_url = outputs[0] if outputs else ""
             if not remote_url:
                 raise RuntimeError("WaveSpeed PuLID returned no image")
-            import urllib.request as _ur
             IMAGE_DIR.mkdir(parents=True, exist_ok=True)
             ts    = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
             fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
-            req   = _ur.Request(remote_url, headers={"User-Agent": "LEVRAM/1.0"})
-            with _ur.urlopen(req, timeout=60) as r:
-                (IMAGE_DIR / fname).write_bytes(r.read())
+            image_bytes = await loop.run_in_executor(None, lambda: _download_url(remote_url))
+            (IMAGE_DIR / fname).write_bytes(image_bytes)
             return "/output/renders/images/" + fname
         else:
             result = await loop.run_in_executor(

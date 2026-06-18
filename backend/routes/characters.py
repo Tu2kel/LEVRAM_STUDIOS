@@ -456,9 +456,12 @@ async def generate_character_preview(payload: dict):
         out_dir.mkdir(parents=True, exist_ok=True)
         ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"character-preview_{ts}_{uuid.uuid4().hex[:8]}.png"
-        req = urllib.request.Request(remote_url, headers={"User-Agent": "LEVRAM/1.0"})
-        with urllib.request.urlopen(req, timeout=60) as r:
-            (out_dir / filename).write_bytes(r.read())
+        image_bytes = await loop.run_in_executor(
+            None, lambda: urllib.request.urlopen(
+                urllib.request.Request(remote_url, headers={"User-Agent": "LEVRAM/1.0"}), timeout=60
+            ).read()
+        )
+        (out_dir / filename).write_bytes(image_bytes)
         local_url = "/output/renders/images/" + filename
 
         if char_id and not char_data.get("reference_image_url"):

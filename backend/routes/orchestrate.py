@@ -117,13 +117,12 @@ async def _gen_image(prompt: str, character_id: str) -> str:
             import json as _json, datetime as _dt
             outputs = await loop.run_in_executor(None, lambda: _ws_submit_poll(
                 "wavespeed-ai/flux-pulid", {
-                    "prompt":                f"{prompt}, cinematic photorealistic",
-                    "id_image_url":          face_url,
-                    "width":                 1280, "height": 720,
-                    "num_inference_steps":   28,
-                    "guidance_scale":        3.5,
-                    "true_cfg":              1.0,
-                    "enable_safety_checker": False,
+                    "prompt":              f"{prompt}, cinematic photorealistic",
+                    "id_image_url":        face_url,
+                    "width":               1280, "height": 720,
+                    "num_inference_steps": 28,
+                    "guidance_scale":      3.5,
+                    "true_cfg":            1.0,
                 }
             ))
             remote_url = outputs[0] if outputs else ""

@@ -170,13 +170,11 @@ def _ws_generate_image(prompt: str, aspect: str, style: str,
         full_prompt = f"{full_prompt}, {style}"
 
     payload = {
-        "prompt":                full_prompt,
-        "width":                 size["width"],
-        "height":                size["height"],
-        "num_inference_steps":   20 if "schnell" in engine else 28,
-        "guidance_scale":        3.5,
-        "num_images":            1,
-        "enable_safety_checker": False,
+        "prompt":              full_prompt,
+        "width":               size["width"],
+        "height":              size["height"],
+        "num_inference_steps": 20 if "schnell" in engine else 28,
+        "guidance_scale":      3.5,
     }
     if lora_url:
         payload["loras"] = [{"path": lora_url, "scale": 0.9}]
@@ -197,14 +195,13 @@ def _ws_pulid(prompt: str, face_refs: list, aspect: str, style: str = "") -> dic
     full_prompt = f"{prompt}, {style}" if style else prompt
 
     outputs = _ws_submit_poll("wavespeed-ai/flux-pulid", {
-        "prompt":                full_prompt,
-        "id_image_url":          face_url,
-        "width":                 size["width"],
-        "height":                size["height"],
-        "num_inference_steps":   28,
-        "guidance_scale":        3.5,
-        "true_cfg":              1.0,
-        "enable_safety_checker": False,
+        "prompt":              full_prompt,
+        "id_image_url":        face_url,
+        "width":               size["width"],
+        "height":              size["height"],
+        "num_inference_steps": 28,
+        "guidance_scale":      3.5,
+        "true_cfg":            1.0,
     })
     if not outputs:
         raise RuntimeError("WaveSpeed PuLID returned no image")

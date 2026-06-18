@@ -29,12 +29,8 @@
         <button class="nav-btn" data-tab="settings">Settings ↗</button>
         <button class="nav-btn" onclick="window.open('manual.html','_blank')">Manual ↗</button>
         <button id="theme-toggle" class="nav-btn">Ivory Mode</button>
-      <button id="bc-toggle-btn" class="nav-btn bc-toggle-btn" onclick="BC.toggle()">▲ Console <span id="bc-badge" data-n="0" style="display:none;align-items:center;justify-content:center;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;margin-left:4px;"></span></button>
+      <button id="bc-toggle-btn" class="nav-btn bc-toggle-btn" onclick="BC.toggle()"><span id="backend-status-dot" class="bc-live-dot"></span> Console <span id="bc-badge" data-n="0" style="display:none;align-items:center;justify-content:center;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;margin-left:4px;"></span></button>
       </nav>
-      <div class="status-pill" id="backend-status-pill">
-        <span class="status-dot" id="backend-status-dot"></span>
-        <span id="backend-status-text">Connecting…</span>
-      </div>
     </header>
 
     <!-- MAIN GRID: battery | panels | tab-bar | workspace -->

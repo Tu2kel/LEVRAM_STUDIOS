@@ -2711,3 +2711,15 @@ button:disabled {
   position: relative;
   border-color: rgba(201,168,76,0.3) !important;
 }
+
+.bc-live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2ecc71;
+  box-shadow: 0 0 6px #2ecc71;
+  animation: pulse 2s infinite;
+  vertical-align: middle;
+  margin-right: 2px;
+}

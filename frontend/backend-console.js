@@ -103,12 +103,20 @@ window.BC = (() => {
   }
 
   // ── Heartbeat ──────────────────────────────────────────────
+  let _offlineSince = null;
+  let _lastOfflineLog = 0;
+
   async function _heartbeat() {
     try {
       const r = await fetch(`${_base()}/settings/status`, {
         signal: AbortSignal.timeout(4000),
       });
       if (r.ok) {
+        if (_offlineSince) {
+          const secs = Math.round((Date.now() - _offlineSince) / 1000);
+          log(`Backend back online (was down ${secs}s)`, "success");
+          _offlineSince = null;
+        }
         _dot(_jobId ? "busy" : "ok");
         const t = $text();
         if (t && !_jobId) t.textContent = "Backend Live";
@@ -120,7 +128,16 @@ window.BC = (() => {
       _dot("err");
       const t = $text();
       if (t) t.textContent = "OFFLINE";
-      log("Backend unreachable — " + e.message, "error");
+      const now = Date.now();
+      if (!_offlineSince) {
+        _offlineSince = now;
+        log("Backend unreachable — " + e.message, "error");
+      } else if (now - _lastOfflineLog > 30000) {
+        // Only re-log every 30s while offline, not every 5s
+        const secs = Math.round((now - _offlineSince) / 1000);
+        log(`Still offline — ${secs}s (check Railway dashboard)`, "warn");
+        _lastOfflineLog = now;
+      }
     }
   }
 

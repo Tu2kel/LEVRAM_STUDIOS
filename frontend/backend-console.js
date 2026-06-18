@@ -131,6 +131,7 @@ window.BC = (() => {
       const now = Date.now();
       if (!_offlineSince) {
         _offlineSince = now;
+        _lastOfflineLog = now;
         log("Backend unreachable — " + e.message, "error");
       } else if (now - _lastOfflineLog > 30000) {
         // Only re-log every 30s while offline, not every 5s

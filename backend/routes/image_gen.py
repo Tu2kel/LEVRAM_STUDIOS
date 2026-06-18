@@ -123,20 +123,26 @@ def _ws_to_public_url(b64data: str, media_type: str, prefix: str = "ref") -> str
 
 def _ws_submit_poll(model_id: str, payload: dict, timeout_secs: int = 120) -> list:
     """Submit to WaveSpeed, poll until complete. Returns list of output URLs."""
-    import json, time
+    import json, time, urllib.error
     api_key = os.getenv("WAVESPEED_KEY")
     if not api_key:
         raise RuntimeError("WAVESPEED_KEY not set")
 
+    submit_url = f"{WAVESPEED_API_BASE}/{model_id}"
     data = json.dumps(payload).encode()
+    print(f"[WS] POST {submit_url}  payload={json.dumps(payload)[:300]}")
     req  = urllib.request.Request(
-        f"{WAVESPEED_API_BASE}/{model_id}",
+        submit_url,
         data=data,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=30) as r:
-        submit = json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            submit = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"WaveSpeed {e.code} on {model_id}: {body[:400]}")
 
     pred_id = (submit.get("data") or {}).get("id") or submit.get("id")
     if not pred_id:

@@ -240,7 +240,7 @@ async def _run_pipeline(job_id: str, payload: dict):
     character_id  = payload.get("character_id", "")
     char_name     = payload.get("character_name", "")
     duration      = int(payload.get("duration", 5))
-    model         = payload.get("model", "wan21_i2v")
+    model         = payload.get("model", "ws_wan22")
     include_tts   = payload.get("include_tts", True)   # default ON
     project       = payload.get("project", char_name or "Default")
     keyframes_only = payload.get("keyframes_only", False)
@@ -270,8 +270,10 @@ async def _run_pipeline(job_id: str, payload: dict):
                     character_id
                 )
             except Exception as e:
-                print(f"[ORCH] Image gen failed shot {i+1}: {e}")
-                _update(job_id, step=f"{label} ⚠ Keyframe failed, skipping — {str(e)[:80]}")
+                err_msg = f"Shot {i+1} keyframe failed: {str(e)[:120]}"
+                print(f"[ORCH] {err_msg}")
+                _JOBS[job_id].setdefault("errors", []).append(err_msg)
+                _update(job_id, step=f"{label} ⚠ Keyframe failed — {str(e)[:80]}")
                 continue
 
             # ── 3. I2V animation (skipped in keyframes_only mode)
@@ -349,6 +351,7 @@ async def run_orchestration(payload: dict, background_tasks: BackgroundTasks):
         "total":    0,
         "step":     "Starting…",
         "shots":    [],
+        "errors":   [],
         "error":    None,
         "started_at": datetime.now().isoformat(),
     }

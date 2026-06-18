@@ -132,6 +132,7 @@ window.BC = (() => {
     log(`▶ Job started${label ? " — " + label : ""}  [${jobId.slice(0,8)}]`, "step");
 
     let _lastStep = "";
+    const _seenErrors = new Set();
 
     _jobTimer = setInterval(async () => {
       try {
@@ -146,6 +147,13 @@ window.BC = (() => {
           _lastStep = d.step;
           const t = d.status === "failed" ? "error" : "step";
           log(d.step, t);
+        }
+
+        // Surface accumulated per-shot errors
+        if (Array.isArray(d.errors)) {
+          d.errors.forEach(e => {
+            if (!_seenErrors.has(e)) { _seenErrors.add(e); log(e, "error"); }
+          });
         }
 
         if (d.error && d.status !== "failed") log("Error: " + d.error, "error");

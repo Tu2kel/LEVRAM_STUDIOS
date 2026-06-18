@@ -1,17 +1,18 @@
 """Settings + startup status endpoint."""
 import os
-import urllib.request
+import asyncio
+import httpx
 from fastapi import APIRouter
 from backend.db import ping_db, MONGODB_URL
 
 router = APIRouter()
 
 
-def _ping(url: str, timeout: int = 3) -> bool:
+async def _ping(url: str, timeout: float = 3.0) -> bool:
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:
-            r.read()
-        return True
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            r = await client.get(url)
+            return r.status_code < 500
     except Exception:
         return False
 
@@ -19,7 +20,10 @@ def _ping(url: str, timeout: int = 3) -> bool:
 @router.get("/settings/status")
 async def get_settings_status():
     comfy_url = os.environ.get("COMFY_URL", "http://127.0.0.1:8188")
-    mongo_ok = await ping_db()
+    mongo_ok, comfy_ok = await asyncio.gather(
+        ping_db(),
+        _ping(f"{comfy_url}/system_stats"),
+    )
     return {
         "backend":         True,
         "openai":          bool(os.environ.get("OPENAI_API_KEY")),
@@ -30,5 +34,5 @@ async def get_settings_status():
         "mongodb":         mongo_ok,
         "mongodb_url":     "configured" if MONGODB_URL else "not configured",
         "comfy_url":       comfy_url,
-        "comfy_connected": _ping(f"{comfy_url}/system_stats"),
+        "comfy_connected": comfy_ok,
     }

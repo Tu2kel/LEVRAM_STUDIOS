@@ -404,12 +404,14 @@ function ivRenderStory(story) {
         isReel30 ? `<span style="color:#4caf7a;font-size:9px;">●30s</span>` : "",
         isReel60 ? `<span style="color:#c9a84c;font-size:9px;">●60s</span>` : "",
       ].filter(Boolean).join(" ");
-      const actColor = { 1: "rgba(255,100,100,0.5)", 2: "rgba(201,168,76,0.5)", 3: "rgba(100,200,100,0.5)" }[sc.act] || "rgba(255,255,255,0.2)";
+      // Auto-assign act by position if missing
+      const scAct = sc.act || (i < Math.ceil(scenes.length / 3) ? 1 : i < Math.ceil(scenes.length * 2 / 3) ? 2 : 3);
+      const actColor = { 1: "rgba(255,100,100,0.5)", 2: "rgba(201,168,76,0.5)", 3: "rgba(100,200,100,0.5)" }[scAct] || "rgba(255,255,255,0.2)";
       return `
         <div data-scene-idx="${i}" style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-left:3px solid ${actColor};border-radius:3px;padding:8px 10px;margin-bottom:4px;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
             <span style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;min-width:28px;">S${(sc.index ?? i) + 1}</span>
-            <span style="font-size:9px;color:${actColor.replace("0.5", "0.9")};letter-spacing:1px;text-transform:uppercase;">Act ${sc.act}</span>
+            <span style="font-size:9px;color:${actColor.replace("0.5", "0.9")};letter-spacing:1px;text-transform:uppercase;">Act ${scAct}</span>
             <input data-field="emotion" value="${esc(sc.emotion)}"
               style="width:80px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-family:Rajdhani,sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:1px 2px;outline:none;"
               placeholder="emotion" />
@@ -589,13 +591,15 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
     const genre     = idea?.genre || "";
     const toneNotes = idea?.story?.tone_notes || "";
     const charLower = charName.toLowerCase();
+    // Match on any word in the character name (e.g. "Michael" from "Michael Jackson")
+    const charParts = charLower.split(/\s+/).filter(p => p.length > 2);
 
     const scenes = rawScenes.map(sc => {
       const descText  = (sc.description || "").toLowerCase();
       const imgText   = (sc.image_prompt || "").toLowerCase();
       // Only lock the character face to scenes that actually feature them by name
-      const character_lock = charLower
-        ? descText.includes(charLower) || imgText.includes(charLower)
+      const character_lock = charParts.length
+        ? charParts.some(p => descText.includes(p) || imgText.includes(p))
         : true;
       return {
         description:    sc.description || "",

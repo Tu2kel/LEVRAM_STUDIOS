@@ -4,7 +4,7 @@ const IG_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 const IG_ENGINE_HINTS = {
   dalle3:               "Uses your OpenAI key — best prompt accuracy.",
   fal_flux:             "fal.ai FLUX Dev — photorealism.",
-  comfy:                "Requires ComfyUI running at localhost:8188.",
+  comfy:                "⚠ LOCAL ONLY — run 'uvicorn backend.main:app --port 8000' locally, then open 127.0.0.1:8000/frontend/index.html. ComfyUI must also be running at localhost:8188.",
   consistent_character: "★ BEST FOR CHARACTERS — Load 1 face photo in Person 1, describe the scene. Same character every generation.",
   ws_flux:              "⚡ WaveSpeed FLUX Dev — fast, pay per generation ($0.012/img).",
   ws_pulid:             "⚡ WaveSpeed PuLID — face-locked generation. Load a face photo in Person 1 first.",
@@ -494,7 +494,15 @@ async function igGenerateImage() {
 
   } catch (err) {
     console.error("IG GENERATE ERROR:", err);
-    if (statusEl) statusEl.textContent = err.message || "Generation failed.";
+    let msg = err.message || "Generation failed.";
+    if (msg.includes("Connection refused") || msg.includes("urlopen error")) {
+      if (igActiveEngine === "comfy") {
+        msg = "Local engine requires LEVRAM backend running locally. Run: uvicorn backend.main:app --port 8000  —  then open 127.0.0.1:8000/frontend/index.html";
+      } else {
+        msg = "Backend unreachable. Check Railway deploy status or run backend locally.";
+      }
+    }
+    if (statusEl) statusEl.textContent = msg;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = "Generate Image"; btn.classList.remove("lora-scanning"); }
   }

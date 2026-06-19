@@ -172,24 +172,50 @@ function igInitEngineToggle() {
   const localBtn = toggle.querySelector('[data-engine="comfy"]');
 
   if (!isLocal && localBtn) {
-    // On Railway: Local button visible but intercepts click to open local app
+    // On Railway: Local button contacts the launcher agent (port 8999)
+    // to start ComfyUI + local backend, then opens the local app
     localBtn.addEventListener("click", async (e) => {
       e.stopImmediatePropagation();
       const hint = document.getElementById("ig-engine-hint");
-      if (hint) hint.textContent = "Checking local server…";
+
+      // 1 — Check if launcher is alive
+      let launcherAlive = false;
       try {
-        const r = await fetch("http://localhost:8000/settings/status", { mode: "cors", signal: AbortSignal.timeout(2500) });
-        if (r.ok) {
-          if (hint) hint.textContent = "✓ Local server found — opening…";
-          window.open("http://localhost:8000/frontend/index.html", "_blank");
-        } else {
-          throw new Error("not ok");
-        }
-      } catch (_) {
+        const lr = await fetch("http://localhost:8999/status", { mode: "cors", signal: AbortSignal.timeout(1500) });
+        launcherAlive = lr.ok;
+      } catch (_) {}
+
+      if (!launcherAlive) {
         if (hint) hint.innerHTML =
-          "Local server not running.<br>In Ubuntu: <code style='background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;font-size:10px;'>bash ~/thok_Apps/start_local.sh</code><br>Then click Local again.";
+          "Launcher not running. In Ubuntu run once:<br>" +
+          "<code style='background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;font-size:10px;'>" +
+          "python3 ~/thok_Apps/launcher.py &" +
+          "</code><br>Then click Local again — it stays running in the background.";
+        return;
       }
-      return;
+
+      // 2 — Check if already up
+      const statusRes = await fetch("http://localhost:8999/status", { mode: "cors" });
+      const status    = await statusRes.json();
+      if (status.comfy && status.levram) {
+        if (hint) hint.textContent = "✓ Local stack ready — opening…";
+        window.open("http://localhost:8000/frontend/index.html", "_blank");
+        return;
+      }
+
+      // 3 — Start services (launcher polls until both up, max ~30s)
+      if (hint) hint.textContent = "Starting local stack… (~15s first launch)";
+      localBtn.disabled = true;
+      try {
+        const startRes = await fetch("http://localhost:8999/start", { mode: "cors", signal: AbortSignal.timeout(35000) });
+        const started  = await startRes.json();
+        if (hint) hint.textContent = started.comfy && started.levram ? "✓ Ready — opening…" : "Started — opening…";
+        window.open("http://localhost:8000/frontend/index.html", "_blank");
+      } catch (_) {
+        if (hint) hint.textContent = "Timed out — try http://localhost:8000/frontend/index.html";
+      } finally {
+        localBtn.disabled = false;
+      }
     }, true);
   }
 

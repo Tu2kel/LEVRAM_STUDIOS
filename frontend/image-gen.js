@@ -6,6 +6,8 @@ const IG_ENGINE_HINTS = {
   fal_flux:             "fal.ai FLUX Dev — photorealism.",
   comfy:                "Requires ComfyUI running at localhost:8188.",
   consistent_character: "★ BEST FOR CHARACTERS — Load 1 face photo in Person 1, describe the scene. Same character every generation.",
+  ws_flux_uncensored:   "🔴 WaveSpeed Flux Uncensored — pay per generation, no content restrictions.",
+  venice_flux:          "🔴 Venice.ai — uncensored SD3.5. Free tier: 15/day (blurred). Pro $18/mo: 1,000/day. Requires VENICE_API_KEY.",
 };
 
 const IG_VIDEO_ENGINE_HINTS = {

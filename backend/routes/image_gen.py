@@ -329,6 +329,62 @@ def _generate_comfy(prompt: str, aspect: str, style: str, character: str) -> dic
     return {"imageUrl": out_url, "prompt": result.get("promptUsed", prompt), "engine": "comfy", "model": "comfyui"}
 
 
+# ── Venice.ai image generation ────────────────────────────────
+VENICE_KEY      = os.getenv("VENICE_API_KEY", "")
+VENICE_IMG_BASE = "https://api.venice.ai/api/v1"
+
+VENICE_IMG_SIZES = {
+    "widescreen": (1344, 768),
+    "cinematic":  (1344, 576),
+    "portrait":   (768,  1344),
+    "square":     (1024, 1024),
+}
+
+def _venice_generate_image(prompt: str, aspect: str, style: str, studio: str = "levram") -> dict:
+    import json as _json, urllib.error
+    if not VENICE_KEY:
+        raise RuntimeError("VENICE_API_KEY not set")
+
+    w, h = VENICE_IMG_SIZES.get(aspect, VENICE_IMG_SIZES["widescreen"])
+    full_prompt = f"{prompt}, {style}".strip(", ") if style else prompt
+
+    body = _json.dumps({
+        "model":           "venice-sd35",
+        "prompt":          full_prompt,
+        "negative_prompt": "blurry, low quality, watermark, censored, blur",
+        "width":           w,
+        "height":          h,
+        "steps":           25,
+        "cfg_scale":       7.5,
+        "safe_mode":       False,
+    }).encode()
+
+    req = urllib.request.Request(
+        f"{VENICE_IMG_BASE}/image/generate",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {VENICE_KEY}",
+            "Content-Type":  "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=90) as r:
+            data = _json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body_err = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Venice {e.code}: {body_err[:400]}")
+
+    images = data.get("images") or []
+    if not images:
+        raise RuntimeError(f"Venice returned no images: {data}")
+
+    b64 = images[0].get("b64") or images[0].get("base64") or images[0]
+    image_bytes = _b64.b64decode(b64)
+    _, out_url = _save_bytes(image_bytes, prefix="venice", studio=studio)
+    return {"imageUrl": out_url, "prompt": full_prompt, "engine": "venice_flux", "model": "venice-sd35"}
+
+
 # ── Upload bytes to fal.ai storage → returns public URL ──────
 def _fal_upload(data: bytes, media_type: str) -> str:
     import fal_client
@@ -567,7 +623,12 @@ async def generate_image(payload: ImageGenPayload, x_studio: str = Header(defaul
     # LoRA disabled — character locking uses WaveSpeed PuLID (face reference method)
     lora_url = lora_trigger = ""
 
-    if FAL_DISABLED:
+    # Venice always routes directly regardless of FAL_DISABLED
+    if engine == "venice_flux":
+        if not VENICE_KEY:
+            raise HTTPException(status_code=400, detail="VENICE_API_KEY not set — add it to your environment variables")
+        fn = lambda: _venice_generate_image(prompt, payload.aspect, payload.style, x_studio)
+    elif FAL_DISABLED:
         # Route everything to WaveSpeed
         if engine == "consistent_character":
             raise HTTPException(status_code=400, detail="Consistent Character requires a Person 1 face photo")

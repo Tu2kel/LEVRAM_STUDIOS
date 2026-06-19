@@ -204,6 +204,8 @@ TAGS: [comma separated keywords]`,
       setField("character-notes", text);
     }
     if (window.switchTab) window.switchTab("characters");
+    // Auto-save so Lena can chain multiple characters without manual save
+    if (window.saveCharacter) window.saveCharacter();
   }
 
   function parseSectionBlock(text, header) {

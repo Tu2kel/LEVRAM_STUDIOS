@@ -229,6 +229,8 @@ When asked for only ONE section, output only that section's format without === h
       setField("character-notes", text);
     }
     if (window.switchTab) window.switchTab("characters");
+    // Auto-save so KEL-E can chain multiple characters without manual save
+    if (window.saveCharacter) window.saveCharacter();
   }
 
   function injectAll(text) {

@@ -874,17 +874,10 @@ function wireCharacterDraftPersistence() {
 document.addEventListener("DOMContentLoaded", wireCharacterDraftPersistence);
 
 window.clearCharacterForm = function clearCharacterForm() {
-
   [
-    "character-name",
-    "character-gender",
-    "character-age",
-    "character-appearance",
-    "character-wardrobe",
-    "character-voice",
-    "character-default-voice",
-    "character-personality",
-    "character-notes"
+    "character-name", "character-gender", "character-age",
+    "character-appearance", "character-wardrobe", "character-voice",
+    "character-default-voice", "character-personality", "character-notes"
   ].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = "";
@@ -896,15 +889,24 @@ window.clearCharacterForm = function clearCharacterForm() {
   if (promptBox) promptBox.value = "";
 
   const img = document.getElementById("character-preview-img");
-  if (img) {
-    img.src = "";
-    img.style.display = "none";
-  }
+  if (img) { img.src = ""; img.style.display = "none"; }
 
   const status = document.getElementById("character-preview-status");
-  if (status) status.textContent = "Form cleared.";
+  if (status) status.textContent = "";
 
-  console.log("Character form cleared.");
+  // Fully reset the right-column preview so no previous character bleeds through
+  const activeImg = document.getElementById("cl-active-img");
+  if (activeImg) { activeImg.src = ""; if (activeImg.parentElement) activeImg.parentElement.style.display = "none"; }
+  const thumbGrid = document.getElementById("cl-ref-thumbs");
+  if (thumbGrid) thumbGrid.innerHTML = "";
+  const countEl = document.getElementById("cl-ref-count");
+  if (countEl) countEl.textContent = "0 images";
+  const pulidBadge = document.getElementById("cl-pulid-badge");
+  if (pulidBadge) pulidBadge.style.display = "none";
+  const previewEmpty = document.getElementById("cl-preview-empty");
+  if (previewEmpty) previewEmpty.style.display = "flex";
+  const previewActive = document.getElementById("cl-preview-active");
+  if (previewActive) previewActive.style.display = "none";
 };
 
 

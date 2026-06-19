@@ -22,13 +22,13 @@
     api: useStored ? stored : (isLocal ? "http://127.0.0.1:8000" : window.location.origin),
   };
 
-  // Authenticated fetch — identical signature to fetch() but injects Bearer token
+  // Authenticated fetch — identical signature to fetch() but injects Bearer token + studio header
   window.levFetch = async function (url, opts = {}) {
-    const pw = (localStorage.getItem("levram-password") || "").trim();
+    const pw     = (localStorage.getItem("levram-password") || "").trim();
+    const studio = (window.RL && window.RL.isActive()) ? "redlight" : "levram";
+    opts.headers = Object.assign({ "X-Studio": studio }, opts.headers || {});
     if (pw) {
-      opts.headers = Object.assign({}, opts.headers || {}, {
-        "Authorization": "Bearer " + pw,
-      });
+      opts.headers["Authorization"] = "Bearer " + pw;
     }
     try {
       const res = await fetch(url, opts);

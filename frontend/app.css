@@ -2790,3 +2790,42 @@ body.redlight-mode .top-bar::after {
   51%  { transform: scaleX(1); transform-origin: right; }
   100% { transform: scaleX(0); transform-origin: right; }
 }
+
+/* ── Redlight Mode — branding image swaps ─────────────────────────────────── */
+
+body.redlight-mode .db-bg-img {
+  background-image: url("rl-bg.png");
+  opacity: 0.28;
+  filter: saturate(1.2) contrast(1.05);
+}
+
+body.redlight-mode #tab-idea-vault {
+  position: relative;
+}
+body.redlight-mode #tab-idea-vault::before {
+  content: "";
+  position: fixed;
+  inset: 70px 0 0 0;
+  background-image: url("rl-bg.png");
+  background-size: cover;
+  background-position: center 20%;
+  opacity: 0.10;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.redlight-mode .pb-shell {
+  background: linear-gradient(150deg, #1a0808 0%, #0d0a18 60%, #0a0816 100%);
+  border-top-color: rgba(200, 0, 30, 0.55);
+  border-bottom-color: rgba(200, 0, 30, 0.25);
+}
+body.redlight-mode .pb-shell::before {
+  background: radial-gradient(ellipse at center, rgba(200, 0, 30, 0.12) 0%, transparent 70%);
+}
+body.redlight-mode .pb-shell::after {
+  background-image: url("rl-banner.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center center;
+  opacity: 0.18;
+}

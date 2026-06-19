@@ -8,7 +8,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, UploadFile, File
 from pydantic import BaseModel
 
 from backend.db import characters_col
@@ -90,31 +90,33 @@ async def _patch_character(character_id: str, fields: dict):
 
 @router.get("/characters")
 @router.get("/api/characters")
-async def get_characters():
+async def get_characters(x_studio: str = Header(default="levram")):
     if characters_col is not None:
-        docs = await characters_col.find({}).to_list(None)
+        docs = await characters_col.find({"studio": x_studio}).to_list(None)
         return {"success": True, "characters": [_strip(d) for d in docs]}
     data = _json_load()
-    return {"success": True, "characters": data.get("characters", [])}
+    chars = [c for c in data.get("characters", []) if c.get("studio", "levram") == x_studio]
+    return {"success": True, "characters": chars}
 
 
 @router.post("/characters")
-async def create_character(payload: CharacterPayload):
+async def create_character(payload: CharacterPayload, x_studio: str = Header(default="levram")):
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="Character name is required")
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    character = {"id": str(uuid.uuid4()), **payload.model_dump(), "createdAt": now, "updatedAt": now}
+    character = {"id": str(uuid.uuid4()), **payload.model_dump(), "studio": x_studio, "createdAt": now, "updatedAt": now}
     character["name"] = character["name"].strip()
     if not character.get("lora_trigger"):
         character["lora_trigger"] = character["name"].upper().replace(" ", "_")
     if characters_col is not None:
         await characters_col.insert_one(character)
-        docs = await characters_col.find({}).to_list(None)
+        docs = await characters_col.find({"studio": x_studio}).to_list(None)
         return {"success": True, "character": _strip(character), "characters": [_strip(d) for d in docs]}
     data = _json_load()
     data["characters"].append(character)
     _json_save(data)
-    return {"success": True, "character": character, "characters": data["characters"]}
+    chars = [c for c in data["characters"] if c.get("studio", "levram") == x_studio]
+    return {"success": True, "character": character, "characters": chars}
 
 
 @router.put("/characters/{character_id}")

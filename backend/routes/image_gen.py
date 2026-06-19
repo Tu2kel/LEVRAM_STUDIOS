@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
@@ -89,11 +89,12 @@ class ImageGenPayload(BaseModel):
     face_references:    list[RefImage] = []
 
 
-def _save_bytes(image_bytes: bytes, prefix: str = "levram") -> tuple[str, str]:
+def _save_bytes(image_bytes: bytes, prefix: str = "levram", studio: str = "levram") -> tuple[str, str]:
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     ts  = datetime.now().strftime("%Y%m%d_%H%M%S")
     rid = uuid.uuid4().hex[:8]
-    filename = f"{prefix}_{ts}_{rid}.png"
+    scope = "rl_" if studio == "redlight" else ""
+    filename = f"{scope}{prefix}_{ts}_{rid}.png"
     path = IMAGE_DIR / filename
     path.write_bytes(image_bytes)
     return str(path), "/output/renders/images/" + filename
@@ -478,7 +479,7 @@ def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> 
 
 # ── Route ─────────────────────────────────────────────────────
 @router.post("/image-gen/generate")
-async def generate_image(payload: ImageGenPayload):
+async def generate_image(payload: ImageGenPayload, x_studio: str = Header(default="levram")):
     engine = payload.engine
     loop   = asyncio.get_event_loop()
 
@@ -575,7 +576,7 @@ async def generate_image(payload: ImageGenPayload):
         if engine == "dalle3":
             fn = lambda: _generate_dalle3(prompt, payload.aspect, payload.style)
         else:
-            ws_engine = engine if engine in WS_IMG_MODELS else "ws_flux"
+            ws_engine = engine if engine in WS_IMG_MODELS else ("ws_flux_uncensored" if x_studio == "redlight" else "ws_flux")
             fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, ws_engine, lora_url, lora_trigger)
     elif engine in FAL_MODELS or (lora_url and engine not in ("dalle3", "comfy")):
         fn = lambda: _generate_fal(prompt, payload.aspect, payload.style,
@@ -621,9 +622,11 @@ def list_models():
 
 
 @router.get("/image-gen/gallery")
-def get_gallery():
+def get_gallery(x_studio: str = Header(default="levram")):
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    images = sorted(IMAGE_DIR.glob("*.png"), key=lambda f: f.stat().st_mtime, reverse=True)
+    all_imgs = sorted(IMAGE_DIR.glob("*.png"), key=lambda f: f.stat().st_mtime, reverse=True)
+    is_rl = x_studio == "redlight"
+    images = [f for f in all_imgs if f.name.startswith("rl_") == is_rl]
     return {
         "success": True,
         "images": [

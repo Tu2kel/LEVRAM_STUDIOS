@@ -131,6 +131,25 @@ window.RL = (function () {
     });
   }
 
+  // ── Data reload — refresh all list views after studio switch ──────────────
+  function reloadAll() {
+    // Fire after a short delay so levFetch header is already updated
+    setTimeout(() => {
+      // Characters
+      if (typeof loadCharacters === "function") loadCharacters();
+      // Ideas
+      if (typeof ivLoadIdeas === "function") ivLoadIdeas();
+      // Image gallery
+      if (typeof igLoadGallery === "function") igLoadGallery();
+      // Render queue
+      if (typeof loadRenderQueue === "function") loadRenderQueue();
+      // Video gallery
+      if (typeof igLoadVideoGallery === "function") igLoadVideoGallery();
+      // Dashboard
+      if (typeof dbLoad === "function") dbLoad();
+    }, 60);
+  }
+
   // ── Body class + button state ──────────────────────────────────────────────
   function setActive(on) {
     active = on;
@@ -143,6 +162,7 @@ window.RL = (function () {
     if (on) { startGlitter(); applyModels(RL_IMG_MODEL, RL_I2V_MODEL); }
     else     { stopGlitter();  applyModels(NORMAL_IMG_MODEL, NORMAL_I2V_MODEL); }
     localStorage.setItem(STORAGE_KEY, on ? "1" : "0");
+    reloadAll();
   }
 
   // ── Public API ─────────────────────────────────────────────────────────────

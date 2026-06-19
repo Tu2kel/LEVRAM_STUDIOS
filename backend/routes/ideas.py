@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
@@ -50,30 +50,32 @@ def _strip(doc):
 
 
 @router.get("/ideas")
-async def get_ideas():
+async def get_ideas(x_studio: str = Header(default="levram")):
     if ideas_col is not None:
-        docs = await ideas_col.find({}).sort("createdAt", -1).to_list(None)
+        docs = await ideas_col.find({"studio": x_studio}).sort("createdAt", -1).to_list(None)
         return {"success": True, "ideas": [_strip(d) for d in docs]}
-    return {"success": True, "ideas": _load()["ideas"]}
+    ideas = [i for i in _load()["ideas"] if i.get("studio", "levram") == x_studio]
+    return {"success": True, "ideas": ideas}
 
 
 @router.post("/ideas")
-async def save_idea(payload: IdeaPayload):
+async def save_idea(payload: IdeaPayload, x_studio: str = Header(default="levram")):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     idea = {"id": str(uuid.uuid4()), "title": payload.title, "source": payload.source,
             "rawIdea": payload.rawIdea, "tags": payload.tags, "status": "raw",
             "genre": payload.genre, "target_minutes": payload.target_minutes,
             "scene_seconds": payload.scene_seconds,
-            "story": None,
+            "story": None, "studio": x_studio,
             "createdAt": now, "updatedAt": now}
     if ideas_col is not None:
         await ideas_col.insert_one(idea)
-        docs = await ideas_col.find({}).sort("createdAt", -1).to_list(None)
+        docs = await ideas_col.find({"studio": x_studio}).sort("createdAt", -1).to_list(None)
         return {"success": True, "idea": _strip(idea), "ideas": [_strip(d) for d in docs]}
     data = _load()
     data["ideas"].insert(0, idea)
     _save(data)
-    return {"success": True, "idea": idea, "ideas": data["ideas"]}
+    scoped = [i for i in data["ideas"] if i.get("studio", "levram") == x_studio]
+    return {"success": True, "idea": idea, "ideas": scoped}
 
 
 @router.delete("/ideas/{idea_id}")

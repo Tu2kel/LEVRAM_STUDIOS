@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, Header, HTTPException, UploadFile, File
 from pydantic import BaseModel
 
 router   = APIRouter()
@@ -987,7 +987,7 @@ async def upload_image_for_video(file: UploadFile = File(...)):
 
 
 @router.post("/video/image-to-video")
-async def image_to_video(payload: FalI2VPayload):
+async def image_to_video(payload: FalI2VPayload, x_studio: str = Header(default="levram")):
     """Animate a keyframe image — returns job_id immediately, poll /video/job/{id}."""
     is_wavespeed = payload.model in WAVESPEED_I2V_MODELS
     if not is_wavespeed and payload.model not in FAL_I2V_MODELS:
@@ -1024,6 +1024,7 @@ async def image_to_video(payload: FalI2VPayload):
                     import asyncio as _aio
                     _aio.create_task(_save_video_meta(result["filename"], {
                         "project": project,
+                        "studio": x_studio,
                         "created": ts_str,
                         "created_ts": datetime.now().timestamp(),
                         "prompt": payload.prompt,
@@ -1140,13 +1141,14 @@ async def _save_video_meta(filename: str, meta: dict) -> None:
 
 
 @router.get("/video/library")
-async def get_video_library(project: str = ""):
+async def get_video_library(project: str = "", x_studio: str = Header(default="levram")):
     from backend.db import videos_col
     VID_DIR.mkdir(parents=True, exist_ok=True)
 
     if videos_col is not None:
-        # MongoDB path
-        query = {"project": project} if project else {}
+        query: dict = {"studio": x_studio}
+        if project:
+            query["project"] = project
         cursor = videos_col.find(query, {"_id": 0}).sort("created_ts", -1).limit(50)
         docs   = await cursor.to_list(length=50)
         # Enrich with current file size (Railway volume still holds the actual MP4s)
@@ -1169,6 +1171,8 @@ async def get_video_library(project: str = ""):
     for v in videos:
         meta = _read_video_meta(v)
         if project and meta.get("project", "") != project:
+            continue
+        if meta.get("studio", "levram") != x_studio:
             continue
         result.append({
             "url":     "/output/videos/" + v.name,

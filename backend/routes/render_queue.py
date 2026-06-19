@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Header
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
@@ -108,16 +108,17 @@ def _now() -> str:
 # ─── Routes ───────────────────────────────────────────────────
 
 @router.get("/render-queue")
-async def get_render_queue():
+async def get_render_queue(x_studio: str = Header(default="levram")):
     if render_queue_col is not None:
-        docs = await render_queue_col.find({}).sort("createdAt", -1).to_list(None)
+        docs = await render_queue_col.find({"studio": x_studio}).sort("createdAt", -1).to_list(None)
         return {"success": True, "queue": [_strip(d) for d in docs]}
     data = _json_load()
-    return {"success": True, "queue": data["queue"]}
+    queue = [q for q in data["queue"] if q.get("studio", "levram") == x_studio]
+    return {"success": True, "queue": queue}
 
 
 @router.post("/render-queue")
-async def add_to_render_queue(payload: QueuePayload):
+async def add_to_render_queue(payload: QueuePayload, x_studio: str = Header(default="levram")):
     shot = payload.shot or {}
     item = {
         "id":          str(uuid.uuid4()),
@@ -129,6 +130,7 @@ async def add_to_render_queue(payload: QueuePayload):
         "dialogue":    payload.dialogue or shot.get("dialogue") or shot.get("text"),
         "voicePath":   payload.voicePath or shot.get("voicePath") or shot.get("voice_path"),
         "renderStyle": payload.renderStyle or shot.get("renderStyle") or "cinematic",
+        "studio":      x_studio,
         "status":      "pending",
         "createdAt":   _now(),
         "updatedAt":   _now(),
@@ -136,13 +138,14 @@ async def add_to_render_queue(payload: QueuePayload):
 
     if render_queue_col is not None:
         await render_queue_col.insert_one(item)
-        docs = await render_queue_col.find({}).sort("createdAt", -1).to_list(None)
+        docs = await render_queue_col.find({"studio": x_studio}).sort("createdAt", -1).to_list(None)
         return {"success": True, "item": _strip(item), "queue": [_strip(d) for d in docs]}
 
     data = _json_load()
     data["queue"].insert(0, item)
     _json_save(data)
-    return {"success": True, "item": item, "queue": data["queue"]}
+    queue = [q for q in data["queue"] if q.get("studio", "levram") == x_studio]
+    return {"success": True, "item": item, "queue": queue}
 
 
 @router.put("/render-queue/{item_id}/status")

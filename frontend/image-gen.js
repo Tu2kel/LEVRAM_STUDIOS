@@ -312,6 +312,51 @@ function igRenderCharacterImages(charId) {
   }).join("");
 }
 
+function igAutoFillCharPrompt(charId) {
+  const promptEl  = document.getElementById("ig-prompt");
+  const noticeEl  = document.getElementById("ig-char-prompt-notice");
+  if (!promptEl) return;
+
+  if (!charId) {
+    // Cleared selection — remove notice, leave prompt alone
+    if (noticeEl) noticeEl.style.display = "none";
+    return;
+  }
+
+  const char = igCharacterCache.find(c => c.id === charId);
+  if (!char) return;
+
+  // Only auto-fill if prompt is empty or was previously auto-filled from a character
+  const wasAutofilled = promptEl.dataset.autofilled === "1";
+  if (promptEl.value.trim() && !wasAutofilled) {
+    if (noticeEl) {
+      noticeEl.textContent = `✦ ${char.name}'s bio ready — clear prompt to auto-fill`;
+      noticeEl.style.display = "block";
+    }
+    return;
+  }
+
+  // Build portrait prompt from character bio fields
+  const parts = [];
+  if (char.name)        parts.push(`Portrait of ${char.name}`);
+  if (char.gender && char.age) parts.push(`${char.gender}, ${char.age} years old`);
+  else if (char.gender) parts.push(char.gender);
+  if (char.appearance)  parts.push(char.appearance);
+  if (char.wardrobe)    parts.push(`Wearing ${char.wardrobe}`);
+  if (char.personality) parts.push(char.personality);
+  parts.push("Cinematic photorealistic portrait, dramatic lighting, sharp detail, high quality");
+
+  const builtPrompt = parts.join(". ");
+  promptEl.value = builtPrompt;
+  promptEl.dataset.autofilled = "1";
+  promptEl.dispatchEvent(new Event("input", { bubbles: true }));
+
+  if (noticeEl) {
+    noticeEl.textContent = `✦ Prompt auto-filled from ${char.name}'s character bio`;
+    noticeEl.style.display = "block";
+  }
+}
+
 window.igLoadCharacterImage = function igLoadCharacterImage(relUrl, label, charId, idx) {
   const char = igCharacterCache.find(c => c.id === charId);
   if (char) { char.active_preview_index = idx; igRenderCharacterImages(charId); }
@@ -1081,5 +1126,11 @@ document.addEventListener("DOMContentLoaded", () => {
   igLoadGallery();
   document.getElementById("ig-character")?.addEventListener("change", function() {
     igRenderCharacterImages(this.value);
+    igAutoFillCharPrompt(this.value);
+  });
+
+  // Clear the auto-fill flag when user manually edits the prompt
+  document.getElementById("ig-prompt")?.addEventListener("input", function() {
+    this.dataset.autofilled = "";
   });
 });

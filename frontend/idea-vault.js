@@ -143,6 +143,8 @@ async function ivSaveIdea() {
 
     ivCancelEdit();
     if (statusEl) statusEl.textContent = ivEditingIdeaId ? `Updated: "${title}"` : `Saved: "${title}"`;
+    localStorage.setItem("levram_active_project", title);
+    window.refreshBattery?.();
     await ivLoadIdeas();
   } catch (err) {
     if (statusEl) statusEl.textContent = err.message || "Failed to save.";
@@ -168,6 +170,12 @@ window.ivEditIdea = async function ivEditIdea(id) {
   set("iv-tags",       (idea.tags || []).join(", "));
   set("iv-minutes",    idea.target_minutes || "8");
   set("iv-scene-sec",  idea.scene_seconds  || "5");
+
+  // Track active project for battery and cross-tab awareness
+  if (idea.title) {
+    localStorage.setItem("levram_active_project", idea.title);
+    window.refreshBattery?.();
+  }
 
   ivEditingIdeaId = id;
 

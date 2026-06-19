@@ -100,8 +100,10 @@ function renderProjectBattery(scene) {
   const host = document.getElementById("project-battery-host");
   if (!host) return;
 
-  // Determine project name from: shot-project input → scene → fallback
+  // Determine project name: Idea Vault (localStorage) → iv-title live field → shot-project → scene
   const projectName = (
+    localStorage.getItem("levram_active_project") ||
+    document.getElementById("iv-title")?.value?.trim() ||
     document.getElementById("shot-project")?.value?.trim() ||
     scene?.project || scene?.title || null
   );
@@ -261,4 +263,20 @@ window.refreshBattery = function() {
 
 document.addEventListener("DOMContentLoaded", () => {
   renderProjectBattery(null);
+
+  // Refresh battery whenever iv-title is typed (live project name tracking)
+  document.addEventListener("input", e => {
+    if (e.target?.id === "iv-title") {
+      const t = e.target.value.trim();
+      if (t) localStorage.setItem("levram_active_project", t);
+      renderProjectBattery(window.activeScene || null);
+    }
+  });
+});
+
+// Refresh when another tab updates the active project
+window.addEventListener("storage", e => {
+  if (e.key === "levram_active_project") {
+    renderProjectBattery(window.activeScene || null);
+  }
 });

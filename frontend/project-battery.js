@@ -243,7 +243,10 @@ function renderProjectBattery(scene) {
             <span class="pb-guide-num">${cur.num}</span>
             <span class="pb-guide-label">Current Stage — ${cur.label}</span>
           </div>
-          <button class="pb-guide-cta" data-go="${cur.key}">${cur.cta || ("→ " + cur.label)} →</button>
+          ${nxt
+            ? `<button class="pb-guide-cta" data-go="${nxt.key}">Done here → ${nxt.label}</button>`
+            : `<button class="pb-guide-cta" data-go="export">→ Export</button>`
+          }
         </div>
         <ol class="pb-guide-steps">
           ${(cur.steps || []).map(s => `<li>${s}</li>`).join("")}

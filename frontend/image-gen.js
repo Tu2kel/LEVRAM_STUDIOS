@@ -168,6 +168,17 @@ function igInitEngineToggle() {
   const toggle = document.getElementById("ig-engine-toggle");
   if (!toggle) return;
 
+  // Hide Local engine when running from Railway (can't reach local ComfyUI)
+  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  const localBtn = toggle.querySelector('[data-engine="comfy"]');
+  if (localBtn && !isLocal) localBtn.style.display = "none";
+
+  // If last saved engine was comfy but we're on Railway, reset to default
+  if (!isLocal && igActiveEngine === "comfy") {
+    igActiveEngine = _igDefaultEngine();
+    localStorage.removeItem("ig-engine");
+  }
+
   toggle.querySelectorAll(".cl-vtoggle-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.engine === igActiveEngine);
     btn.addEventListener("click", () => {

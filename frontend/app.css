@@ -2799,19 +2799,26 @@ body.redlight-mode .db-bg-img {
   filter: saturate(1.2) contrast(1.05);
 }
 
-body.redlight-mode #tab-idea-vault {
+/* Idea vault — image fills the saved-ideas list area */
+body.redlight-mode #iv-list {
   position: relative;
+  min-height: 70vh;
 }
-body.redlight-mode #tab-idea-vault::before {
+body.redlight-mode #iv-list::before {
   content: "";
-  position: fixed;
-  inset: 70px 0 0 0;
+  position: absolute;
+  inset: 0;
   background-image: url("rl-bg.png");
   background-size: cover;
-  background-position: center 20%;
-  opacity: 0.10;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.18;
   pointer-events: none;
   z-index: 0;
+}
+body.redlight-mode #iv-list > * {
+  position: relative;
+  z-index: 1;
 }
 
 body.redlight-mode .pb-shell {
@@ -2822,10 +2829,11 @@ body.redlight-mode .pb-shell {
 body.redlight-mode .pb-shell::before {
   background: radial-gradient(ellipse at center, rgba(200, 0, 30, 0.12) 0%, transparent 70%);
 }
+/* Banner stretched full width across the project battery bar */
 body.redlight-mode .pb-shell::after {
   background-image: url("rl-banner.png");
-  background-size: contain;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center center;
-  opacity: 0.18;
+  opacity: 0.25;
 }

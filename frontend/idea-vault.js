@@ -697,21 +697,26 @@ async function ivPollJob(jobId, totalScenes, statusEl) {
 }
 
 // ── Cost estimator ─────────────────────────────────────────────
+// WaveSpeed charges $0.01/second; Kling is flat per clip
 const IV_MODEL_COSTS = {
-  "ws_wan22":      { label: "Wan 2.2 ⚡",     cost: 0.05, note: "~$0.05/5s clip — WaveSpeed" },
-  "ws_wan27":      { label: "Wan 2.7 ⚡",     cost: 0.05, note: "~$0.05/5s clip — WaveSpeed latest" },
-  "kling_26":      { label: "Kling 2.6 Pro",  cost: 0.28, note: "~$0.28/5s clip — production" },
+  "ws_wan22":       { label: "Wan 2.2 ⚡",          ratePerSec: 0.01, fixedCost: null },
+  "ws_wan22_spicy": { label: "🔴 Wan 2.2 Spicy",    ratePerSec: 0.01, fixedCost: null },
+  "ws_wan27":       { label: "Wan 2.7 ⚡",          ratePerSec: 0.01, fixedCost: null },
+  "kling_26":       { label: "Kling 2.6 Pro",        ratePerSec: null, fixedCost: 0.28 },
 };
 
 window.ivUpdateCostEst = function ivUpdateCostEst() {
-  const model   = document.getElementById("iv-model")?.value || "ws_wan22";
-  const estEl   = document.getElementById("iv-cost-est");
-  const sceneEl = document.getElementById("iv-scene-list");
+  const model    = document.getElementById("iv-model")?.value || "ws_wan22";
+  const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
+  const estEl    = document.getElementById("iv-cost-est");
+  const sceneEl  = document.getElementById("iv-scene-list");
   if (!estEl) return;
-  const info      = IV_MODEL_COSTS[model] || { cost: 0, note: "unknown" };
+  const info     = IV_MODEL_COSTS[model] || { label: model, ratePerSec: 0.01, fixedCost: null };
+  const clipCost = info.fixedCost ?? (info.ratePerSec * sceneSec);
   const numScenes = sceneEl ? sceneEl.children.length : 0;
-  const total     = numScenes && info.cost ? `~$${(numScenes * info.cost).toFixed(2)} for ${numScenes} shots` : (info.cost === 0 ? "Free" : info.note);
-  estEl.textContent = `${IV_MODEL_COSTS[model]?.label || model} — ${total}`;
+  const perClip  = `$${clipCost.toFixed(2)}/${sceneSec}s clip`;
+  const total    = numScenes ? ` — ~$${(numScenes * clipCost).toFixed(2)} for ${numScenes} shots` : "";
+  estEl.textContent = `${info.label} — ${perClip}${total}`;
 };
 
 // ── Keyframes-first flow ───────────────────────────────────────
@@ -751,7 +756,7 @@ window.ivGenerateKeyframes = async function ivGenerateKeyframes() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         scenes, character_id: charId, character_name: charName,
-        duration: sceneSec, model: "ws_wan22", keyframes_only: true,
+        duration: sceneSec, model: document.getElementById("iv-model")?.value || "ws_wan22", keyframes_only: true,
         project: charName || idea?.title || "Default",
       }),
     });

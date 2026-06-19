@@ -892,10 +892,12 @@ def _wavespeed_i2v(image_url: str, prompt: str, model_key: str, duration: int) -
             "seed":       -1,
         }).encode()
     else:
+        # WAN standard: clamp to 5–8s (WaveSpeed supported range)
+        safe_dur = max(5, min(8, duration))
         payload = json.dumps({
             "image_url":    image_url,
             "prompt":       prompt or "cinematic motion, smooth camera",
-            "duration":     duration,
+            "duration":     safe_dur,
             "aspect_ratio": "16:9",
         }).encode()
 

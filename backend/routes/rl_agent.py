@@ -123,11 +123,11 @@ async def rl_agent_chat(payload: ChatPayload, x_studio: str = Header(default="le
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages += [{"role": m.role, "content": m.content} for m in payload.messages]
 
-    if VENICE_KEY:
-        model = VENICE_MODEL
-        gen   = _stream_venice(messages, model)
+    # Route by selected model: Venice models → Venice API, everything else → Ollama
+    if VENICE_KEY and payload.model == VENICE_MODEL:
+        gen = _stream_venice(messages, VENICE_MODEL)
     else:
-        gen   = _stream_ollama(messages, payload.model)
+        gen = _stream_ollama(messages, payload.model)
 
     return StreamingResponse(gen, media_type="text/event-stream")
 
@@ -137,14 +137,20 @@ async def rl_agent_models(x_studio: str = Header(default="levram")):
     if x_studio != "redlight":
         raise HTTPException(status_code=403, detail="RL Agent only available in Redlight mode")
 
-    if VENICE_KEY:
-        return {"success": True, "models": [VENICE_MODEL], "default": VENICE_MODEL, "backend": "venice"}
+    models = []
 
+    # Always try to get local Ollama models
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"{OLLAMA_URL}/api/tags")
             data = resp.json()
-            models = [m["name"] for m in data.get("models", [])]
-            return {"success": True, "models": models, "default": DEFAULT_MODEL, "backend": "ollama"}
-    except Exception as e:
-        return {"success": False, "models": [], "error": str(e), "backend": "ollama"}
+            models += [m["name"] for m in data.get("models", [])]
+    except Exception:
+        pass
+
+    # Add Venice option if key is set
+    if VENICE_KEY and VENICE_MODEL not in models:
+        models.append(VENICE_MODEL)
+
+    default = DEFAULT_MODEL if DEFAULT_MODEL in models else (models[0] if models else DEFAULT_MODEL)
+    return {"success": True, "models": models, "default": default}

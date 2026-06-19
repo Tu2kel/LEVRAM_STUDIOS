@@ -1,4 +1,4 @@
-// ── AXEL — LS Redlight AI Agent ───────────────────────────────────────────────
+// ── Lena — LS Redlight AI Agent ───────────────────────────────────────────────
 window.RLAgent = (function () {
   let history = [];
   let streaming = false;
@@ -21,7 +21,7 @@ window.RLAgent = (function () {
       <div id="rl-agent-header">
         <div id="rl-agent-title">
           <span class="rl-agent-dot"></span>
-          <span>AXEL</span>
+          <span>Lena</span>
           <span id="rl-agent-subtitle">LS Redlight Creative Director</span>
         </div>
         <div id="rl-agent-controls">
@@ -35,7 +35,7 @@ window.RLAgent = (function () {
       </div>
       <div id="rl-agent-messages"></div>
       <div id="rl-agent-input-row">
-        <textarea id="rl-agent-input" placeholder="Tell AXEL what you need…" rows="2"></textarea>
+        <textarea id="rl-agent-input" placeholder="Tell Lena what you need…" rows="2"></textarea>
         <button id="rl-agent-send">Send</button>
       </div>
     `;
@@ -47,8 +47,8 @@ window.RLAgent = (function () {
   function buildToggleBtn() {
     const btn = document.createElement("button");
     btn.id = "rl-agent-toggle";
-    btn.innerHTML = `<span class="rl-agent-dot"></span> AXEL`;
-    btn.title = "Open AXEL — Redlight Creative Agent";
+    btn.innerHTML = `<span class="rl-agent-dot"></span> Lena`;
+    btn.title = "Open Lena — Redlight Creative Agent";
     document.body.appendChild(btn);
     return btn;
   }

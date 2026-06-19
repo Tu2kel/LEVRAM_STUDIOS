@@ -2829,7 +2829,7 @@ body.redlight-mode .pb-shell::before {
   background: radial-gradient(ellipse at center, rgba(200, 0, 30, 0.12) 0%, transparent 70%);
 }
 
-/* ── AXEL — RL Agent toggle button ───────────────────────────────────────── */
+/* ── Lena — RL Agent toggle button ───────────────────────────────────────── */
 #rl-agent-toggle {
   display: none;
   position: fixed;
@@ -2870,7 +2870,7 @@ body.redlight-mode .pb-shell::before {
   50%       { opacity: 0.5; box-shadow: 0 0 2px #ff1a3a; }
 }
 
-/* ── AXEL panel ───────────────────────────────────────────────────────────── */
+/* ── Lena panel ───────────────────────────────────────────────────────────── */
 #rl-agent-panel {
   position: fixed;
   bottom: 80px;

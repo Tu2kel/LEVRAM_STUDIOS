@@ -1308,4 +1308,16 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("ig-prompt")?.addEventListener("input", function() {
     this.dataset.autofilled = "";
   });
+
+  // RL mode: show Spicy I2V option and select it by default
+  if (window.RL?.isActive?.()) {
+    const sel = document.getElementById("ig-i2v-model");
+    if (sel) {
+      const spicyOpt = sel.querySelector("option[value='ws_wan22_spicy']");
+      if (spicyOpt) {
+        spicyOpt.style.display = "";
+        sel.value = "ws_wan22_spicy";
+      }
+    }
+  }
 });

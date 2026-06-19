@@ -276,6 +276,8 @@ TAGS: [comma separated keywords]`,
 
     let fullText = "";
     const model = document.getElementById("rl-agent-model-sel")?.value || currentModel;
+    // Keep last 10 messages max to prevent context bloat slowing down prefill
+    const trimmedHistory = history.length > 10 ? history.slice(-10) : history;
 
     try {
       if (model === VENICE_MODEL_NAME) {
@@ -283,7 +285,7 @@ TAGS: [comma separated keywords]`,
         const resp = await levFetch("/rl-agent/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: history, model }),
+          body: JSON.stringify({ messages: trimmedHistory, model }),
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const reader = resp.body.getReader();
@@ -310,8 +312,9 @@ TAGS: [comma separated keywords]`,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model,
-            messages: [{ role: "system", content: SYSTEM }, ...history],
+            messages: [{ role: "system", content: SYSTEM }, ...trimmedHistory],
             stream: true,
+            options: { num_predict: 600, temperature: 0.85, num_ctx: 2048 },
           }),
         });
         if (!resp.ok) throw new Error(`Ollama HTTP ${resp.status}`);

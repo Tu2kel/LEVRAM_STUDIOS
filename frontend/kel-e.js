@@ -209,11 +209,11 @@ When asked for only ONE section, output only that section's format without === h
     if (window.switchTab) window.switchTab("image-gen");
   }
 
-  function injectCharLab(text) {
-    // Start a fresh character entry first
+  async function injectCharLab(text) {
     if (window.newCharacter) window.newCharacter();
+    const name = parseField(text, "NAME");
     const fields = {
-      "character-name":        parseField(text, "NAME"),
+      "character-name":        name,
       "character-gender":      parseField(text, "GENDER"),
       "character-age":         parseField(text, "AGE"),
       "character-appearance":  parseField(text, "APPEARANCE"),
@@ -222,23 +222,38 @@ When asked for only ONE section, output only that section's format without === h
       "character-personality": parseField(text, "PERSONALITY"),
       "character-notes":       parseField(text, "NOTES"),
     };
-    const hasStructure = fields["character-name"] || fields["character-appearance"] || fields["character-personality"];
+    const hasStructure = name || fields["character-appearance"] || fields["character-personality"];
     if (hasStructure) {
       Object.entries(fields).forEach(([id, val]) => { if (val) setField(id, val); });
     } else {
       setField("character-notes", text);
     }
     if (window.switchTab) window.switchTab("characters");
-    // Auto-save so KEL-E can chain multiple characters without manual save
-    if (window.saveCharacter) window.saveCharacter();
+    if (window.saveCharacter) {
+      await window.saveCharacter();
+      // Reload IG character dropdown and auto-select the saved character
+      if (window.igLoadCharacters) {
+        await window.igLoadCharacters();
+        if (name) {
+          const sel = document.getElementById("ig-character");
+          if (sel) {
+            const opt = [...sel.options].find(o =>
+              (o.dataset.name || "").toLowerCase() === name.toLowerCase() ||
+              o.textContent.trim().toLowerCase().startsWith(name.toLowerCase())
+            );
+            if (opt) sel.value = opt.value;
+          }
+        }
+      }
+    }
   }
 
-  function injectAll(text) {
+  async function injectAll(text) {
     const ivBlock   = parseSectionBlock(text, "IDEA VAULT");
     const charBlock = parseSectionBlock(text, "CHARACTER");
     const imgBlock  = parseSectionBlock(text, "IMAGE PROMPT");
     if (ivBlock)   injectIdeaVault(ivBlock);
-    if (charBlock) injectCharLab(charBlock);
+    if (charBlock) await injectCharLab(charBlock);  // await so IG dropdown refreshes after save
     if (imgBlock)  setField("ig-prompt", imgBlock);
     if (window.switchTab) window.switchTab("idea-vault");
   }

@@ -168,10 +168,30 @@ function igInitEngineToggle() {
   const toggle = document.getElementById("ig-engine-toggle");
   if (!toggle) return;
 
-  // Hide Local engine when running from Railway (can't reach local ComfyUI)
   const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   const localBtn = toggle.querySelector('[data-engine="comfy"]');
-  if (localBtn && !isLocal) localBtn.style.display = "none";
+
+  if (!isLocal && localBtn) {
+    // On Railway: Local button visible but intercepts click to open local app
+    localBtn.addEventListener("click", async (e) => {
+      e.stopImmediatePropagation();
+      const hint = document.getElementById("ig-engine-hint");
+      if (hint) hint.textContent = "Checking local server…";
+      try {
+        const r = await fetch("http://localhost:8000/settings/status", { mode: "cors", signal: AbortSignal.timeout(2500) });
+        if (r.ok) {
+          if (hint) hint.textContent = "✓ Local server found — opening…";
+          window.open("http://localhost:8000/frontend/index.html", "_blank");
+        } else {
+          throw new Error("not ok");
+        }
+      } catch (_) {
+        if (hint) hint.innerHTML =
+          "Local server not running.<br>In Ubuntu: <code style='background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;font-size:10px;'>bash ~/thok_Apps/start_local.sh</code><br>Then click Local again.";
+      }
+      return;
+    }, true);
+  }
 
   // If last saved engine was comfy but we're on Railway, reset to default
   if (!isLocal && igActiveEngine === "comfy") {

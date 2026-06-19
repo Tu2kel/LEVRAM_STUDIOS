@@ -185,6 +185,8 @@ TAGS: [comma separated keywords]`,
   }
 
   function injectCharLab(text) {
+    // Start a fresh character entry first
+    if (window.newCharacter) window.newCharacter();
     const fields = {
       "character-name":        parseField(text, "NAME"),
       "character-gender":      parseField(text, "GENDER"),
@@ -199,7 +201,6 @@ TAGS: [comma separated keywords]`,
     if (hasStructure) {
       Object.entries(fields).forEach(([id, val]) => { if (val) setField(id, val); });
     } else {
-      // Unstructured — put everything in notes
       setField("character-notes", text);
     }
     if (window.switchTab) window.switchTab("characters");

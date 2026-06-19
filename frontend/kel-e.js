@@ -210,6 +210,8 @@ When asked for only ONE section, output only that section's format without === h
   }
 
   function injectCharLab(text) {
+    // Start a fresh character entry first
+    if (window.newCharacter) window.newCharacter();
     const fields = {
       "character-name":        parseField(text, "NAME"),
       "character-gender":      parseField(text, "GENDER"),

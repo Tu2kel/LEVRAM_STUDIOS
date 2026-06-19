@@ -397,9 +397,10 @@ NOVITA_KEY      = os.getenv("NOVITA_API_KEY", "")
 NOVITA_IMG_BASE = "https://api.novita.ai/v3/async"
 
 NOVITA_MODELS = {
-    "novita_flux":   "flux/flux-dev",
-    "novita_pony":   "Pony/epicrealismXL_v10.safetensors",
-    "novita_realism": "realisticVisionV60B1_v51HyperVAE.safetensors",
+    "novita_pro":     "pornmasterPro_fullV5-inpainting_135217.safetensors",  # most explicit adult
+    "novita_photo":   "epicphotogasm_xPlusPlus_135412.safetensors",           # explicit photorealistic
+    "novita_realism": "epicrealism_naturalSinRC1VAE_106430.safetensors",      # photorealistic
+    "novita_anime":   "meinahentai_v4_70340.safetensors",                     # anime NSFW
 }
 
 NOVITA_IMG_SIZES = {
@@ -410,7 +411,7 @@ NOVITA_IMG_SIZES = {
 }
 
 def _novita_generate_image(prompt: str, aspect: str, style: str,
-                           engine: str = "novita_flux", studio: str = "levram") -> dict:
+                           engine: str = "novita_photo", studio: str = "levram") -> dict:
     import json as _json, time, urllib.error
     if not NOVITA_KEY:
         raise RuntimeError("NOVITA_API_KEY not set")

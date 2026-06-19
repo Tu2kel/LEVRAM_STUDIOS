@@ -9,8 +9,10 @@ const IG_ENGINE_HINTS = {
   ws_flux:              "⚡ WaveSpeed FLUX Dev — fast, pay per generation ($0.012/img).",
   ws_pulid:             "⚡ WaveSpeed PuLID — face-locked generation. Load a face photo in Person 1 first.",
   venice_flux:          "🔴 Venice.ai — truly uncensored. Free tier: 15/day (blurred). Pro $18/mo: 1,000/day. Best for LS Redlight.",
-  novita_flux:          "🔴 NovitaAI FLUX Dev — uncensored cloud generation, ~$0.015/img. Requires NOVITA_API_KEY.",
-  novita_pony:          "🔴 NovitaAI Pony/epiCRealism — explicit adult content, highest character quality. ~$0.015/img. Requires NOVITA_API_KEY.",
+  novita_pro:           "🔴 NovitaAI PRO — PornMaster model, most explicit adult content. ~$0.015/img. Requires NOVITA_API_KEY.",
+  novita_photo:         "🔴 NovitaAI Photo — epiCPhotogasm XL++, explicit photorealistic women. ~$0.015/img. Requires NOVITA_API_KEY.",
+  novita_realism:       "🔴 NovitaAI Realism — epiCRealism, photorealistic portrait quality. ~$0.015/img. Requires NOVITA_API_KEY.",
+  novita_anime:         "🔴 NovitaAI Anime — Meinahentai v4, explicit anime/hentai style. ~$0.015/img. Requires NOVITA_API_KEY.",
 };
 
 const IG_VIDEO_ENGINE_HINTS = {
@@ -547,9 +549,10 @@ async function igGenerateImage() {
 
   const engineLabel = {
     dalle3: "DALL-E 3", fal_flux: "fal.ai FLUX", comfy: "ComfyUI",
-    ws_flux: "WaveSpeed FLUX", ws_flux_uncensored: "WaveSpeed Uncensored",
-    ws_flux_schnell: "WaveSpeed Schnell", ws_pulid: "WaveSpeed PuLID",
+    ws_flux: "WaveSpeed FLUX", ws_pulid: "WaveSpeed PuLID",
     venice_flux: "Venice FLUX",
+    novita_pro: "Novita PRO", novita_photo: "Novita Photo",
+    novita_realism: "Novita Realism", novita_anime: "Novita Anime",
   }[igActiveEngine] || igActiveEngine;
   if (statusEl) statusEl.textContent = `Generating via ${engineLabel}…`;
   if (btn) { btn.disabled = true; btn.textContent = "Generating…"; btn.classList.add("lora-scanning"); }

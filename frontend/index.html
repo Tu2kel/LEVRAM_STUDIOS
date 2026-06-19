@@ -29,6 +29,7 @@
         <button class="nav-btn" data-tab="settings">Settings ↗</button>
         <button class="nav-btn" onclick="window.open('manual.html','_blank')">Manual ↗</button>
         <button id="theme-toggle" class="nav-btn">Ivory Mode</button>
+      <button id="rl-toggle-btn" class="nav-btn rl-nav-btn" onclick="RL.toggle()">🔴 Redlight</button>
       <button id="bc-toggle-btn" class="nav-btn bc-toggle-btn" onclick="BC.toggle()"><span id="backend-status-dot" class="bc-live-dot"></span> Console <span id="bc-badge" data-n="0" style="display:none;align-items:center;justify-content:center;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;margin-left:4px;"></span></button>
       </nav>
     </header>
@@ -1405,6 +1406,7 @@
     <script src="idea-vault.js"></script>
     <script src="image-gen.js"></script>
     <script src="orchestrate.js"></script>
+    <script src="redlight.js"></script>
 
     <!-- Shot builder custom project toggle -->
     <script>
@@ -1766,6 +1768,9 @@
         </div>
       </div>
     </div>
+  <!-- Redlight glitter canvas — pointer-events:none, always on top -->
+  <canvas id="rl-glitter" style="position:fixed;inset:0;pointer-events:none;z-index:8888;display:none;"></canvas>
+
   <!-- BACKEND CONSOLE DRAWER -->
   <div id="bc-drawer">
     <div class="bc-header">

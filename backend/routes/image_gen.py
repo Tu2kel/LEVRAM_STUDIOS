@@ -50,9 +50,10 @@ WS_IMG_SIZES = {
 }
 
 WS_IMG_MODELS = {
-    "ws_flux":         "wavespeed-ai/flux-dev",
-    "ws_flux_schnell": "wavespeed-ai/flux-1-schnell",
-    "ws_pulid":        "wavespeed-ai/flux-pulid",
+    "ws_flux":             "wavespeed-ai/flux-dev",
+    "ws_flux_schnell":     "wavespeed-ai/flux-1-schnell",
+    "ws_pulid":            "wavespeed-ai/flux-pulid",
+    "ws_flux_uncensored":  "wavespeed-ai/flux-dev-uncensored",   # Redlight mode
 }
 
 # fal.ai model IDs (standby — do not route here while FAL_DISABLED)
@@ -603,9 +604,10 @@ def list_models():
         "success": True,
         "default": "ws_flux",
         "engines": [
-            {"id": "ws_pulid",        "label": "★ PuLID — Character Lock ⚡",    "provider": "WaveSpeed", "speed": "fast",   "quality": "best",  "note": "Drop a face photo → FLUX PuLID locks identity. $0.03/img"},
-            {"id": "ws_flux",         "label": "FLUX Dev ⚡",                     "provider": "WaveSpeed", "speed": "fast",   "quality": "high",  "note": "$0.012/img"},
-            {"id": "ws_flux_schnell", "label": "FLUX Schnell ⚡ (draft)",         "provider": "WaveSpeed", "speed": "turbo",  "quality": "good",  "note": "Fastest + cheapest draft. $0.003/img"},
+            {"id": "ws_pulid",           "label": "★ PuLID — Character Lock ⚡",  "provider": "WaveSpeed", "speed": "fast",   "quality": "best",  "note": "Drop a face photo → FLUX PuLID locks identity. $0.03/img"},
+            {"id": "ws_flux",            "label": "FLUX Dev ⚡",                   "provider": "WaveSpeed", "speed": "fast",   "quality": "high",  "note": "$0.012/img"},
+            {"id": "ws_flux_schnell",    "label": "FLUX Schnell ⚡ (draft)",       "provider": "WaveSpeed", "speed": "turbo",  "quality": "good",  "note": "Fastest + cheapest draft. $0.003/img"},
+            {"id": "ws_flux_uncensored", "label": "FLUX Uncensored 🌶",            "provider": "WaveSpeed", "speed": "fast",   "quality": "high",  "note": "No content filter — Redlight mode. $0.012/img"},
             {"id": "dalle3",          "label": "DALL-E 3",                        "provider": "OpenAI",    "speed": "medium", "quality": "high",  "note": "Uses OpenAI key"},
             # fal.ai engines — inactive while FAL_DISABLED = True
             # {"id": "consistent_character", "label": "Consistent Character (fal)",  "provider": "fal.ai"},

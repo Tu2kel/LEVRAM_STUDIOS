@@ -559,9 +559,13 @@ FAL_I2V_MODELS = {
 # WaveSpeed I2V models — cloud GPU, no local VRAM needed, cheaper than fal.ai
 WAVESPEED_API_BASE = "https://api.wavespeed.ai/api/v3"
 WAVESPEED_I2V_MODELS = {
-    "ws_wan22":  "wavespeed-ai/wan-2.2-image-to-video",   # $0.01/s — fast, cinematic
-    "ws_wan27":  "wavespeed-ai/wan-2.7-image-to-video",   # latest Wan model
+    "ws_wan22":       "wavespeed-ai/wan-2.2-image-to-video",        # $0.01/s — fast, cinematic
+    "ws_wan27":       "wavespeed-ai/wan-2.7-image-to-video",        # latest Wan model
+    "ws_wan22_spicy": "wavespeed-ai/wan-2.2-spicy/image-to-video",  # NSFW — Redlight mode
 }
+
+# Models that use Spicy-style schema: image + resolution, not image_url + aspect_ratio
+_WS_SPICY_SCHEMA = {"ws_wan22_spicy"}
 
 FAL_VIDEO_MODELS = {**FAL_T2V_MODELS, **FAL_I2V_MODELS}  # keep for backward compat
 
@@ -830,6 +834,36 @@ def _fal_image_to_video(image_url: str, prompt: str, model_key: str, duration: i
     }
 
 
+def _wavespeed_upload_file(local_path: str, api_key: str) -> str:
+    """Upload a local file to WaveSpeed CDN and return the public URL."""
+    import urllib.request, urllib.parse
+    boundary = "----WavespeedBoundary"
+    with open(local_path, "rb") as f:
+        file_data = f.read()
+    filename = local_path.split("/")[-1]
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+        f"Content-Type: image/png\r\n\r\n"
+    ).encode() + file_data + f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(
+        "https://api.wavespeed.ai/api/v3/media/upload/binary",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type":  f"multipart/form-data; boundary={boundary}",
+        },
+        method="POST",
+    )
+    import json as _json
+    with urllib.request.urlopen(req, timeout=60) as r:
+        resp = _json.loads(r.read())
+    url = (resp.get("data") or {}).get("download_url") or ""
+    if not url:
+        raise RuntimeError(f"WaveSpeed upload returned no URL: {resp}")
+    return url
+
+
 def _wavespeed_i2v(image_url: str, prompt: str, model_key: str, duration: int) -> dict:
     import os, json, time, urllib.request, uuid
     from datetime import datetime
@@ -842,16 +876,28 @@ def _wavespeed_i2v(image_url: str, prompt: str, model_key: str, duration: int) -
     if not model_id:
         raise RuntimeError(f"Unknown WaveSpeed model: {model_key}")
 
-    # Resolve local paths to absolute URL — WaveSpeed needs a public URL
+    # Upload local files — WaveSpeed needs a public URL
     if image_url.startswith("/output/") or image_url.startswith("output/"):
-        raise RuntimeError("WaveSpeed requires a public image URL. Use fal.ai upload or a CDN link.")
+        local_path = str(BASE_DIR / image_url.lstrip("/"))
+        image_url = _wavespeed_upload_file(local_path, api_key)
 
-    payload = json.dumps({
-        "image_url":    image_url,
-        "prompt":       prompt or "cinematic motion, smooth camera",
-        "duration":     duration,
-        "aspect_ratio": "16:9",
-    }).encode()
+    # Spicy model uses different param names than standard WS I2V models
+    if model_key in _WS_SPICY_SCHEMA:
+        safe_dur = 8 if duration >= 8 else 5
+        payload = json.dumps({
+            "image":      image_url,
+            "prompt":     prompt or "cinematic motion, expressive",
+            "duration":   safe_dur,
+            "resolution": "720p",
+            "seed":       -1,
+        }).encode()
+    else:
+        payload = json.dumps({
+            "image_url":    image_url,
+            "prompt":       prompt or "cinematic motion, smooth camera",
+            "duration":     duration,
+            "aspect_ratio": "16:9",
+        }).encode()
 
     req = urllib.request.Request(
         f"{WAVESPEED_API_BASE}/{model_id}",
@@ -943,7 +989,8 @@ async def upload_image_for_video(file: UploadFile = File(...)):
 @router.post("/video/image-to-video")
 async def image_to_video(payload: FalI2VPayload):
     """Animate a keyframe image — returns job_id immediately, poll /video/job/{id}."""
-    if payload.model not in FAL_I2V_MODELS:
+    is_wavespeed = payload.model in WAVESPEED_I2V_MODELS
+    if not is_wavespeed and payload.model not in FAL_I2V_MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown I2V model: {payload.model}")
 
     job_id = uuid.uuid4().hex
@@ -959,13 +1006,19 @@ async def image_to_video(payload: FalI2VPayload):
             _JOBS[job_id]["status"] = "running"
             loop = asyncio.get_event_loop()
             try:
-                result = await loop.run_in_executor(
-                    None, lambda: _fal_image_to_video(
-                        payload.image_url, payload.prompt, payload.model,
-                        payload.duration, payload.end_image_url
+                if is_wavespeed:
+                    result = await loop.run_in_executor(
+                        None, lambda: _wavespeed_i2v(
+                            payload.image_url, payload.prompt, payload.model, payload.duration
+                        )
                     )
-                )
-                # Persist video metadata (MongoDB → Railway volume sidecar fallback)
+                else:
+                    result = await loop.run_in_executor(
+                        None, lambda: _fal_image_to_video(
+                            payload.image_url, payload.prompt, payload.model,
+                            payload.duration, payload.end_image_url
+                        )
+                    )
                 if result.get("filename"):
                     ts_str = datetime.now().strftime("%Y-%m-%d %H:%M")
                     import asyncio as _aio
@@ -973,8 +1026,8 @@ async def image_to_video(payload: FalI2VPayload):
                         "project": project,
                         "created": ts_str,
                         "created_ts": datetime.now().timestamp(),
-                        "prompt": prompt,
-                        "model": model_key,
+                        "prompt": payload.prompt,
+                        "model": payload.model,
                     }))
                 _JOBS[job_id]["status"] = "complete"
                 _JOBS[job_id]["result"] = result
@@ -1006,8 +1059,9 @@ def list_fal_video_models():
             "models": [
                 {"id": "wan21_i2v",       "label": "Wan 2.1 Fast",           "speed": "fast",   "paid": False, "note": "fal.ai — free draft/preview"},
                 {"id": "wan21_14b_i2v",   "label": "Wan 2.1 Best",           "speed": "slow",   "paid": False, "note": "fal.ai — best open-source quality"},
-                {"id": "ws_wan22", "label": "Wan 2.2 ⚡",  "speed": "fast",   "paid": True, "note": "WaveSpeed — $0.01/s, cinematic motion"},
-                {"id": "ws_wan27", "label": "Wan 2.7 ⚡",  "speed": "medium", "paid": True, "note": "WaveSpeed — latest Wan model"},
+                {"id": "ws_wan22",       "label": "Wan 2.2 ⚡",       "speed": "fast",   "paid": True, "note": "WaveSpeed — $0.01/s, cinematic motion"},
+                {"id": "ws_wan27",       "label": "Wan 2.7 ⚡",       "speed": "medium", "paid": True, "note": "WaveSpeed — latest Wan model"},
+                {"id": "ws_wan22_spicy", "label": "Wan 2.2 Spicy 🌶", "speed": "fast",   "paid": True, "note": "WaveSpeed — NSFW I2V, Redlight mode"},
                 {"id": "kling_26",        "label": "Kling 2.6 Pro ✦",        "speed": "medium", "paid": True,  "note": "fal.ai — best quality I2V"},
                 {"id": "kling_o1",        "label": "Kling O1 Dual-frame ✦",  "speed": "medium", "paid": True,  "note": "fal.ai — start+end keyframe synthesis"},
                 {"id": "runway_turbo",    "label": "Runway Gen-4 Turbo ✦",   "speed": "fast",   "paid": True,  "note": "fal.ai — fast Runway I2V"},

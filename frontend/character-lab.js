@@ -156,6 +156,17 @@ window.saveCharacter = async function saveCharacter() {
   const url = isEdit ? `${CL_BASE}/characters/${editingCharacterId}` : `${CL_BASE}/characters`;
   const method = isEdit ? "PUT" : "POST";
 
+  // Preserve image arrays from cache — getCharacterFormData only reads text fields
+  if (isEdit) {
+    const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
+    if (cached) {
+      character.reference_images     = cached.reference_images     || [];
+      character.preview_images       = cached.preview_images       || [];
+      character.active_preview_index = cached.active_preview_index ?? 0;
+      character.id                   = cached.id;
+    }
+  }
+
   try {
     const res = await levFetch(url, {
       method,

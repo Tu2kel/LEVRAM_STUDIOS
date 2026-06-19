@@ -204,6 +204,40 @@ function igInitVideoEngineToggle() {
 // ─── Character select ─────────────────────────────────────
 let igCharacterCache = [];
 
+// Lock the current output image to the selected character as a face reference
+window.igLockToCharacter = async function igLockToCharacter() {
+  const imageUrl = igCurrentImageUrl;
+  const charSel  = document.getElementById("ig-character");
+  const charId   = charSel?.value;
+  const charName = charSel?.selectedOptions?.[0]?.textContent || "character";
+  const btn      = document.getElementById("ig-lock-char-btn");
+
+  if (!imageUrl) { levShowError("Generate an image first."); return; }
+  if (!charId)   { levShowError("Select a character from the CHARACTER dropdown first."); return; }
+
+  if (btn) { btn.textContent = "Saving…"; btn.disabled = true; }
+  try {
+    const res  = await levFetch(`${IG_BASE}/characters/${charId}/add-reference-url`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ url: imageUrl }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "Failed");
+    if (btn) { btn.textContent = `✓ Locked to ${charName}`; btn.style.background = "rgba(40,140,40,0.5)"; }
+    // Reload character cache so face refs populate on next select
+    await window.igLoadCharacters();
+    // Auto-load the new ref into Person 1 face slot
+    igLoadCharacterFaceRefs(charId, 1);
+    setTimeout(() => {
+      if (btn) { btn.textContent = "→ Lock to Char"; btn.disabled = false; btn.style.background = "rgba(40,120,40,0.25)"; }
+    }, 3000);
+  } catch (err) {
+    if (btn) { btn.textContent = "Failed"; btn.disabled = false; }
+    levShowError(`Lock failed: ${err.message}`);
+  }
+};
+
 window.igAddToCharRef = async function igAddToCharRef(imageUrl, btn) {
   const charSel = document.getElementById("ig-character");
   const charId  = charSel?.value;
@@ -1130,8 +1164,24 @@ document.addEventListener("DOMContentLoaded", () => {
   igLoadCharacters();
   igLoadGallery();
   document.getElementById("ig-character")?.addEventListener("change", function() {
-    igRenderCharacterImages(this.value);
-    igAutoFillCharPrompt(this.value);
+    const charId = this.value;
+    igRenderCharacterImages(charId);
+    igAutoFillCharPrompt(charId);
+    // Auto-load face refs into Person 1 if character has any
+    if (charId) {
+      const char = igCharacterCache.find(c => c.id === charId);
+      if (char?.reference_images?.length) {
+        const p1 = document.getElementById("ig-char-pick-1");
+        if (p1) p1.value = charId;
+        igLoadCharacterFaceRefs(charId, 1);
+      } else {
+        igFaceRefs1 = [];
+        igRenderFaceThumbs(1);
+      }
+    } else {
+      igFaceRefs1 = [];
+      igRenderFaceThumbs(1);
+    }
   });
 
   // Clear the auto-fill flag when user manually edits the prompt

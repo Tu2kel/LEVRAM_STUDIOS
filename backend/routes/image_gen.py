@@ -173,7 +173,8 @@ def _ws_submit_poll(model_id: str, payload: dict, timeout_secs: int = 120) -> li
 
 
 def _ws_generate_image(prompt: str, aspect: str, style: str,
-                       engine: str = "ws_flux", lora_url: str = "", lora_trigger: str = "") -> dict:
+                       engine: str = "ws_flux", lora_url: str = "", lora_trigger: str = "",
+                       studio: str = "levram") -> dict:
     model_id    = WS_IMG_MODELS.get(engine, WS_IMG_MODELS["ws_flux"])
     size        = WS_IMG_SIZES.get(aspect, WS_IMG_SIZES["widescreen"])
     full_prompt = f"{lora_trigger} {prompt}".strip() if lora_trigger else prompt
@@ -198,11 +199,11 @@ def _ws_generate_image(prompt: str, aspect: str, style: str,
         raise RuntimeError("WaveSpeed returned no image")
 
     image_bytes = _download_url(outputs[0])
-    _, output_url = _save_bytes(image_bytes, prefix=engine.replace("ws_", "ws"))
+    _, output_url = _save_bytes(image_bytes, prefix=engine.replace("ws_", "ws"), studio=studio)
     return {"imageUrl": output_url, "prompt": prompt, "engine": engine, "model": model_id}
 
 
-def _ws_pulid(prompt: str, face_refs: list, aspect: str, style: str = "") -> dict:
+def _ws_pulid(prompt: str, face_refs: list, aspect: str, style: str = "", studio: str = "levram") -> dict:
     """WaveSpeed FLUX PuLID — character-locked generation from face reference."""
     face_url    = _ws_to_public_url(face_refs[0].base64, face_refs[0].mediaType, prefix="pulid")
     size        = WS_IMG_SIZES.get(aspect, WS_IMG_SIZES["widescreen"])
@@ -221,11 +222,11 @@ def _ws_pulid(prompt: str, face_refs: list, aspect: str, style: str = "") -> dic
         raise RuntimeError("WaveSpeed PuLID returned no image")
 
     image_bytes = _download_url(outputs[0])
-    _, output_url = _save_bytes(image_bytes, prefix="pulid")
+    _, output_url = _save_bytes(image_bytes, prefix="pulid", studio=studio)
     return {"imageUrl": output_url, "prompt": prompt, "engine": "ws_pulid", "model": "wavespeed-ai/flux-pulid"}
 
 
-def _ws_face_swap(base_image_path: str, face_ref) -> tuple:
+def _ws_face_swap(base_image_path: str, face_ref, studio: str = "levram") -> tuple:
     """WaveSpeed face swap — replace face in base image with reference face."""
     import base64 as _b64mod
     base_b64 = _b64mod.b64encode(Path(base_image_path).read_bytes()).decode()
@@ -240,7 +241,7 @@ def _ws_face_swap(base_image_path: str, face_ref) -> tuple:
         raise RuntimeError("WaveSpeed face swap returned no image")
 
     image_bytes = _download_url(outputs[0])
-    saved_path, output_url = _save_bytes(image_bytes, prefix="faceswap")
+    saved_path, output_url = _save_bytes(image_bytes, prefix="faceswap", studio=studio)
     return saved_path, output_url
 
 
@@ -560,21 +561,21 @@ async def generate_image(payload: ImageGenPayload, x_studio: str = Header(defaul
                 # Single person — WaveSpeed PuLID
                 if face1 and not face2:
                     result = await loop.run_in_executor(
-                        None, _ws_pulid, prompt, face1, payload.aspect, payload.style
+                        None, _ws_pulid, prompt, face1, payload.aspect, payload.style, x_studio
                     )
                     return {"success": True, **result}
 
                 # Two people — cheap base image then face swap each person in
                 base_result = await loop.run_in_executor(
-                    None, _ws_generate_image, prompt, payload.aspect, payload.style
+                    None, _ws_generate_image, prompt, payload.aspect, payload.style, "ws_flux", "", "", x_studio
                 )
                 base_path  = str(IMAGE_DIR / Path(base_result["imageUrl"]).name)
                 saved_path, swap1_url = await loop.run_in_executor(
-                    None, _ws_face_swap, base_path, face1[0]
+                    None, _ws_face_swap, base_path, face1[0], x_studio
                 )
                 if face2:
                     _, final_url = await loop.run_in_executor(
-                        None, _ws_face_swap, saved_path, face2[0]
+                        None, _ws_face_swap, saved_path, face2[0], x_studio
                     )
                 else:
                     final_url = swap1_url
@@ -636,7 +637,7 @@ async def generate_image(payload: ImageGenPayload, x_studio: str = Header(defaul
         fn = lambda: _venice_generate_image(prompt, payload.aspect, payload.style, x_studio)
     elif engine in WS_IMG_MODELS:
         # WaveSpeed engines always route to WaveSpeed regardless of FAL_DISABLED
-        fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, engine, lora_url, lora_trigger)
+        fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, engine, lora_url, lora_trigger, x_studio)
     elif FAL_DISABLED:
         # Route everything to WaveSpeed
         if engine == "consistent_character":
@@ -647,7 +648,7 @@ async def generate_image(payload: ImageGenPayload, x_studio: str = Header(defaul
             fn = lambda: _generate_dalle3(prompt, payload.aspect, payload.style)
         else:
             ws_engine = engine if engine in WS_IMG_MODELS else ("ws_flux_uncensored" if x_studio == "redlight" else "ws_flux")
-            fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, ws_engine, lora_url, lora_trigger)
+            fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, ws_engine, lora_url, lora_trigger, x_studio)
     elif engine in FAL_MODELS or (lora_url and engine not in ("dalle3", "comfy")):
         fn = lambda: _generate_fal(prompt, payload.aspect, payload.style,
                                    engine, lora_url, lora_trigger)

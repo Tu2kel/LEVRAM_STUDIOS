@@ -392,6 +392,89 @@ def _venice_generate_image(prompt: str, aspect: str, style: str, studio: str = "
     return {"imageUrl": out_url, "prompt": full_prompt, "engine": "venice_flux", "model": "venice-sd35"}
 
 
+# ── NovitaAI — uncensored adult content, FLUX + Pony models ──
+NOVITA_KEY      = os.getenv("NOVITA_API_KEY", "")
+NOVITA_IMG_BASE = "https://api.novita.ai/v3/async"
+
+NOVITA_MODELS = {
+    "novita_flux":   "flux/flux-dev",
+    "novita_pony":   "Pony/epicrealismXL_v10.safetensors",
+    "novita_realism": "realisticVisionV60B1_v51HyperVAE.safetensors",
+}
+
+NOVITA_IMG_SIZES = {
+    "widescreen": (1344, 768),
+    "cinematic":  (1344, 576),
+    "portrait":   (768,  1344),
+    "square":     (1024, 1024),
+}
+
+def _novita_generate_image(prompt: str, aspect: str, style: str,
+                           engine: str = "novita_flux", studio: str = "levram") -> dict:
+    import json as _json, time, urllib.error
+    if not NOVITA_KEY:
+        raise RuntimeError("NOVITA_API_KEY not set")
+
+    model   = NOVITA_MODELS.get(engine, NOVITA_MODELS["novita_flux"])
+    w, h    = NOVITA_IMG_SIZES.get(aspect, NOVITA_IMG_SIZES["widescreen"])
+    full    = f"{prompt}, {style}".strip(", ") if style else prompt
+    is_flux = "flux" in engine
+
+    body = _json.dumps({
+        "model_name":          model,
+        "prompt":              full,
+        "negative_prompt":     "" if is_flux else "blurry, low quality, watermark, censored",
+        "width":               w,
+        "height":              h,
+        "image_num":           1,
+        "steps":               20 if not is_flux else 28,
+        "cfg_scale":           1.0 if is_flux else 7.0,
+        "sampler_name":        "DPM++ 2M Karras",
+        "guidance_rescale":    0.0,
+        "clip_skip":           1,
+        "loras":               [],
+        "embeddings":          [],
+    }).encode()
+
+    headers = {
+        "Authorization": f"Bearer {NOVITA_KEY}",
+        "Content-Type":  "application/json",
+    }
+
+    req = urllib.request.Request(f"{NOVITA_IMG_BASE}/txt2img", data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            submit = _json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Novita submit {e.code}: {e.read().decode()[:300]}")
+
+    task_id = submit.get("task_id")
+    if not task_id:
+        raise RuntimeError(f"Novita returned no task_id: {submit}")
+
+    # Poll until done
+    for _ in range(120):
+        time.sleep(1)
+        poll_req = urllib.request.Request(
+            f"https://api.novita.ai/v3/async/task-result?task_id={task_id}",
+            headers={"Authorization": f"Bearer {NOVITA_KEY}"},
+        )
+        with urllib.request.urlopen(poll_req, timeout=20) as r:
+            result = _json.loads(r.read())
+        status = result.get("task", {}).get("status", "")
+        if status == "TASK_STATUS_SUCCEED":
+            imgs = result.get("images") or []
+            if not imgs:
+                raise RuntimeError("Novita succeeded but returned no images")
+            image_bytes = _download_url(imgs[0]["image_url"])
+            _, out_url  = _save_bytes(image_bytes, prefix=f"novita_{engine.split('_')[-1]}", studio=studio)
+            return {"imageUrl": out_url, "prompt": full, "engine": engine, "model": model}
+        if status in ("TASK_STATUS_FAILED", "TASK_STATUS_CANCELED"):
+            raise RuntimeError(f"Novita task {status}: {result}")
+
+    raise RuntimeError("Novita generation timed out")
+
+
 # ── Upload bytes to fal.ai storage → returns public URL ──────
 def _fal_upload(data: bytes, media_type: str) -> str:
     import fal_client
@@ -635,6 +718,10 @@ async def generate_image(payload: ImageGenPayload, x_studio: str = Header(defaul
         if not VENICE_KEY:
             raise HTTPException(status_code=400, detail="VENICE_API_KEY not set — add it to your environment variables")
         fn = lambda: _venice_generate_image(prompt, payload.aspect, payload.style, x_studio)
+    elif engine in NOVITA_MODELS:
+        if not NOVITA_KEY:
+            raise HTTPException(status_code=400, detail="NOVITA_API_KEY not set")
+        fn = lambda: _novita_generate_image(prompt, payload.aspect, payload.style, engine, x_studio)
     elif engine in WS_IMG_MODELS:
         # WaveSpeed engines always route to WaveSpeed regardless of FAL_DISABLED
         fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, engine, lora_url, lora_trigger, x_studio)

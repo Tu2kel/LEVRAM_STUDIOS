@@ -688,6 +688,8 @@
                   <button class="cl-vtoggle-btn" data-engine="ws_pulid">⚡ WS PuLID</button>
                   <button class="cl-vtoggle-btn" data-engine="comfy" title="Only works when LEVRAM backend runs locally (uvicorn backend.main:app --port 8000)">Local ⚠</button>
                   <button class="cl-vtoggle-btn" data-engine="venice_flux" style="border-color:rgba(200,0,30,0.5);color:#ff6680;">🔴 Venice</button>
+                  <button class="cl-vtoggle-btn" data-engine="novita_flux" style="border-color:rgba(200,0,30,0.5);color:#ff6680;">🔴 NV Flux</button>
+                  <button class="cl-vtoggle-btn" data-engine="novita_pony" style="border-color:rgba(200,0,30,0.5);color:#ff6680;">🔴 NV Pony</button>
                 </div>
                 <div id="ig-engine-hint" class="field-hint" style="margin-top:4px;">Uses your OpenAI key — best prompt accuracy.</div>
               </div>
@@ -860,7 +862,7 @@
                 <button id="ig-upscale-btn" onclick="igUpscale()" style="background:transparent;border:1px solid rgba(60,120,255,0.4);color:#6fa3ff;font-family:Rajdhani,sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Upscale ×4</button>
                 <button id="ig-swap-btn" onclick="igSwapFaces()" style="background:transparent;border:1px solid rgba(255,140,0,0.5);color:#ffaa44;font-family:Rajdhani,sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;" title="Replace faces using Person 1 / Person 2 slots">Swap Faces</button>
                 <button id="ig-animate-btn" onclick="igAnimateImage()" style="background:transparent;border:1px solid rgba(201,168,76,0.5);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Animate →</button>
-                <a id="ig-download" download style="font-family:Rajdhani,sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,168,76,0.3);padding:4px 12px;border-radius:2px;">Download</a>
+                <button id="ig-download" onclick="igDownloadCurrent()" style="background:transparent;border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:2px;cursor:pointer;">Download</button>
               </div>
               <!-- I2V options (shown when Animate is clicked) -->
               <div id="ig-i2v-panel" style="display:none;margin-top:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(201,168,76,0.15);border-radius:4px;padding:10px;">

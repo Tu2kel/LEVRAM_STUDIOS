@@ -9,6 +9,8 @@ const IG_ENGINE_HINTS = {
   ws_flux:              "⚡ WaveSpeed FLUX Dev — fast, pay per generation ($0.012/img).",
   ws_pulid:             "⚡ WaveSpeed PuLID — face-locked generation. Load a face photo in Person 1 first.",
   venice_flux:          "🔴 Venice.ai — truly uncensored. Free tier: 15/day (blurred). Pro $18/mo: 1,000/day. Best for LS Redlight.",
+  novita_flux:          "🔴 NovitaAI FLUX Dev — uncensored cloud generation, ~$0.015/img. Requires NOVITA_API_KEY.",
+  novita_pony:          "🔴 NovitaAI Pony/epiCRealism — explicit adult content, highest character quality. ~$0.015/img. Requires NOVITA_API_KEY.",
 };
 
 const IG_VIDEO_ENGINE_HINTS = {
@@ -260,6 +262,23 @@ function igInitEngineToggle() {
   const hint = document.getElementById("ig-engine-hint");
   if (hint) hint.textContent = IG_ENGINE_HINTS[igActiveEngine] || "";
 }
+
+// Download current image as file — blob fetch prevents page navigation
+window.igDownloadCurrent = async function igDownloadCurrent() {
+  if (!igCurrentImageUrl) return;
+  const fullUrl = igCurrentImageUrl.startsWith("http") ? igCurrentImageUrl : IG_BASE + igCurrentImageUrl;
+  try {
+    const res  = await fetch(fullUrl);
+    const blob = await res.blob();
+    const a    = document.createElement("a");
+    a.href     = URL.createObjectURL(blob);
+    a.download = igCurrentImageUrl.split("/").pop() || "levram_image.png";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (_) {
+    window.open(fullUrl, "_blank");
+  }
+};
 
 function igInitVideoEngineToggle() {
   const toggle = document.getElementById("ig-video-engine-toggle");

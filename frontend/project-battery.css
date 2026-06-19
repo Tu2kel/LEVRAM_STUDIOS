@@ -303,6 +303,89 @@
   color: rgba(201,168,76,0.2); text-transform: uppercase;
 }
 
+/* ── Inline stage guide card ─────────────────────────────── */
+.pb-guide {
+  background: rgba(201,168,76,0.04);
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 6px;
+  padding: 10px 14px 12px;
+  margin-bottom: 10px;
+}
+.pb-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+.pb-guide-stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pb-guide-num {
+  font-family: "Orbitron", sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(240,192,64,0.5);
+  letter-spacing: 2px;
+}
+.pb-guide-label {
+  font-family: "Orbitron", sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ffe278;
+  text-shadow: 0 0 6px rgba(255,226,120,0.4);
+}
+.pb-guide-steps {
+  margin: 0 0 8px 0;
+  padding-left: 18px;
+  list-style: decimal;
+}
+.pb-guide-steps li {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.5;
+  margin-bottom: 3px;
+  letter-spacing: 0.3px;
+}
+.pb-guide-steps li::marker {
+  color: #c9a84c;
+  font-family: "Orbitron", sans-serif;
+  font-size: 9px;
+}
+.pb-guide-done {
+  font-size: 10px;
+  color: #22c97a;
+  letter-spacing: 0.5px;
+  border-top: 1px solid rgba(34,201,122,0.15);
+  padding-top: 6px;
+  margin-top: 4px;
+}
+.pb-guide-cta {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  background: rgba(240,192,64,0.1);
+  border: 1px solid rgba(240,192,64,0.45);
+  border-radius: 4px;
+  color: #ffe278;
+  font-family: "Orbitron", sans-serif;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+.pb-guide-cta:hover {
+  background: rgba(240,192,64,0.2);
+  border-color: rgba(240,192,64,0.8);
+  box-shadow: 0 0 8px rgba(240,192,64,0.25);
+}
+
 /* ── Next Up → Go button ─────────────────────────────────── */
 .pb-go-btn {
   margin-left: auto;

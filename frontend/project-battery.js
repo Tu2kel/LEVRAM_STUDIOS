@@ -5,6 +5,14 @@ const BATTERY_STAGES = [
     num: "01",
     sub: "Develop your concept in Idea Vault.",
     icon: "idea",
+    cta: "Open Idea Vault",
+    steps: [
+      "Type your concept title and a rough description",
+      "Ask Lena or KEL-E to Develop Idea — she fills all sections",
+      "Hit → Fill App to push it into Idea Vault, Character Lab, and Image Gen",
+      "Save the idea",
+    ],
+    done: "Idea saved with title, concept, and tags",
   },
   {
     key: "script",
@@ -12,6 +20,14 @@ const BATTERY_STAGES = [
     num: "02",
     sub: "Build the story, scenes, and dialogue.",
     icon: "script",
+    cta: "Open Story Engine",
+    steps: [
+      "Open Story Engine — AI breaks your idea into scenes",
+      "Review and adjust scene descriptions and dialogue",
+      "Each scene should have a shot description and character action",
+      "Approve the script to lock scenes",
+    ],
+    done: "All scenes have descriptions and shot prompts",
   },
   {
     key: "voice",
@@ -19,6 +35,14 @@ const BATTERY_STAGES = [
     num: "03",
     sub: "Generate and process character voices.",
     icon: "voice",
+    cta: "Open Voice Clone",
+    steps: [
+      "Open Voice Clone — select or create a character voice profile",
+      "Generate VO for each scene using the script",
+      "Review each take and approve or regenerate",
+      "Voice files attach to scenes automatically",
+    ],
+    done: "Each scene has an approved voice recording",
   },
   {
     key: "shot",
@@ -26,6 +50,14 @@ const BATTERY_STAGES = [
     num: "04",
     sub: "Build character faces and shots in Image Gen.",
     icon: "shot",
+    cta: "Open Image Gen",
+    steps: [
+      "Go to Image Gen — select your character from the dropdown",
+      "Generate a portrait (no face lock needed yet — this IS the first build)",
+      "Hover the generated image → click → Char Ref to lock that face",
+      "Repeat for each character in the film",
+    ],
+    done: "Each character has at least one face reference image",
   },
   {
     key: "render",
@@ -33,6 +65,14 @@ const BATTERY_STAGES = [
     num: "05",
     sub: "Animate scenes and assemble clips.",
     icon: "render",
+    cta: "Open Render Queue",
+    steps: [
+      "Return to Idea Vault → select your idea → hit Approve & Generate",
+      "Pipeline generates keyframes then animates each scene into a clip",
+      "Monitor progress in Render Queue",
+      "Re-animate any scene you want to change",
+    ],
+    done: "All scenes have rendered video clips",
   },
   {
     key: "export",
@@ -40,6 +80,14 @@ const BATTERY_STAGES = [
     num: "06",
     sub: "Publish and distribute the final cut.",
     icon: "export",
+    cta: "Open Timeline",
+    steps: [
+      "Open Timeline — your clips appear in scene order",
+      "Arrange clips, add title cards, music, and transitions",
+      "Preview the full film",
+      "Export the final cut",
+    ],
+    done: "Final film exported and ready to publish",
   },
 ];
 
@@ -189,16 +237,18 @@ function renderProjectBattery(scene) {
 
       <div class="pb-stages">${chevrons}</div>
 
-      <div class="pb-status">
-        <div class="pb-s-item">
-          <div class="pb-s-icon">${BATTERY_ICONS.star}</div>
-          <div>
-            <div class="pb-s-label">Current Stage</div>
-            <div class="pb-s-title">${cur.label} Development</div>
-            <div class="pb-s-sub">${cur.sub}</div>
+      <div class="pb-guide">
+        <div class="pb-guide-header">
+          <div class="pb-guide-stage">
+            <span class="pb-guide-num">${cur.num}</span>
+            <span class="pb-guide-label">Current Stage — ${cur.label}</span>
           </div>
+          <button class="pb-guide-cta" data-go="${cur.key}">${cur.cta || ("→ " + cur.label)} →</button>
         </div>
-        ${nextBlock}
+        <ol class="pb-guide-steps">
+          ${(cur.steps || []).map(s => `<li>${s}</li>`).join("")}
+        </ol>
+        <div class="pb-guide-done">✓ Done when: ${cur.done || cur.sub}</div>
       </div>
 
       <div class="pb-bar-wrap">
@@ -217,13 +267,13 @@ function renderProjectBattery(scene) {
       if (nav) nav();
     });
   });
-  const goBtn = host.querySelector(".pb-go-btn[data-go]");
-  if (goBtn) {
-    goBtn.addEventListener("click", () => {
-      const nav = STAGE_NAV[goBtn.dataset.go];
+  // Wire all [data-go] buttons (guide CTA + any next-up buttons)
+  host.querySelectorAll("[data-go]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const nav = STAGE_NAV[btn.dataset.go];
       if (nav) nav();
     });
-  }
+  });
 
   // Animate
   requestAnimationFrame(() =>

@@ -1,4 +1,4 @@
-const CL_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
+const CL_CL_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 // PHASE 8F.4 — track which character is being edited (null = new)
 let editingCharacterId = null;
@@ -57,7 +57,7 @@ async function generateCharacterPreview() {
   };
 
   try {
-    const res = await levFetch(`${CL_BASE}/character-lab/generate`, {
+    const res = await levFetch(`${CL_CL_BASE}/character-lab/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ character, prompt })
@@ -93,7 +93,7 @@ async function generateCharacterPreview() {
       return;
     }
 
-    const finalUrl = imageUrl.startsWith("http") ? imageUrl : `${BASE}${imageUrl}`;
+    const finalUrl = imageUrl.startsWith("http") ? imageUrl : `${CL_BASE}${imageUrl}`;
 
     if (!img) {
       if (status) status.textContent = `IMAGE GENERATED: ${finalUrl}`;
@@ -123,7 +123,7 @@ async function generateCharacterPreview() {
             ? finalUrl.replace(/^https?:\/\/[^/]+/, "")
             : finalUrl;
           const payload = { ...existing, reference_image_url: relativePath };
-          await levFetch(`${CL_BASE}/characters/${editingCharacterId}`, {
+          await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -153,7 +153,7 @@ window.saveCharacter = async function saveCharacter() {
 
   // PHASE 8F.4 — use PUT when editing existing, POST for new
   const isEdit = Boolean(editingCharacterId);
-  const url = isEdit ? `${CL_BASE}/characters/${editingCharacterId}` : `${CL_BASE}/characters`;
+  const url = isEdit ? `${CL_CL_BASE}/characters/${editingCharacterId}` : `${CL_CL_BASE}/characters`;
   const method = isEdit ? "PUT" : "POST";
 
   // Preserve image arrays from cache — getCharacterFormData only reads text fields
@@ -195,7 +195,7 @@ window.saveCharacter = async function saveCharacter() {
       saveBtn.textContent = "BACKEND RECEIVED ✔";
       setTimeout(() => {
         saveBtn.classList.remove("character-save-confirmed");
-        saveBtn.textContent = "Save Character";
+        saveBtn.textContent = editingCharacterId ? "Update Character" : "Save Character";
       }, 2500);
     }
 
@@ -225,7 +225,7 @@ async function loadCharacters() {
   if (!list) return;
 
   try {
-    const res = await levFetch(`${CL_BASE}/characters`);
+    const res = await levFetch(`${CL_CL_BASE}/characters`);
     const data = await res.json();
     const characters = data.characters || [];
 
@@ -342,7 +342,7 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
 window.deleteCharacter = async function deleteCharacter(id) {
   if (!id) return;
   try {
-    const res = await levFetch(`${CL_BASE}/characters/${id}`, { method: "DELETE" });
+    const res = await levFetch(`${CL_CL_BASE}/characters/${id}`, { method: "DELETE" });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Delete failed");
     if (editingCharacterId === id) {
@@ -364,6 +364,10 @@ window.newCharacter = function newCharacter() {
   if (badge) badge.style.display = "none";
   const saveBtn = document.getElementById("save-character-btn");
   if (saveBtn) saveBtn.textContent = "Save Character";
+  // Clear image panels so previous character's photos don't linger
+  clShowPreviewCol(null);
+  clRenderPreviewImages([], 0);
+  clRefreshLoraPanel({ reference_images: [] });
 };
 
 // ── Reference Images + LoRA Training ──────────────────────────
@@ -396,7 +400,7 @@ async function clUploadReferences() {
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const res = await levFetch(`${CL_BASE}/characters/${editingCharacterId}/upload-reference`, {
+      const res = await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}/upload-reference`, {
         method: "POST",
         body: fd,
       });
@@ -436,7 +440,7 @@ function clShowPreviewCol(character) {
   const imgWrap = imgEl?.parentElement;
 
   if (refs.length && imgEl) {
-    const src = refs[0].startsWith("http") ? refs[0] : CL_BASE + refs[0];
+    const src = refs[0].startsWith("http") ? refs[0] : CL_CL_BASE + refs[0];
     imgEl.src = src;
     if (imgWrap) imgWrap.style.display = "block";
   } else {
@@ -453,7 +457,7 @@ function clRefreshLoraPanel(character) {
 
   if (thumbGrid) {
     thumbGrid.innerHTML = refs.map((url, i) => {
-      const src      = url.startsWith("http") ? url : CL_BASE + url;
+      const src      = url.startsWith("http") ? url : CL_CL_BASE + url;
       const filename = url.split("/").pop();
       const isFirst  = i === 0;
       return `<div draggable="true" data-index="${i}" data-url="${url}"
@@ -509,7 +513,7 @@ window.clResetLora = async function clResetLora() {
   const resetBtn = document.getElementById("cl-lora-reset-btn");
   if (resetBtn) resetBtn.disabled = true;
   try {
-    const res  = await levFetch(`${CL_BASE}/characters/${editingCharacterId}/reset-lora`, { method: "POST" });
+    const res  = await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}/reset-lora`, { method: "POST" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Reset failed");
     clStopTrainingAnimation();
@@ -553,7 +557,7 @@ async function clTrainLora() {
   clStartTrainingAnimation();
 
   try {
-    const res = await levFetch(`${CL_BASE}/characters/${editingCharacterId}/train-lora`, {
+    const res = await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}/train-lora`, {
       method: "POST",
     });
     const data = await res.json();
@@ -576,7 +580,7 @@ function clPollLoraStatus() {
   _loraStatusInterval = setInterval(async () => {
     if (!editingCharacterId) { clearInterval(_loraStatusInterval); return; }
     try {
-      const res  = await levFetch(`${CL_BASE}/characters/${editingCharacterId}/lora-status`);
+      const res  = await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}/lora-status`);
       const data = await res.json();
       const statusEl = document.getElementById("cl-lora-status");
       if (data.lora_status === "ready") {
@@ -643,7 +647,7 @@ function clWireDragToReorder(grid, character) {
       // Persist to DB
       try {
         const payload = { ...(cached || character), reference_images: refs };
-        await levFetch(`${CL_BASE}/characters/${editingCharacterId}`, {
+        await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -658,7 +662,7 @@ function clWireDragToReorder(grid, character) {
 window.clDeleteReference = async function clDeleteReference(filename) {
   if (!editingCharacterId) return;
   try {
-    const res  = await levFetch(`${CL_BASE}/characters/${editingCharacterId}/reference/${filename}`, { method: "DELETE" });
+    const res  = await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}/reference/${filename}`, { method: "DELETE" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Delete failed");
     await loadCharacters();
@@ -679,7 +683,7 @@ function clRenderPreviewImages(images, activeIdx) {
     return;
   }
   grid.innerHTML = images.map((img, i) => {
-    const displayUrl = img.url.startsWith("http") ? img.url : BASE + img.url;
+    const displayUrl = img.url.startsWith("http") ? img.url : CL_BASE + img.url;
     const isActive   = i === (activeIdx ?? 0);
     const labelEsc   = (img.label || "").replace(/"/g, "&quot;");
     return `<div style="position:relative;cursor:pointer;" onclick="clSetActivePreview(${i})">
@@ -698,7 +702,7 @@ async function _clSavePreviewImages(previewImages, activeIdx) {
   const existing = cache.find(c => c.id === editingCharacterId);
   if (!existing) return;
   const payload = { ...existing, preview_images: previewImages, active_preview_index: activeIdx };
-  await levFetch(`${CL_BASE}/characters/${editingCharacterId}`, {
+  await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -713,7 +717,7 @@ function _clShowActivePreviewImg(images, activeIdx) {
   if (!img) return;
   const entry = (images || [])[activeIdx ?? 0];
   if (entry) {
-    const displayUrl = entry.url.startsWith("http") ? entry.url : BASE + entry.url;
+    const displayUrl = entry.url.startsWith("http") ? entry.url : CL_BASE + entry.url;
     img.src = displayUrl;
     img.style.display = "block";
     if (statusEl) statusEl.textContent = `Active: ${entry.label || "Image " + ((activeIdx ?? 0) + 1)}`;
@@ -742,7 +746,7 @@ window.clAddOwnPreview = async function clAddOwnPreview() {
   fd.append("file", file);
 
   try {
-    const res  = await levFetch(`${CL_BASE}/video/upload-image`, { method: "POST", body: fd });
+    const res  = await levFetch(`${CL_CL_BASE}/video/upload-image`, { method: "POST", body: fd });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Upload failed");
 
@@ -803,7 +807,7 @@ window.clSavePreviewLabel = async function clSavePreviewLabel(idx, value) {
   if (!prevImages[idx]) return;
   prevImages[idx] = { ...prevImages[idx], label: value };
   existing.preview_images = prevImages;
-  await levFetch(`${CL_BASE}/characters/${editingCharacterId}`, {
+  await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...existing, preview_images: prevImages }),
@@ -910,7 +914,7 @@ async function loadVoiceProfilesForCharacters(selectedValue = "") {
   if (!select) return;
 
   try {
-    const res = await levFetch(`${CL_BASE}/voices`);
+    const res = await levFetch(`${CL_CL_BASE}/voices`);
     const data = await res.json();
     const voices = data.voices || [];
 
@@ -999,7 +1003,7 @@ window.cloneElevenLabsVoice = async function cloneElevenLabsVoice() {
   fd.append("file", fileInput.files[0]);
 
   try {
-    const res = await levFetch(`${CL_BASE}/voice-clone/elevenlabs`, { method: "POST", body: fd });
+    const res = await levFetch(`${CL_CL_BASE}/voice-clone/elevenlabs`, { method: "POST", body: fd });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Clone failed");
 
@@ -1031,7 +1035,7 @@ window.uploadRvcModel = async function uploadRvcModel() {
   if (indexFile?.files?.length) fd.append("index_file", indexFile.files[0]);
 
   try {
-    const res = await levFetch(`${CL_BASE}/voice-clone/rvc/upload`, { method: "POST", body: fd });
+    const res = await levFetch(`${CL_CL_BASE}/voice-clone/rvc/upload`, { method: "POST", body: fd });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || "Upload failed");
 
@@ -1048,7 +1052,7 @@ async function loadRvcModels(selectPath = null) {
   if (!sel) return;
 
   try {
-    const res = await levFetch(`${CL_BASE}/voice-clone/rvc/models`);
+    const res = await levFetch(`${CL_CL_BASE}/voice-clone/rvc/models`);
     const data = await res.json();
     const models = data.models || [];
 
@@ -1081,7 +1085,7 @@ window.openVoicePicker = async function openVoicePicker() {
   grid.innerHTML = '<div class="vp-loading">Loading voices...</div>';
 
   try {
-    const res  = await levFetch(`${CL_BASE}/voice-clone/elevenlabs/voices`);
+    const res  = await levFetch(`${CL_CL_BASE}/voice-clone/elevenlabs/voices`);
     const data = await res.json();
     _vpAllVoices = data.voices || [];
     renderVoiceCards(_vpAllVoices);
@@ -1176,11 +1180,11 @@ window.testVoiceGenerate = async function testVoiceGenerate(e, voiceId) {
     const fd = new FormData();
     fd.append("voice_id", voiceId);
     fd.append("text", testText);
-    const res  = await levFetch(`${CL_BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
+    const res  = await levFetch(`${CL_CL_BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
     const data = await res.json();
     if (data.audio_url) {
       if (_activePreviewAudio) _activePreviewAudio.pause();
-      _activePreviewAudio = new Audio(`${BASE}${data.audio_url}`);
+      _activePreviewAudio = new Audio(`${CL_BASE}${data.audio_url}`);
       _activePreviewAudio.play();
     }
   } catch (err) { console.error("TEST VOICE ERROR:", err); }
@@ -1204,10 +1208,10 @@ window.testSelectedVoice = async function testSelectedVoice() {
   fd.append("text", text);
 
   try {
-    const res  = await levFetch(`${CL_BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
+    const res  = await levFetch(`${CL_CL_BASE}/voice-clone/elevenlabs/test`, { method: "POST", body: fd });
     const data = await res.json();
     if (data.audio_url && audio) {
-      audio.src = `${BASE}${data.audio_url}`;
+      audio.src = `${CL_BASE}${data.audio_url}`;
       audio.style.display = "block";
       audio.play();
       if (status) status.textContent = "▶ Playing — adjust FX in Voice Lab after selecting";

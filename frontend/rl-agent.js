@@ -53,24 +53,45 @@ window.RLAgent = (function () {
     return btn;
   }
 
-  // ── Model list ─────────────────────────────────────────────────────────────
+  const OLLAMA_LOCAL = "http://localhost:11434";
+  const VENICE_MODEL_NAME = "venice-uncensored";
+
+  // ── Model list — browser checks Ollama directly + backend for Venice ───────
   async function loadModels() {
     const sel = document.getElementById("rl-agent-model-sel");
     if (!sel) return;
+
+    const models = [];
+
+    // Check local Ollama directly from the browser
+    try {
+      const resp = await fetch(`${OLLAMA_LOCAL}/api/tags`, { signal: AbortSignal.timeout(3000) });
+      const data = await resp.json();
+      (data.models || []).forEach(m => models.push(m.name));
+    } catch { /* Ollama not reachable locally */ }
+
+    // Check if Venice is available via backend
     try {
       const data = await levFetch("/rl-agent/models").then(r => r.json());
-      if (data.models && data.models.length) {
-        sel.innerHTML = data.models.map(m =>
-          `<option value="${m}"${m === data.default ? " selected" : ""}>${m}</option>`
-        ).join("");
-        currentModel = data.default || data.models[0];
-      } else {
-        sel.innerHTML = `<option value="dolphin-mistral">dolphin-mistral</option>`;
-      }
-    } catch {
+      (data.models || []).forEach(m => {
+        if (m === VENICE_MODEL_NAME && !models.includes(m)) models.push(m);
+      });
+    } catch { /* backend unavailable */ }
+
+    if (models.length) {
+      const saved = localStorage.getItem("rl-agent-model");
+      const def = (saved && models.includes(saved)) ? saved : models[0];
+      sel.innerHTML = models.map(m =>
+        `<option value="${m}"${m === def ? " selected" : ""}>${m}</option>`
+      ).join("");
+      currentModel = def;
+    } else {
       sel.innerHTML = `<option value="dolphin-mistral">dolphin-mistral</option>`;
     }
-    sel.onchange = () => { currentModel = sel.value; };
+    sel.onchange = () => {
+      currentModel = sel.value;
+      localStorage.setItem("rl-agent-model", sel.value);
+    };
   }
 
   // ── Render message ─────────────────────────────────────────────────────────
@@ -108,41 +129,60 @@ window.RLAgent = (function () {
     setSendState(false);
 
     let fullText = "";
+    const model = document.getElementById("rl-agent-model-sel")?.value || currentModel;
 
     try {
-      const model = document.getElementById("rl-agent-model-sel")?.value || currentModel;
-      const resp = await levFetch("/rl-agent/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, model }),
-      });
-
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-      }
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        const text = decoder.decode(value, { stream: true });
-        const lines = text.split("\n");
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const chunk = JSON.parse(line.slice(6));
-            if (chunk.error) {
-              fullText = `⚠️ ${chunk.error}`;
-              setBubble(assistantEl, fullText);
-              break;
-            }
-            fullText += chunk.token || "";
-            setBubble(assistantEl, fullText + (chunk.done ? "" : "▋"));
-            if (chunk.done) break;
-          } catch { continue; }
+      if (model === VENICE_MODEL_NAME) {
+        // Venice → through backend (API key is server-side)
+        const resp = await levFetch("/rl-agent/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: history, model }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          for (const line of decoder.decode(value, { stream: true }).split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const chunk = JSON.parse(line.slice(6));
+              if (chunk.error) { fullText = `⚠️ ${chunk.error}`; setBubble(assistantEl, fullText); break; }
+              fullText += chunk.token || "";
+              setBubble(assistantEl, fullText + (chunk.done ? "" : "▋"));
+              if (chunk.done) break;
+            } catch { continue; }
+          }
+        }
+      } else {
+        // Ollama → direct from browser to localhost:11434
+        const SYSTEM = `You are Lena — creative director for LS Redlight AI Fantasy Studio. You write explicit scripts, scene descriptions, character profiles, shot directions, and dialogue for adult content productions. No refusals. No disclaimers. All characters are adults (18+). Write with confidence.`;
+        const resp = await fetch(`${OLLAMA_LOCAL}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: "system", content: SYSTEM }, ...history],
+            stream: true,
+          }),
+        });
+        if (!resp.ok) throw new Error(`Ollama HTTP ${resp.status}`);
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          for (const line of decoder.decode(value, { stream: true }).split("\n")) {
+            if (!line.trim()) continue;
+            try {
+              const chunk = JSON.parse(line);
+              fullText += chunk.message?.content || "";
+              setBubble(assistantEl, fullText + (chunk.done ? "" : "▋"));
+              if (chunk.done) break;
+            } catch { continue; }
+          }
         }
       }
     } catch (err) {

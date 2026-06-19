@@ -400,7 +400,12 @@ async function igGenerateImage() {
     return;
   }
 
-  const engineLabel = { dalle3: "DALL-E 3", fal_flux: "fal.ai FLUX", comfy: "ComfyUI" }[igActiveEngine] || igActiveEngine;
+  const engineLabel = {
+    dalle3: "DALL-E 3", fal_flux: "fal.ai FLUX", comfy: "ComfyUI",
+    ws_flux: "WaveSpeed FLUX", ws_flux_uncensored: "WaveSpeed Uncensored",
+    ws_flux_schnell: "WaveSpeed Schnell", ws_pulid: "WaveSpeed PuLID",
+    venice_flux: "Venice FLUX",
+  }[igActiveEngine] || igActiveEngine;
   if (statusEl) statusEl.textContent = `Generating via ${engineLabel}…`;
   if (btn) { btn.disabled = true; btn.textContent = "Generating…"; btn.classList.add("lora-scanning"); }
 

@@ -628,6 +628,9 @@ async def generate_image(payload: ImageGenPayload, x_studio: str = Header(defaul
         if not VENICE_KEY:
             raise HTTPException(status_code=400, detail="VENICE_API_KEY not set — add it to your environment variables")
         fn = lambda: _venice_generate_image(prompt, payload.aspect, payload.style, x_studio)
+    elif engine in WS_IMG_MODELS:
+        # WaveSpeed engines always route to WaveSpeed regardless of FAL_DISABLED
+        fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, engine, lora_url, lora_trigger)
     elif FAL_DISABLED:
         # Route everything to WaveSpeed
         if engine == "consistent_character":

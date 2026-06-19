@@ -1237,3 +1237,78 @@ window.selectElevenLabsVoice = function selectElevenLabsVoice(voiceId, name) {
   const search = document.getElementById("vp-search");
   if (search) search.value = "";
 };
+
+// ── Image Gen Picker — pull generated images into character face refs ──────
+window.clOpenGenPicker = async function clOpenGenPicker() {
+  if (!editingCharacterId) {
+    levShowError("Save the character first, then import from Image Gen.");
+    return;
+  }
+  const modal  = document.getElementById("cl-gen-picker");
+  const grid   = document.getElementById("cl-gen-picker-grid");
+  const status = document.getElementById("cl-gen-picker-status");
+  if (!modal || !grid) return;
+
+  modal.style.display = "flex";
+  grid.innerHTML = `<div style="color:rgba(255,255,255,0.3);font-size:11px;grid-column:1/-1;text-align:center;padding:20px;">Loading gallery…</div>`;
+  if (status) status.textContent = "";
+
+  try {
+    const res    = await levFetch(`${CL_CL_BASE}/image-gen/gallery`);
+    const data   = await res.json();
+    const images = data.images || [];
+
+    if (!images.length) {
+      grid.innerHTML = `<div style="color:rgba(255,255,255,0.3);font-size:11px;grid-column:1/-1;text-align:center;padding:20px;">No generated images yet. Go to Image Gen first.</div>`;
+      return;
+    }
+
+    grid.innerHTML = images.map(img => `
+      <div onclick="clPickGenImage('${img.url}', this)"
+           style="position:relative;cursor:pointer;border-radius:4px;overflow:hidden;border:2px solid transparent;transition:border-color 0.15s;"
+           onmouseover="this.style.borderColor='rgba(100,160,255,0.7)'"
+           onmouseout="this.style.borderColor='transparent'">
+        <img src="${CL_CL_BASE + img.url}" loading="lazy"
+             style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" />
+        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);font-size:9px;color:rgba(255,255,255,0.5);padding:3px 5px;letter-spacing:1px;text-align:center;">
+          ${img.created || ""}
+        </div>
+      </div>
+    `).join("");
+  } catch (err) {
+    grid.innerHTML = `<div style="color:#ff6b6b;font-size:11px;grid-column:1/-1;text-align:center;padding:20px;">Could not load gallery.</div>`;
+  }
+};
+
+window.clPickGenImage = async function clPickGenImage(url, thumbEl) {
+  const status = document.getElementById("cl-gen-picker-status");
+  if (status) status.textContent = "Adding…";
+  if (thumbEl) thumbEl.style.borderColor = "rgba(100,160,255,0.9)";
+
+  try {
+    const res  = await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}/add-reference-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Failed");
+
+    if (status) status.textContent = `✔ Added — ${data.total_refs} face ref${data.total_refs !== 1 ? "s" : ""} on this character`;
+
+    // Refresh the reference panel
+    const char = await (await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}`)).json();
+    clRefreshLoraPanel(char.character || char);
+
+    // Close after short delay so user sees confirmation
+    setTimeout(() => window.clCloseGenPicker(), 900);
+  } catch (err) {
+    if (status) status.textContent = `Error: ${err.message}`;
+    if (thumbEl) thumbEl.style.borderColor = "rgba(255,100,100,0.7)";
+  }
+};
+
+window.clCloseGenPicker = function clCloseGenPicker() {
+  const modal = document.getElementById("cl-gen-picker");
+  if (modal) modal.style.display = "none";
+};

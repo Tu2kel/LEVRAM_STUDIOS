@@ -1253,31 +1253,42 @@ window.clOpenGenPicker = async function clOpenGenPicker() {
   grid.innerHTML = `<div style="color:rgba(255,255,255,0.3);font-size:11px;grid-column:1/-1;text-align:center;padding:20px;">Loading gallery…</div>`;
   if (status) status.textContent = "";
 
+  // Combine session gallery (from Image Gen JS memory) with gallery API results
+  const sessionImgs = window.igGetSessionGallery?.() || [];
+
+  let apiImages = [];
   try {
-    const res    = await levFetch(`${CL_CL_BASE}/image-gen/gallery`);
-    const data   = await res.json();
-    const images = data.images || [];
+    const res  = await levFetch(`${CL_CL_BASE}/image-gen/gallery`);
+    const data = await res.json();
+    apiImages  = data.images || [];
+  } catch (_) {}
 
-    if (!images.length) {
-      grid.innerHTML = `<div style="color:rgba(255,255,255,0.3);font-size:11px;grid-column:1/-1;text-align:center;padding:20px;">No generated images yet. Go to Image Gen first.</div>`;
-      return;
-    }
+  // Merge: session first, then API (dedup by URL)
+  const seen = new Set();
+  const images = [...sessionImgs, ...apiImages].filter(img => {
+    if (seen.has(img.url)) return false;
+    seen.add(img.url);
+    return true;
+  });
 
-    grid.innerHTML = images.map(img => `
-      <div onclick="clPickGenImage('${img.url}', this)"
-           style="position:relative;cursor:pointer;border-radius:4px;overflow:hidden;border:2px solid transparent;transition:border-color 0.15s;"
-           onmouseover="this.style.borderColor='rgba(100,160,255,0.7)'"
-           onmouseout="this.style.borderColor='transparent'">
-        <img src="${CL_CL_BASE + img.url}" loading="lazy"
-             style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" />
-        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);font-size:9px;color:rgba(255,255,255,0.5);padding:3px 5px;letter-spacing:1px;text-align:center;">
-          ${img.created || ""}
-        </div>
-      </div>
-    `).join("");
-  } catch (err) {
-    grid.innerHTML = `<div style="color:#ff6b6b;font-size:11px;grid-column:1/-1;text-align:center;padding:20px;">Could not load gallery.</div>`;
+  if (!images.length) {
+    grid.innerHTML = `<div style="color:rgba(255,255,255,0.3);font-size:11px;grid-column:1/-1;text-align:center;padding:20px;">No generated images yet — generate one in Image Gen first.</div>`;
+    return;
   }
+
+  const base = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
+  grid.innerHTML = images.map(img => `
+    <div onclick="clPickGenImage('${img.url}', this)"
+         style="position:relative;cursor:pointer;border-radius:4px;overflow:hidden;border:2px solid transparent;transition:border-color 0.15s;"
+         onmouseover="this.style.borderColor='rgba(100,160,255,0.7)'"
+         onmouseout="this.style.borderColor='transparent'">
+      <img src="${img.url.startsWith('http') ? img.url : base + img.url}" loading="lazy"
+           style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" />
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);font-size:9px;color:rgba(255,255,255,0.5);padding:3px 5px;letter-spacing:1px;text-align:center;">
+        ${img.created || ""}
+      </div>
+    </div>
+  `).join("");
 };
 
 window.clPickGenImage = async function clPickGenImage(url, thumbEl) {

@@ -6,8 +6,9 @@ const IG_ENGINE_HINTS = {
   fal_flux:             "fal.ai FLUX Dev — photorealism.",
   comfy:                "Requires ComfyUI running at localhost:8188.",
   consistent_character: "★ BEST FOR CHARACTERS — Load 1 face photo in Person 1, describe the scene. Same character every generation.",
-  ws_flux_uncensored:   "🔴 WaveSpeed Flux Uncensored — pay per generation, no content restrictions.",
-  venice_flux:          "🔴 Venice.ai — uncensored SD3.5. Free tier: 15/day (blurred). Pro $18/mo: 1,000/day. Requires VENICE_API_KEY.",
+  ws_flux:              "⚡ WaveSpeed FLUX Dev — fast, pay per generation ($0.012/img).",
+  ws_pulid:             "⚡ WaveSpeed PuLID — face-locked generation. Load a face photo in Person 1 first.",
+  venice_flux:          "🔴 Venice.ai — truly uncensored. Free tier: 15/day (blurred). Pro $18/mo: 1,000/day. Best for LS Redlight.",
 };
 
 const IG_VIDEO_ENGINE_HINTS = {
@@ -19,7 +20,21 @@ const IG_VIDEO_ENGINE_HINTS = {
   runway_gen4:   "Runway Gen-4.5 ✦ — fal.ai cloud. Paid per clip. T2V + I2V. Highest quality.",
 };
 
-let igActiveEngine      = localStorage.getItem("ig-engine")       || "dalle3";
+// Default engine: Venice for RL mode, DALL-E 3 for main studio
+const _igDefaultEngine = () => (window.RL?.isActive?.()) ? "venice_flux" : "dalle3";
+let igActiveEngine = localStorage.getItem("ig-engine") || _igDefaultEngine();
+
+// Session gallery — images generated this session, persists in memory for picker
+// Format: [{ url: "/output/renders/images/...", created: "HH:MM" }]
+let igSessionGallery = [];
+window.igGetSessionGallery = () => igSessionGallery;
+
+function igSessionGalleryAdd(imageUrl) {
+  if (!imageUrl) return;
+  const created = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  igSessionGallery.unshift({ url: imageUrl, created });
+  if (igSessionGallery.length > 40) igSessionGallery.pop();
+}
 let igActiveVideoEngine = localStorage.getItem("ig-video-engine")  || "wan";
 let igActiveMode        = localStorage.getItem("ig-mode")          || "image";
 let igRefImages         = []; // [{ base64, mediaType, preview }]
@@ -469,6 +484,7 @@ async function igGenerateImage() {
 
     if (videoRes) videoRes.style.display = "none";
     igCurrentImageUrl = data.imageUrl;
+    igSessionGalleryAdd(data.imageUrl);
     if (resultBox) resultBox.style.display = "block";
     if (resultImg) resultImg.src = imgUrl;
     if (dlLink)    { dlLink.href = imgUrl; dlLink.download = data.imageUrl?.split("/").pop() || "levram_image.png"; }

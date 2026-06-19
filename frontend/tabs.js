@@ -10,7 +10,7 @@
     "dashboard":    { id: "tab-dashboard",   display: "flex", onShow: () => { _batteryVis(false); window.dbLoad?.(); } },
     "idea-vault":   { id: "tab-idea-vault",  display: "flex", onShow: () => _batteryVis(true) },
     "shot-builder": { id: "tab-main",        display: "grid", onShow: () => _batteryVis(true) },
-    "image-gen":    { id: "tab-image-gen",   display: "flex", onShow: () => _batteryVis(true) },
+    "image-gen":    { id: "tab-image-gen",   display: "flex", onShow: () => { _batteryVis(true); window.igLoadCharacters?.(); } },
     "music":        { id: "tab-music",       display: "flex", onShow: () => _batteryVis(true) },
   };
 

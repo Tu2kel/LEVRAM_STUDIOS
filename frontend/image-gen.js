@@ -231,7 +231,7 @@ window.igAddToCharRef = async function igAddToCharRef(imageUrl, btn) {
   }
 };
 
-async function igLoadCharacters() {
+window.igLoadCharacters = async function igLoadCharacters() {
   const sel = document.getElementById("ig-character");
   if (!sel) return;
   try {

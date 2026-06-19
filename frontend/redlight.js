@@ -169,9 +169,11 @@ window.RL = (function () {
   function toggle() { setActive(!active); }
   function isActive() { return active; }
 
-  // Restore on page load
-  document.addEventListener("DOMContentLoaded", () => {
-    if (localStorage.getItem(STORAGE_KEY) === "1") setActive(true);
+  // Restore on page load — use window.load so all scripts + canvas are ready
+  window.addEventListener("load", () => {
+    if (localStorage.getItem(STORAGE_KEY) === "1") {
+      setTimeout(() => setActive(true), 120);
+    }
   });
 
   return { toggle, isActive };

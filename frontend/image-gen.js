@@ -4,7 +4,7 @@ const IG_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 const IG_ENGINE_HINTS = {
   dalle3:               "Uses your OpenAI key — best prompt accuracy.",
   fal_flux:             "fal.ai FLUX Dev — photorealism.",
-  comfy:                "⚠ LOCAL ONLY — run 'uvicorn backend.main:app --port 8000' locally, then open 127.0.0.1:8000/frontend/index.html. ComfyUI must also be running at localhost:8188.",
+  comfy:                "Checking ComfyUI connection…",
   consistent_character: "★ BEST FOR CHARACTERS — Load 1 face photo in Person 1, describe the scene. Same character every generation.",
   ws_flux:              "⚡ WaveSpeed FLUX Dev — fast, pay per generation ($0.012/img).",
   ws_pulid:             "⚡ WaveSpeed PuLID — face-locked generation. Load a face photo in Person 1 first.",
@@ -223,6 +223,26 @@ function igInitEngineToggle() {
   if (!isLocal && igActiveEngine === "comfy") {
     igActiveEngine = _igDefaultEngine();
     localStorage.removeItem("ig-engine");
+  }
+
+  // On localhost: check ComfyUI status and update hint when Local is active
+  if (isLocal) {
+    const updateComfyHint = async () => {
+      const hint = document.getElementById("ig-engine-hint");
+      if (!hint || igActiveEngine !== "comfy") return;
+      try {
+        const r = await fetch("http://127.0.0.1:8000/settings/status", { signal: AbortSignal.timeout(2000) });
+        const d = await r.json();
+        hint.textContent = d.comfy_connected
+          ? "✓ ComfyUI connected — type a prompt and generate"
+          : "⚠ ComfyUI not detected at localhost:8188 — start it first";
+      } catch (_) {
+        hint.textContent = "⚠ Could not reach local backend";
+      }
+    };
+    if (igActiveEngine === "comfy") updateComfyHint();
+    // Also re-check whenever Local is clicked
+    if (localBtn) localBtn.addEventListener("click", () => setTimeout(updateComfyHint, 100));
   }
 
   toggle.querySelectorAll(".cl-vtoggle-btn").forEach(btn => {

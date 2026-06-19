@@ -51,9 +51,12 @@ WS_IMG_SIZES = {
 
 WS_IMG_MODELS = {
     "ws_flux":             "wavespeed-ai/flux-dev",
-    "ws_flux_schnell":     "wavespeed-ai/flux-1-schnell",
+    "ws_flux_schnell":     "wavespeed-ai/flux-schnell",
+    "ws_flux_ultra":       "wavespeed-ai/flux-dev-ultra-fast",
+    "ws_flux2":            "wavespeed-ai/flux-2-dev/text-to-image",
+    "ws_flux_pro":         "wavespeed-ai/flux-1.1-pro",
     "ws_pulid":            "wavespeed-ai/flux-pulid",
-    "ws_flux_uncensored":  "wavespeed-ai/flux-dev-uncensored",   # Redlight mode
+    "ws_flux_uncensored":  "wavespeed-ai/flux-dev",              # No spicy image model — safety checker off handles it
 }
 
 # fal.ai model IDs (standby — do not route here while FAL_DISABLED)
@@ -177,12 +180,15 @@ def _ws_generate_image(prompt: str, aspect: str, style: str,
     if style:
         full_prompt = f"{full_prompt}, {style}"
 
+    is_schnell = "schnell" in engine
     payload = {
-        "prompt":              full_prompt,
-        "width":               size["width"],
-        "height":              size["height"],
-        "num_inference_steps": 20 if "schnell" in engine else 28,
-        "guidance_scale":      3.5,
+        "prompt":                 full_prompt,
+        "width":                  size["width"],
+        "height":                 size["height"],
+        "num_inference_steps":    4 if is_schnell else 28,
+        "guidance_scale":         0.0 if is_schnell else 3.5,
+        "enable_safety_checker":  False,
+        "seed":                   -1,
     }
     if lora_url:
         payload["loras"] = [{"path": lora_url, "scale": 0.9}]

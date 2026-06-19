@@ -609,6 +609,7 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
         dialogue:       sc.dialogue || "",
         emotion:        sc.emotion || "",
         character_lock,
+        duration:       sc.duration_seconds || sceneSec,
       };
     });
 
@@ -628,7 +629,7 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
         character_name: charName,
         genre,
         tone_notes:     toneNotes,
-        duration:       sceneSec,
+        duration:       sceneSec,   // fallback for scenes that don't carry their own
         model,
         include_tts:    true,
         project:        activeProject,
@@ -749,6 +750,7 @@ window.ivGenerateKeyframes = async function ivGenerateKeyframes() {
       motion_prompt: sc.motion_prompt || `${sc.emotion || "cinematic"} atmosphere, smooth camera`,
       dialogue:      sc.dialogue || "",
       emotion:       sc.emotion || "",
+      duration:      sc.duration_seconds || sceneSec,
     }));
 
     const orchRes  = await levFetch(`${IV_BASE}/orchestrate/run`, {
@@ -901,8 +903,9 @@ window.ivAnimateSelected = async function ivAnimateSelected() {
           motion_prompt: s.motion_prompt || `cinematic motion, smooth camera`,
           dialogue:      s.dialogue || "",
           project:       s.project || charName || "",
+          duration:      s.duration_seconds || s.duration || sceneSec,
         })),
-        model, duration: sceneSec,
+        model, duration: sceneSec,   // fallback for shots missing their own duration
         character_id: charId, character_name: charName,
         include_tts: true,
       }),

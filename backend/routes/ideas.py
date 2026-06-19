@@ -259,6 +259,7 @@ async def _gpt_develop(
         f"    dialogue     (VERBATIM lyric line for this scene — copy it exactly as written)\n"
         f"    reel_weight  (int 1-10 — impact value for highlight reel)\n"
         f"    emotion      (single word: tension, triumph, comedy, fear, etc.)\n"
+        f"    duration_seconds (int — clip length: 5 for most scenes, 8 for slow/cinematic/emotional moments, 5 for action/quick cuts; never less than 5)\n"
     )
 
     def _call():

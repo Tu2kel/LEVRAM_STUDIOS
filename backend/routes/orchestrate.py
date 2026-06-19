@@ -304,7 +304,8 @@ async def _run_pipeline(job_id: str, payload: dict):
                                if _domain and image_url.startswith("/")
                                else image_url)
                 try:
-                    video_url = await _animate(animate_url, motion, model, duration)
+                    shot_dur = int(shot.get("duration", duration))
+                    video_url = await _animate(animate_url, motion, model, shot_dur)
                 except Exception as e:
                     print(f"[ORCH] I2V failed shot {i+1}: {e}")
 
@@ -421,9 +422,10 @@ async def _run_reanimate(job_id: str, payload: dict):
                 continue
 
             motion = shot.get("motion_prompt") or "cinematic motion, smooth camera"
+            shot_dur = int(shot.get("duration", duration))
             _update(job_id, progress=i, step=f"{label} Animating with {model}…")
             try:
-                video_url = await _animate(image_url, motion, model, duration)
+                video_url = await _animate(image_url, motion, model, shot_dur)
             except Exception as e:
                 print(f"[REANIMATE] I2V failed shot {i+1}: {e}")
                 video_url = ""

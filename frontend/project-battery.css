@@ -302,3 +302,27 @@
   font-size: 7px; letter-spacing: 5px;
   color: rgba(201,168,76,0.2); text-transform: uppercase;
 }
+
+/* ── Next Up → Go button ─────────────────────────────────── */
+.pb-go-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  background: rgba(34,201,122,0.1);
+  border: 1px solid rgba(34,201,122,0.45);
+  border-radius: 4px;
+  color: #22c97a;
+  font-family: "Orbitron", sans-serif;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+.pb-go-btn:hover {
+  background: rgba(34,201,122,0.2);
+  border-color: rgba(34,201,122,0.8);
+  box-shadow: 0 0 8px rgba(34,201,122,0.25);
+}

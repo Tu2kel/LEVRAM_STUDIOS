@@ -3,14 +3,14 @@ const BATTERY_STAGES = [
     key: "idea",
     label: "Idea",
     num: "01",
-    sub: "Brainstorming, concept, and direction.",
+    sub: "Develop your concept in Idea Vault.",
     icon: "idea",
   },
   {
     key: "script",
     label: "Script",
     num: "02",
-    sub: "Build the story, structure, and dialogue.",
+    sub: "Build the story, scenes, and dialogue.",
     icon: "script",
   },
   {
@@ -24,14 +24,14 @@ const BATTERY_STAGES = [
     key: "shot",
     label: "Shot",
     num: "04",
-    sub: "Create AI image and video shots.",
+    sub: "Build character faces and shots in Image Gen.",
     icon: "shot",
   },
   {
     key: "render",
     label: "Render",
     num: "05",
-    sub: "Composite and colour grade.",
+    sub: "Animate scenes and assemble clips.",
     icon: "render",
   },
   {
@@ -42,6 +42,16 @@ const BATTERY_STAGES = [
     icon: "export",
   },
 ];
+
+// Where each stage navigates when clicked
+const STAGE_NAV = {
+  idea:   () => window.switchTab?.("idea-vault"),
+  script: () => window.open("story-engine.html", "_blank"),
+  voice:  () => window.open("voice-clone.html", "_blank"),
+  shot:   () => window.switchTab?.("image-gen"),
+  render: () => window.open("render-queue.html", "_blank"),
+  export: () => window.open("export.html", "_blank"),
+};
 
 const BATTERY_ICONS = {
   idea: `<svg viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.9V17H8v-2.1A7 7 0 0 1 12 2z"/></svg>`,
@@ -132,7 +142,7 @@ function renderProjectBattery(scene) {
         : isExport
           ? "export-active"
           : "";
-    return `<div class="pb-stage ${cls}">
+    return `<div class="pb-stage ${cls}" data-stage="${s.key}" title="${s.label}: ${s.sub}">
       <div class="pb-stage-icon">${BATTERY_ICONS[s.icon]}</div>
       <div class="pb-stage-name">${s.label}</div>
       <div class="pb-stage-num">${s.num}</div>
@@ -149,6 +159,7 @@ function renderProjectBattery(scene) {
         <div class="pb-s-title">${nxt.label}</div>
         <div class="pb-s-sub">${nxt.sub}</div>
       </div>
+      <button class="pb-go-btn" data-go="${nxt.key}">→ Go</button>
     </div>`
     : "";
 
@@ -196,6 +207,21 @@ function renderProjectBattery(scene) {
       <div class="pb-tagline">Stay locked in. Execute the vision.</div>
     </div>
   `;
+
+  // Wire chevron click navigation
+  host.querySelectorAll(".pb-stage[data-stage]").forEach(el => {
+    el.addEventListener("click", () => {
+      const nav = STAGE_NAV[el.dataset.stage];
+      if (nav) nav();
+    });
+  });
+  const goBtn = host.querySelector(".pb-go-btn[data-go]");
+  if (goBtn) {
+    goBtn.addEventListener("click", () => {
+      const nav = STAGE_NAV[goBtn.dataset.go];
+      if (nav) nav();
+    });
+  }
 
   // Animate
   requestAnimationFrame(() =>

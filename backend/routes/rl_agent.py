@@ -13,7 +13,7 @@ DEFAULT_MODEL = os.getenv("RL_AGENT_MODEL", "dolphin-mistral")
 
 # Venice.ai defaults — uncensored, built for adult content
 VENICE_BASE   = "https://api.venice.ai/api/v1"
-VENICE_MODEL  = os.getenv("RL_AGENT_VENICE_MODEL", "llama-3.3-70b")
+VENICE_MODEL  = os.getenv("RL_AGENT_VENICE_MODEL", "venice-uncensored")
 
 SYSTEM_PROMPT = """You are Lena — creative director for LS Redlight AI Fantasy Studio.
 

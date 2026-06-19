@@ -204,6 +204,33 @@ function igInitVideoEngineToggle() {
 // ─── Character select ─────────────────────────────────────
 let igCharacterCache = [];
 
+window.igAddToCharRef = async function igAddToCharRef(imageUrl, btn) {
+  const charSel = document.getElementById("ig-character");
+  const charId  = charSel?.value;
+  const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "character";
+  if (!charId) {
+    levShowError("Select a character first from the CHARACTER dropdown.");
+    return;
+  }
+  if (btn) { btn.textContent = "Saving…"; btn.style.background = "rgba(201,168,76,0.85)"; }
+  try {
+    const res = await levFetch(`${IG_BASE}/characters/${charId}/add-reference-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: imageUrl }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "Failed");
+    if (btn) { btn.textContent = `✓ Added to ${charName}`; btn.style.background = "rgba(80,180,80,0.9)"; }
+    // Reload character images in IG if that character is still selected
+    if (typeof igLoadCharacterFaceRefs === "function") igLoadCharacterFaceRefs(charId, 1);
+    if (typeof loadCharacters === "function") loadCharacters();
+  } catch (err) {
+    if (btn) { btn.textContent = "Failed"; btn.style.background = "rgba(200,50,50,0.85)"; }
+    levShowError(`Char Ref failed: ${err.message}`);
+  }
+};
+
 async function igLoadCharacters() {
   const sel = document.getElementById("ig-character");
   if (!sel) return;
@@ -484,6 +511,10 @@ async function igLoadGallery() {
         <button onclick="igLoadForAnimate('${img.url}')" title="Load for animation"
                 style="position:absolute;bottom:20px;left:0;right:0;width:100%;background:rgba(201,168,76,0.85);border:none;color:#000;font-family:Rajdhani,sans-serif;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;padding:3px 0;cursor:pointer;opacity:0;transition:opacity 0.15s;">
           Animate →
+        </button>
+        <button onclick="igAddToCharRef('${img.url}', this)" title="Add to character as face reference"
+                style="position:absolute;bottom:0;left:0;right:0;width:100%;background:rgba(100,180,100,0.85);border:none;color:#000;font-family:Rajdhani,sans-serif;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;padding:3px 0;cursor:pointer;opacity:0;transition:opacity 0.15s;">
+          → Char Ref
         </button>
       </div>
     `).join("");

@@ -1903,7 +1903,8 @@ body {
   background: rgba(180, 0, 0, 0.85);
   border-color: rgba(255, 80, 80, 0.8);
 }
-.ig-thumb:hover button[title="Load for animation"] {
+.ig-thumb:hover button[title="Load for animation"],
+.ig-thumb:hover button[title="Add to character as face reference"] {
   opacity: 1 !important;
 }
 

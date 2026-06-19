@@ -185,6 +185,25 @@ async def upload_reference(character_id: str, file: UploadFile = File(...)):
     return {"success": True, "url": url, "total_refs": len(refs)}
 
 
+@router.post("/characters/{character_id}/add-reference-url")
+async def add_reference_url(character_id: str, body: dict):
+    """Add an already-stored image (e.g. from Image Gen) as a character reference by URL path."""
+    char = await _get_character(character_id)
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
+    url = (body.get("url") or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="url required")
+    refs = list(char.get("reference_images") or [])
+    if url not in refs:
+        refs.append(url)
+    await _patch_character(character_id, {
+        "reference_images":    refs,
+        "reference_image_url": refs[0],
+    })
+    return {"success": True, "url": url, "total_refs": len(refs)}
+
+
 @router.delete("/characters/{character_id}/reference/{filename}")
 async def delete_reference(character_id: str, filename: str):
     char = await _get_character(character_id)

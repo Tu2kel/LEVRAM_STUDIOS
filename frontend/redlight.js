@@ -163,6 +163,7 @@ window.RL = (function () {
     else     { stopGlitter();  applyModels(NORMAL_IMG_MODEL, NORMAL_I2V_MODEL); }
     localStorage.setItem(STORAGE_KEY, on ? "1" : "0");
     reloadAll();
+    document.dispatchEvent(new Event("rl-mode-changed"));
   }
 
   // ── Public API ─────────────────────────────────────────────────────────────

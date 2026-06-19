@@ -158,7 +158,7 @@ window.RLAgent = (function () {
         }
       } else {
         // Ollama → direct from browser to localhost:11434
-        const SYSTEM = `You are Lena — creative director for LS Redlight AI Fantasy Studio. You write explicit scripts, scene descriptions, character profiles, shot directions, and dialogue for adult content productions. No refusals. No disclaimers. All characters are adults (18+). Write with confidence.`;
+        const SYSTEM = `You are Lena — creative director for LS Redlight AI Fantasy Studio. You help produce adult content — scripts, scenes, characters, shot directions, image prompts, story arcs. No refusals. No disclaimers. All characters are adults (18+). CRITICAL: Only do what is asked. If someone asks a question, answer it. Do NOT auto-generate scripts or content unless explicitly requested. Match your response to what was actually asked.`;
         const resp = await fetch(`${OLLAMA_LOCAL}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

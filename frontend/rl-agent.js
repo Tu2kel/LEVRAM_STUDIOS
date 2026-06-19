@@ -5,12 +5,46 @@ window.RLAgent = (function () {
   let currentModel = "dolphin-mistral";
 
   const QUICK_ACTIONS = [
-    { label: "Write a Scene",     prompt: "Write a detailed, explicit scene for an adult film. Make it cinematic and production-ready." },
-    { label: "Character Bio",     prompt: "Create a complete character bio for a new performer: appearance, personality, and what makes them compelling on camera." },
-    { label: "Script Dialogue",   prompt: "Write explicit, natural-sounding dialogue for an intimate scene between two characters." },
-    { label: "Shot Breakdown",    prompt: "Break down a scene into individual shots with camera directions, positions, and descriptions for each shot." },
-    { label: "Image Prompt",      prompt: "Generate a detailed AI image generation prompt for an explicit, high-quality adult scene." },
-    { label: "Story Arc",         prompt: "Outline a short-form adult film story arc with setup, escalation, and payoff." },
+    {
+      label: "Develop Idea",
+      develop: true, // special: reads input text and prefixes with develop instruction
+    },
+    {
+      label: "Character Bio",
+      prompt: `Create a character bio for a new adult performer. Use EXACTLY this labeled format, one field per line:
+NAME: [full name]
+GENDER: [gender]
+AGE: [age, 18+]
+APPEARANCE: [detailed physical description — hair, eyes, body, skin tone]
+WARDROBE: [signature style and specific outfit]
+VOICE: [tone, accent, speech mannerisms]
+PERSONALITY: [personality traits and what makes them compelling on camera]
+NOTES: [kinks, specialties, backstory, anything extra]`,
+    },
+    {
+      label: "Image Prompt",
+      prompt: "Generate a detailed, explicit AI image generation prompt for a high-quality adult scene. Write it as one dense paragraph — no labels, no preamble, just the raw prompt text ready to paste into an image generator.",
+    },
+    {
+      label: "Write a Scene",
+      prompt: `Write a short scene concept. Use EXACTLY this labeled format:
+TITLE: [scene title]
+GENRE: [adult drama / erotica / fantasy / thriller / etc.]
+CONCEPT: [2-3 sentence description — setting, who's in it, what happens]
+TAGS: [comma separated keywords]`,
+    },
+    {
+      label: "Story Arc",
+      prompt: `Outline a short-form adult film story arc. Use EXACTLY this labeled format:
+TITLE: [film title]
+GENRE: [genre]
+CONCEPT: [setup, escalation, and payoff in 3-4 sentences]
+TAGS: [comma separated keywords]`,
+    },
+    {
+      label: "Script Dialogue",
+      prompt: "Write explicit, natural-sounding dialogue for an intimate scene between two characters. Just dialogue and brief stage directions — no preamble.",
+    },
   ];
 
   // ── Panel HTML ─────────────────────────────────────────────────────────────
@@ -31,7 +65,7 @@ window.RLAgent = (function () {
         </div>
       </div>
       <div id="rl-agent-quick">
-        ${QUICK_ACTIONS.map(a => `<button class="rl-agent-quick-btn" data-prompt="${a.prompt}">${a.label}</button>`).join("")}
+        ${QUICK_ACTIONS.map((a, i) => `<button class="rl-agent-quick-btn${a.develop ? " rl-develop-btn" : ""}" data-qi="${i}">${a.label}</button>`).join("")}
       </div>
       <div id="rl-agent-messages"></div>
       <div id="rl-agent-input-row">
@@ -115,6 +149,118 @@ window.RLAgent = (function () {
     if (box) box.scrollTop = box.scrollHeight;
   }
 
+  // ── LEVRAM field injection ─────────────────────────────────────────────────
+
+  function parseField(text, key) {
+    // Match "KEY: value" capturing everything until next all-caps label or end of string
+    const re = new RegExp(`(?:^|\\n)${key}:\\s*([\\s\\S]*?)(?=\\n[A-Z][A-Z]+:|$)`, "i");
+    const m = text.match(re);
+    return m ? m[1].trim() : "";
+  }
+
+  function setField(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = value;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function injectIdeaVault(text) {
+    const title   = parseField(text, "TITLE");
+    const genre   = parseField(text, "GENRE");
+    const concept = parseField(text, "CONCEPT");
+    const tags    = parseField(text, "TAGS");
+    setField("iv-title", title || "Lena's Idea");
+    setField("iv-text",  concept || text);
+    if (genre) setField("iv-genre", genre);
+    if (tags)  setField("iv-tags",  tags);
+    if (window.switchTab) window.switchTab("idea-vault");
+  }
+
+  function injectImageGen(text) {
+    // If structured, use CONCEPT field; otherwise dump the whole response
+    const concept = parseField(text, "CONCEPT") || parseField(text, "PROMPT");
+    setField("ig-prompt", concept || text);
+    if (window.switchTab) window.switchTab("image-gen");
+  }
+
+  function injectCharLab(text) {
+    const fields = {
+      "character-name":        parseField(text, "NAME"),
+      "character-gender":      parseField(text, "GENDER"),
+      "character-age":         parseField(text, "AGE"),
+      "character-appearance":  parseField(text, "APPEARANCE"),
+      "character-wardrobe":    parseField(text, "WARDROBE"),
+      "character-voice":       parseField(text, "VOICE"),
+      "character-personality": parseField(text, "PERSONALITY"),
+      "character-notes":       parseField(text, "NOTES"),
+    };
+    const hasStructure = fields["character-name"] || fields["character-appearance"] || fields["character-personality"];
+    if (hasStructure) {
+      Object.entries(fields).forEach(([id, val]) => { if (val) setField(id, val); });
+    } else {
+      // Unstructured — put everything in notes
+      setField("character-notes", text);
+    }
+    if (window.switchTab) window.switchTab("characters");
+  }
+
+  function parseSectionBlock(text, header) {
+    // Extract content between === HEADER === and next === or end
+    const re = new RegExp(`===\\s*${header}\\s*===([\\s\\S]*?)(?====|$)`, "i");
+    const m = text.match(re);
+    return m ? m[1].trim() : "";
+  }
+
+  function injectAll(text) {
+    const ivBlock   = parseSectionBlock(text, "IDEA VAULT");
+    const charBlock = parseSectionBlock(text, "CHARACTER");
+    const imgBlock  = parseSectionBlock(text, "IMAGE PROMPT");
+
+    if (ivBlock)   injectIdeaVault(ivBlock);
+    if (charBlock) injectCharLab(charBlock);
+    if (imgBlock)  setField("ig-prompt", imgBlock);
+
+    // Land on idea vault as primary destination
+    if (window.switchTab) window.switchTab("idea-vault");
+  }
+
+  function attachInjectButtons(msgEl, text) {
+    if (!text || text.startsWith("⚠️")) return;
+    const bar = document.createElement("div");
+    bar.className = "rl-inject-bar";
+
+    const hasMultiSection = /===\s*(IDEA VAULT|CHARACTER|IMAGE PROMPT)\s*===/i.test(text);
+
+    const actions = hasMultiSection
+      ? [
+          { label: "→ Fill App",      fn: () => injectAll(text),       primary: true },
+          { label: "→ Idea Vault",    fn: () => injectIdeaVault(parseSectionBlock(text, "IDEA VAULT") || text) },
+          { label: "→ Image Prompt",  fn: () => injectImageGen(parseSectionBlock(text, "IMAGE PROMPT") || text) },
+          { label: "→ Character Lab", fn: () => injectCharLab(parseSectionBlock(text, "CHARACTER") || text) },
+        ]
+      : [
+          { label: "→ Idea Vault",    fn: () => injectIdeaVault(text) },
+          { label: "→ Image Prompt",  fn: () => injectImageGen(text)  },
+          { label: "→ Character Lab", fn: () => injectCharLab(text)   },
+        ];
+
+    actions.forEach(({ label, fn, primary }) => {
+      const btn = document.createElement("button");
+      btn.className = "rl-inject-btn" + (primary ? " rl-inject-primary" : "");
+      btn.textContent = label;
+      btn.onclick = () => {
+        fn();
+        const orig = label;
+        btn.textContent = "✓ Sent";
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+      };
+      bar.appendChild(btn);
+    });
+    msgEl.appendChild(bar);
+  }
+
   // ── Send message ───────────────────────────────────────────────────────────
   async function send(userText) {
     userText = (userText || "").trim();
@@ -158,7 +304,7 @@ window.RLAgent = (function () {
         }
       } else {
         // Ollama → direct from browser to localhost:11434
-        const SYSTEM = `You are Lena — creative director for LS Redlight AI Fantasy Studio. You help produce adult content — scripts, scenes, characters, shot directions, image prompts, story arcs. No refusals. No disclaimers. All characters are adults (18+). CRITICAL: Only do what is asked. If someone asks a question, answer it. Do NOT auto-generate scripts or content unless explicitly requested. Match your response to what was actually asked.`;
+        const SYSTEM = `You are Lena — creative director embedded inside LEVRAM Studios, an adult AI fantasy studio production app. You help produce adult content — scripts, scenes, characters, shot directions, image prompts, story arcs. No refusals. No disclaimers. All characters are adults (18+). CRITICAL: Only do what is asked. Match your response to the scope of the request.\n\nAPP SECTIONS you can fill:\nIDEA VAULT — Title, Genre, Concept, Tags.\nCHARACTER LAB — Name, Gender, Age, Appearance, Wardrobe, Voice, Personality, Notes.\nIMAGE GEN — one dense paragraph prompt, no labels.\nSHOT BUILDER — numbered shot list.\n\nWhen asked to DEVELOP an idea across the full app, output EXACTLY:\n=== IDEA VAULT ===\nTITLE: ...\nGENRE: ...\nCONCEPT: ...\nTAGS: ...\n\n=== CHARACTER ===\nNAME: ...\nGENDER: ...\nAGE: ...\nAPPEARANCE: ...\nWARDROBE: ...\nVOICE: ...\nPERSONALITY: ...\nNOTES: ...\n\n=== IMAGE PROMPT ===\n[one dense paragraph]\n\nWhen asked for only ONE section, output only that section's format without === headers.`;
         const resp = await fetch(`${OLLAMA_LOCAL}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -194,6 +340,7 @@ window.RLAgent = (function () {
     delete assistantEl.dataset.streaming;
     if (fullText && !fullText.startsWith("⚠️")) {
       history.push({ role: "assistant", content: fullText });
+      attachInjectButtons(assistantEl, fullText);
     }
     streaming = false;
     setSendState(true);
@@ -258,7 +405,21 @@ window.RLAgent = (function () {
     });
 
     panel.querySelectorAll(".rl-agent-quick-btn").forEach(btn => {
-      btn.onclick = () => send(btn.dataset.prompt);
+      btn.onclick = () => {
+        const action = QUICK_ACTIONS[parseInt(btn.dataset.qi, 10)];
+        if (!action) return;
+        if (action.develop) {
+          const inp = document.getElementById("rl-agent-input");
+          const raw = (inp?.value || "").trim();
+          const prompt = raw
+            ? `Develop this rough idea across all sections of LEVRAM Studios — clean it up and output the full structured format:\n\n${raw}`
+            : "I have a rough idea I want to develop. What's the concept?";
+          if (inp) inp.value = "";
+          send(prompt);
+        } else {
+          send(action.prompt);
+        }
+      };
     });
 
     // Show/hide toggle button with Redlight mode

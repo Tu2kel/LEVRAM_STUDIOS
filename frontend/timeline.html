@@ -206,6 +206,12 @@
         <div class="tl-logo">LEVRAM</div>
         <div class="tl-subtitle">Shot Timeline</div>
       </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:18px;">
+        <span style="font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.5);">Project</span>
+        <select id="tl-project-sel" style="background:#0d0c1e;border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:15px;letter-spacing:1px;padding:4px 10px;border-radius:3px;cursor:pointer;min-width:160px;">
+          <option value="">All Projects</option>
+        </select>
+      </div>
       <div class="tl-header-actions">
         <button onclick="shots.reverse(); renumberShots(); renderTimeline(); setStatus('Order reversed — click Save Order to keep.')">⇅ Reverse</button>
         <button class="gold" onclick="saveTimelineOrder()">Save Order</button>
@@ -245,18 +251,39 @@
   <script>
     const BASE = window.LEVRAM_CONFIG?.api || "http://localhost:8000";
     const _urlParams     = new URLSearchParams(window.location.search);
-    const _activeProject = _urlParams.get("project") || "";
+    let _activeProject   = _urlParams.get("project") || "";
     let shots = [];
     let draggedShotId = null;
 
     const shotsList  = document.getElementById("timeline-shots");
     const statusEl   = document.getElementById("tl-status");
+    const projSel    = document.getElementById("tl-project-sel");
 
-    // Show project name in header subtitle if set
-    if (_activeProject) {
-      const sub = document.querySelector(".tl-subtitle");
-      if (sub) sub.textContent = _activeProject.toUpperCase();
+    // Populate project dropdown from all scenes, then load filtered view
+    async function initProjectFilter() {
+      try {
+        const res  = await levFetch(`${BASE}/scenes`);
+        const data = await res.json();
+        const allScenes = data.scenes || [];
+        const projects  = [...new Set(allScenes.map(s => (s.project || s.saga || "").trim()).filter(Boolean))].sort();
+        projects.forEach(p => {
+          const o = document.createElement("option");
+          o.value = p; o.textContent = p;
+          projSel.appendChild(o);
+        });
+        if (_activeProject) projSel.value = _activeProject;
+        const sub = document.querySelector(".tl-subtitle");
+        if (sub) sub.textContent = _activeProject ? _activeProject.toUpperCase() : "Shot Timeline";
+      } catch (_) {}
+      loadScenes();
     }
+
+    projSel.addEventListener("change", () => {
+      _activeProject = projSel.value;
+      const sub = document.querySelector(".tl-subtitle");
+      if (sub) sub.textContent = _activeProject ? _activeProject.toUpperCase() : "Shot Timeline";
+      loadScenes();
+    });
 
     function setStatus(msg, isErr = false) {
       statusEl.style.color = isErr ? "var(--imperial-red)" : "var(--text-dim)";
@@ -525,7 +552,7 @@
       }
     }
 
-    document.addEventListener("DOMContentLoaded", loadScenes);
+    document.addEventListener("DOMContentLoaded", initProjectFilter);
 
     // ── Auto-refresh when orchestrator is running ─────────────
     let _orchPollActive = false;

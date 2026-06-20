@@ -273,22 +273,27 @@ async def _run_pipeline(job_id: str, payload: dict):
     project        = payload.get("project", char_name or "Default")
     keyframes_only = payload.get("keyframes_only", False)
 
-    # Look up char2 appearance for prompt injection when no face lock available
-    char2_appearance = ""
-    if character2_id:
+    # Look up both characters' appearances for prompt injection when face lock is unavailable
+    async def _fetch_appearance(char_id: str) -> str:
+        if not char_id:
+            return ""
         try:
             from backend.db import characters_col as _cc
             if _cc is not None:
-                _doc2 = await _cc.find_one({"id": character2_id})
-                if _doc2:
-                    char2_appearance = " ".join(filter(None, [_doc2.get("appearance",""), _doc2.get("wardrobe","")]))
+                doc = await _cc.find_one({"id": char_id})
             else:
-                _chars = json.loads(Path("data/characters.json").read_text()).get("characters", [])
-                _doc2  = next((c for c in _chars if c.get("id") == character2_id), None)
-                if _doc2:
-                    char2_appearance = " ".join(filter(None, [_doc2.get("appearance",""), _doc2.get("wardrobe","")]))
+                chars = json.loads(Path("data/characters.json").read_text()).get("characters", [])
+                doc   = next((c for c in chars if c.get("id") == char_id), None)
+            if doc:
+                return " ".join(filter(None, [doc.get("appearance", ""), doc.get("wardrobe", "")]))
         except Exception:
             pass
+        return ""
+
+    char1_appearance, char2_appearance = await asyncio.gather(
+        _fetch_appearance(character_id),
+        _fetch_appearance(character2_id),
+    )
 
     # Build a tone prefix injected into every image prompt so the AI stays on genre
     _tone_prefix = ""
@@ -384,6 +389,8 @@ async def _run_pipeline(job_id: str, payload: dict):
                             raw_prompt = f"{char2_name}: {char2_appearance}. {raw_prompt}"
                     else:
                         shot_char_id = character_id if shot.get("character_lock", True) else ""
+                        if char1_appearance and char_name and char_name.lower() not in prompt_lower:
+                            raw_prompt = f"{char_name}: {char1_appearance}. {raw_prompt}"
 
                 raw_prompt   = _sanitize_img(raw_prompt)
                 image_prompt = _tone_prefix + raw_prompt if _tone_prefix else raw_prompt

@@ -99,7 +99,8 @@ async def _gen_image(prompt: str, character_id: str) -> str:
                 chars = json.loads(data_file.read_text()).get("characters", [])
                 db_char = next((c for c in chars if c.get("id") == character_id), None)
 
-    refs = (db_char or {}).get("reference_images") or []
+    refs      = (db_char or {}).get("reference_images") or []
+    body_refs = (db_char or {}).get("body_reference_images") or []
 
     # BYO preview images take priority as face reference
     preview_imgs = (db_char or {}).get("preview_images") or []
@@ -107,7 +108,44 @@ async def _gen_image(prompt: str, character_id: str) -> str:
     byo_entry    = preview_imgs[active_idx] if preview_imgs else None
     byo_ref_url  = (byo_entry or {}).get("url", "") if byo_entry else ""
 
-    # LoRA disabled — WaveSpeed handles character lock via PuLID face reference
+    # ── Full body reference via Seedream (takes priority — covers face + body) ─
+    print(f"[BODY_REF] char_id={character_id} db_char={'found' if db_char else 'MISSING'} body_refs={body_refs}")
+    if body_refs and character_id:
+        domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+        print(f"[BODY_REF] domain={domain!r}")
+        body_ref_url = ""
+        if domain:
+            body_ref_url = f"https://{domain}/{body_refs[0].lstrip('/')}"
+        if not body_ref_url and domain:
+            body_refs_b64 = (db_char or {}).get("body_reference_images_b64") or []
+            if body_refs_b64:
+                import base64 as _b64body
+                entry = body_refs_b64[0]
+                try:
+                    restore_path = Path(entry["url"].lstrip("/"))
+                    restore_path.parent.mkdir(parents=True, exist_ok=True)
+                    restore_path.write_bytes(_b64body.b64decode(entry["data"]))
+                    body_ref_url = f"https://{domain}/{entry['url'].lstrip('/')}"
+                except Exception:
+                    pass
+        print(f"[BODY_REF] body_ref_url={body_ref_url!r}")
+        if body_ref_url:
+            from backend.routes.image_gen import _ws_seedream_edit, IMAGE_DIR, _download_url
+            import datetime as _dt
+            outputs = await loop.run_in_executor(None, lambda: _ws_seedream_edit(
+                f"{prompt}, cinematic photorealistic", [body_ref_url]
+            ))
+            remote_url = outputs[0] if outputs else ""
+            if not remote_url:
+                raise RuntimeError("WaveSpeed Seedream Edit returned no image")
+            IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+            ts    = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+            fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
+            image_bytes = await loop.run_in_executor(None, lambda: _download_url(remote_url))
+            (IMAGE_DIR / fname).write_bytes(image_bytes)
+            return "/output/renders/images/" + fname
+
+    # ── Face-only lock via PuLID (fallback when no full body ref) ──────────────
     print(f"[PULID] char_id={character_id} db_char={'found' if db_char else 'MISSING'} refs={refs} preview={byo_ref_url[:60] if byo_ref_url else 'none'}")
     if byo_ref_url or refs:
         domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")

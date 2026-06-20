@@ -160,10 +160,11 @@ window.saveCharacter = async function saveCharacter() {
   if (isEdit) {
     const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
     if (cached) {
-      character.reference_images     = cached.reference_images     || [];
-      character.preview_images       = cached.preview_images       || [];
-      character.active_preview_index = cached.active_preview_index ?? 0;
-      character.id                   = cached.id;
+      character.reference_images      = cached.reference_images      || [];
+      character.preview_images        = cached.preview_images        || [];
+      character.active_preview_index  = cached.active_preview_index  ?? 0;
+      character.body_reference_images = cached.body_reference_images || [];
+      character.id                    = cached.id;
     }
   }
 
@@ -247,12 +248,15 @@ async function loadCharacters() {
     }
 
     list.innerHTML = characters.map(c => {
-      const hasLora = c.lora_status === "ready";
-      const hasRefs = (c.reference_images || []).length > 0;
+      const hasLora     = c.lora_status === "ready";
+      const hasBodyRefs = (c.body_reference_images || []).length > 0;
+      const hasFaceRefs = (c.reference_images || []).length > 0;
       const dot = hasLora
         ? `<span style="width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;box-shadow:0 0 4px var(--gold);" title="LoRA trained"></span>`
-        : hasRefs
-        ? `<span style="width:7px;height:7px;border-radius:50%;background:#7eb3f5;flex-shrink:0;" title="Reference photos"></span>`
+        : hasBodyRefs
+        ? `<span style="width:7px;height:7px;border-radius:50%;background:#5de89a;flex-shrink:0;box-shadow:0 0 4px rgba(93,232,154,0.6);" title="Full body reference — Seedream locked"></span>`
+        : hasFaceRefs
+        ? `<span style="width:7px;height:7px;border-radius:50%;background:#7eb3f5;flex-shrink:0;" title="Face reference — PuLID locked"></span>`
         : `<span style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.15);flex-shrink:0;" title="No photos"></span>`;
       return `
         <div class="character-card${c.default_voice_profile ? " has-voice" : ""}">
@@ -335,6 +339,7 @@ window.loadCharacterIntoForm = function loadCharacterIntoForm(id) {
   _clShowActivePreviewImg(prevImages, activeIdx);
 
   clRefreshLoraPanel(c);
+  clRefreshBodyRefPanel(c);
   clShowPreviewCol(c);
 };
 
@@ -368,6 +373,7 @@ window.newCharacter = function newCharacter() {
   clShowPreviewCol(null);
   clRenderPreviewImages([], 0);
   clRefreshLoraPanel({ reference_images: [] });
+  clRefreshBodyRefPanel({ body_reference_images: [] });
 };
 
 // ── Reference Images + LoRA Training ──────────────────────────
@@ -817,6 +823,78 @@ window.clSavePreviewLabel = async function clSavePreviewLabel(idx, value) {
 window.clUploadReferences = clUploadReferences;
 window.clTrainLora        = clTrainLora;
 
+// ── Full Body Reference ───────────────────────────────────────
+
+window.clUploadBodyReferences = async function clUploadBodyReferences() {
+  const input = document.getElementById("cl-body-ref-upload");
+  const files = Array.from(input?.files || []);
+  if (!files.length) return;
+
+  if (!editingCharacterId) {
+    levShowError("Save the character first, then upload body reference images.");
+    input.value = "";
+    return;
+  }
+
+  let uploadedCount = 0;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}/upload-body-reference`, {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (res.ok && data.success) uploadedCount++;
+    } catch (err) {
+      console.error("BODY REF UPLOAD ERROR:", err);
+    }
+  }
+
+  input.value = "";
+  await loadCharacters();
+  const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
+  clRefreshBodyRefPanel(cached);
+};
+
+function clRefreshBodyRefPanel(character) {
+  const refs      = character?.body_reference_images || [];
+  const thumbGrid = document.getElementById("cl-body-ref-thumbs");
+  const countEl   = document.getElementById("cl-body-ref-count");
+  const badge     = document.getElementById("cl-body-ref-badge");
+
+  if (thumbGrid) {
+    thumbGrid.innerHTML = refs.map((url) => {
+      const src      = url.startsWith("http") ? url : CL_CL_BASE + url;
+      const filename = url.split("/").pop();
+      return `<div style="position:relative;width:72px;height:72px;flex-shrink:0;">
+        <img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:2px;border:1px solid rgba(93,232,154,0.3);display:block;" />
+        <button onclick="clDeleteBodyReference('${filename}')" title="Remove"
+                style="position:absolute;top:2px;right:2px;width:20px;height:20px;background:rgba(160,10,10,0.92);border:1px solid rgba(255,80,80,0.6);border-radius:2px;color:#fff;font-size:13px;font-weight:bold;line-height:20px;text-align:center;cursor:pointer;padding:0;z-index:10;">×</button>
+      </div>`;
+    }).join("");
+  }
+
+  const count = refs.length;
+  if (countEl) countEl.textContent = `${count} image${count !== 1 ? "s" : ""}`;
+  if (badge) badge.style.display = count > 0 ? "block" : "none";
+}
+
+window.clDeleteBodyReference = async function clDeleteBodyReference(filename) {
+  if (!editingCharacterId) return;
+  try {
+    const res  = await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}/body-reference/${filename}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Delete failed");
+    await loadCharacters();
+    const cached = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
+    clRefreshBodyRefPanel(cached);
+  } catch (err) {
+    console.error("DELETE BODY REFERENCE ERROR:", err);
+  }
+};
+
 document.addEventListener("DOMContentLoaded", loadCharacters);
 window.generateCharacterPreview = generateCharacterPreview;
 
@@ -903,6 +981,7 @@ window.clearCharacterForm = function clearCharacterForm() {
   if (countEl) countEl.textContent = "0 images";
   const pulidBadge = document.getElementById("cl-pulid-badge");
   if (pulidBadge) pulidBadge.style.display = "none";
+  clRefreshBodyRefPanel({ body_reference_images: [] });
   const previewEmpty = document.getElementById("cl-preview-empty");
   if (previewEmpty) previewEmpty.style.display = "flex";
   const previewActive = document.getElementById("cl-preview-active");

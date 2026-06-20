@@ -33,7 +33,9 @@ class CharacterPayload(BaseModel):
     personality: str = ""
     notes: str = ""
     reference_image_url: str = ""
-    reference_images: list = []       # list of /output/... URLs for LoRA training
+    reference_images: list = []           # face photos — WaveSpeed PuLID face lock
+    body_reference_images: list = []      # full body shots — Seedream shape lock
+    body_reference_images_b64: list = []  # base64 backup for Railway ephemeral FS
     preview_images: list = []         # [{url, label}] — BYO character look images
     active_preview_index: int = 0     # which preview_images entry flux-pulid uses
     voice_source: str = "edge_tts"
@@ -237,6 +239,58 @@ async def upload_reference(character_id: str, file: UploadFile = File(...)):
         "reference_images_b64": refs_b64,
     })
     return {"success": True, "url": url, "total_refs": len(refs)}
+
+
+@router.post("/characters/{character_id}/upload-body-reference")
+async def upload_body_reference(character_id: str, file: UploadFile = File(...)):
+    import base64 as _b64
+    char = await _get_character(character_id)
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    ref_dir = REFS_DIR / character_id / "body-refs"
+    ref_dir.mkdir(parents=True, exist_ok=True)
+
+    ext      = Path(file.filename).suffix or ".png"
+    filename = f"body_{uuid.uuid4().hex[:8]}{ext}"
+    dest     = ref_dir / filename
+    raw_bytes = await file.read()
+    dest.write_bytes(raw_bytes)
+
+    url   = f"/output/renders/characters/{character_id}/body-refs/{filename}"
+    refs  = list(char.get("body_reference_images") or [])
+    refs.append(url)
+
+    refs_b64 = list(char.get("body_reference_images_b64") or [])
+    refs_b64.append({
+        "filename": filename,
+        "url":      url,
+        "data":     _b64.b64encode(raw_bytes).decode("utf-8"),
+        "mime":     file.content_type or "image/png",
+    })
+
+    await _patch_character(character_id, {
+        "body_reference_images":     refs,
+        "body_reference_images_b64": refs_b64,
+    })
+    return {"success": True, "url": url, "total_body_refs": len(refs)}
+
+
+@router.delete("/characters/{character_id}/body-reference/{filename}")
+async def delete_body_reference(character_id: str, filename: str):
+    char = await _get_character(character_id)
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
+    file_path = REFS_DIR / character_id / "body-refs" / filename
+    if file_path.exists():
+        file_path.unlink()
+    refs     = [r for r in (char.get("body_reference_images") or [])     if filename not in r]
+    refs_b64 = [e for e in (char.get("body_reference_images_b64") or []) if e.get("filename") != filename]
+    await _patch_character(character_id, {
+        "body_reference_images":     refs,
+        "body_reference_images_b64": refs_b64,
+    })
+    return {"success": True, "remaining": len(refs)}
 
 
 @router.post("/characters/{character_id}/add-reference-url")

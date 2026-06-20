@@ -226,6 +226,23 @@ def _ws_pulid(prompt: str, face_refs: list, aspect: str, style: str = "", studio
     return {"imageUrl": output_url, "prompt": prompt, "engine": "ws_pulid", "model": "wavespeed-ai/flux-pulid"}
 
 
+def _ws_seedream_edit(prompt: str, body_ref_urls: list, studio: str = "levram") -> list:
+    """WaveSpeed Seedream Edit Sequential — full body character consistency.
+
+    Passes a reference image to Seedream which locks the character's complete
+    appearance (face, outfit, hair, body proportions) while generating a new
+    scene described by the prompt.
+    """
+    outputs = _ws_submit_poll("bytedance/seedream-v5.0-lite/edit-sequential", {
+        "prompt":     f"1 image. Show Figure 1 in the following scene: {prompt}. Preserve the character's exact appearance, face, outfit, and features.",
+        "images":     body_ref_urls,
+        "max_images": 1,
+    }, timeout_secs=180)
+    if not outputs:
+        raise RuntimeError("WaveSpeed Seedream Edit returned no image")
+    return outputs
+
+
 def _ws_face_swap(base_image_path: str, face_ref, studio: str = "levram") -> tuple:
     """WaveSpeed face swap — replace face in base image with reference face."""
     import base64 as _b64mod

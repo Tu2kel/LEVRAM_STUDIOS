@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 import json
 import uuid
+from typing import Optional
 
 from backend.db import scenes_col
 
@@ -165,6 +166,88 @@ async def update_scene(scene_id: str, scene: ScenePayload):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
     return {"success": True, "scene": data, "file": str(path)}
+
+
+class RegenImageRequest(BaseModel):
+    prompt: Optional[str] = None
+    character_id: Optional[str] = None
+
+
+@router.post("/scene/{scene_id}/regen-image")
+async def regen_scene_image(scene_id: str, body: RegenImageRequest):
+    """Regenerate the keyframe image for a single scene."""
+    # Fetch existing scene
+    scene_doc = None
+    if scenes_col is not None:
+        scene_doc = await scenes_col.find_one({"id": scene_id})
+        if scene_doc:
+            scene_doc = {k: v for k, v in scene_doc.items() if k != "_id"}
+    else:
+        scene_doc, _ = _json_find(scene_id)
+
+    if not scene_doc:
+        raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")
+
+    prompt = (
+        body.prompt
+        or scene_doc.get("shotPrompt")
+        or scene_doc.get("shot_prompt")
+        or scene_doc.get("shotDesc")
+        or scene_doc.get("shot_description")
+        or ""
+    )
+    if not prompt:
+        raise HTTPException(status_code=400, detail="No prompt found for this scene")
+
+    # Resolve character_id — from request or look up by name
+    char_id = body.character_id or ""
+    if not char_id:
+        char_name = scene_doc.get("character", "")
+        if char_name and scenes_col is not None:
+            from backend.db import characters_col
+            if characters_col is not None:
+                char_doc = await characters_col.find_one({"name": char_name})
+                if char_doc:
+                    char_id = char_doc.get("id", "")
+
+    # Generate new image
+    try:
+        from backend.routes.orchestrate import _gen_image
+        image_url = await _gen_image(prompt, char_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image gen failed: {str(e)[:200]}")
+
+    # Persist updated imageUrl back to scene
+    now = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    updates = {"imageUrl": image_url, "renderOutputUrl": image_url, "updated_at": now}
+
+    if scenes_col is not None:
+        await scenes_col.update_one({"id": scene_id}, {"$set": updates})
+    else:
+        _, path = _json_find(scene_id)
+        if path:
+            with open(path, "r", encoding="utf-8") as f:
+                d = json.load(f)
+            d.update(updates)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(d, f, indent=2)
+
+    # Also update the local timeline JSON so timeline.html stays in sync
+    TIMELINE_FILE = Path("data/timelines/main_timeline.json")
+    if TIMELINE_FILE.exists():
+        try:
+            data = json.loads(TIMELINE_FILE.read_text())
+            shots = data.get("shots", [])
+            for s in shots:
+                if s.get("id") == scene_id:
+                    s["imageUrl"] = image_url
+                    s["renderOutputUrl"] = image_url
+                    break
+            TIMELINE_FILE.write_text(json.dumps({"shots": shots}, indent=2))
+        except Exception:
+            pass
+
+    return {"success": True, "imageUrl": image_url, "scene_id": scene_id}
 
 
 @router.delete("/scene/{scene_id}")

@@ -428,6 +428,7 @@
             <span style="font-size: 14px;color:rgba(201,168,76,.3);margin-left:2px;">s</span>
             <button class="tl-del-btn" title="Move Up"   onclick="moveShot('${s.id}', -1)">↑</button>
             <button class="tl-del-btn" title="Move Down" onclick="moveShot('${s.id}', 1)">↓</button>
+            <button class="tl-del-btn" title="Regenerate keyframe" onclick="regenKeyframe('${s.id}')" style="color:#4caf50;border-color:rgba(76,175,80,0.4);">⟳</button>
             <button class="tl-del-btn" title="Delete"    onclick="deleteShot('${s.id}')">✕</button>
           </div>
           <div style="display:flex;gap:12px;align-items:flex-start;margin-top:6px;">
@@ -550,6 +551,29 @@
         setStatus("Export failed: " + e.message, true);
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = "⬇ Export Video"; }
+      }
+    }
+
+    async function regenKeyframe(id) {
+      const shot = shots.find(s => s.id === id);
+      if (!shot) return;
+      const prompt = shot.shotPrompt || shot.shotDesc || shot.shot_description || "";
+      if (!prompt) { setStatus("No image prompt on this scene — edit it in Shot Builder first.", true); return; }
+      setStatus(`Regenerating ${shot.shot_number || id}…`);
+      try {
+        const res  = await levFetch(`${BASE}/scene/${id}/regen-image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.detail || "Regen failed");
+        const local = shots.find(s => s.id === id);
+        if (local) local.imageUrl = data.imageUrl;
+        renderTimeline();
+        setStatus(`${shot.shot_number || id} regenerated.`);
+      } catch (e) {
+        setStatus("Regen failed: " + e.message, true);
       }
     }
 

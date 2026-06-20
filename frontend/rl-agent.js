@@ -178,9 +178,14 @@ TAGS: [comma separated keywords]`,
   }
 
   function injectImageGen(text) {
-    // If structured, use CONCEPT field; otherwise dump the whole response
     const concept = parseField(text, "CONCEPT") || parseField(text, "PROMPT");
-    setField("ig-prompt", concept || text);
+    let prompt = concept || text;
+    // Lena: prepend NSFW tokens for Novita engines so SD 1.5 models respond to explicit content
+    const engine = window.igActiveEngine || localStorage.getItem("ig-engine") || "";
+    if (engine.startsWith("novita_")) {
+      prompt = "nsfw, nude, explicit, bare breasts, nipples visible. " + prompt;
+    }
+    setField("ig-prompt", prompt);
     if (window.switchTab) window.switchTab("image-gen");
   }
 

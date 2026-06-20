@@ -475,25 +475,31 @@
               <div class="field-label">Genre</div>
               <input id="iv-genre" class="script-input" style="height:auto;padding:8px;" value="sci-fi action" placeholder="sci-fi action, drama, thriller..." />
             </div>
-            <div class="field-group" style="display:flex;gap:8px;">
-              <div style="flex:1;">
-                <div class="field-label">Target Length</div>
-                <select id="iv-minutes" class="voice-char-select">
-                  <option value="1">1 min (skit)</option>
-                  <option value="2">2 min (skit)</option>
-                  <option value="5">5 min</option>
-                  <option value="8">8 min</option>
-                  <option value="10" selected>10 min</option>
-                  <option value="12">12 min</option>
-                  <option value="20">20 min</option>
-                </select>
+            <div class="field-group">
+              <div style="cursor:pointer;font-size:9px;color:rgba(255,255,255,0.35);letter-spacing:1px;text-transform:uppercase;user-select:none;"
+                   onclick="const p=document.getElementById('iv-adv-panel');p.style.display=p.style.display==='none'?'flex':'none'">
+                ▸ Advanced (length / pacing)
               </div>
-              <div style="flex:1;">
-                <div class="field-label">Scene Length</div>
-                <select id="iv-scene-sec" class="voice-char-select">
-                  <option value="5" selected>5s — standard</option>
-                  <option value="8">8s — cinematic</option>
-                </select>
+              <div id="iv-adv-panel" style="display:none;gap:8px;margin-top:6px;">
+                <div style="flex:1;">
+                  <div class="field-label">Target Length</div>
+                  <select id="iv-minutes" class="voice-char-select">
+                    <option value="1">1 min (skit)</option>
+                    <option value="2">2 min (skit)</option>
+                    <option value="5">5 min</option>
+                    <option value="8" selected>8 min</option>
+                    <option value="10">10 min</option>
+                    <option value="12">12 min</option>
+                    <option value="20">20 min</option>
+                  </select>
+                </div>
+                <div style="flex:1;">
+                  <div class="field-label">Scene Length</div>
+                  <select id="iv-scene-sec" class="voice-char-select">
+                    <option value="5" selected>5s — standard</option>
+                    <option value="8">8s — cinematic</option>
+                  </select>
+                </div>
               </div>
             </div>
             <div class="field-group">

@@ -23,6 +23,29 @@ window.LEVRAM_CHAR = {
   },
 };
 
+// ── Genre-aware defaults for target length / scene pacing ────────
+const _RL_GENRES = new Set(["adult","erotic","explicit","xxx","nsfw","lesbian","sapphic","wlw"]);
+function _ivApplyGenreDefaults(genre) {
+  const words   = (genre || "").toLowerCase().split(/[\s,]+/);
+  const isAdult = words.some(w => _RL_GENRES.has(w));
+  const minSel  = document.getElementById("iv-minutes");
+  const secSel  = document.getElementById("iv-scene-sec");
+  if (minSel && !minSel.dataset.userSet) minSel.value = isAdult ? "5" : "8";
+  if (secSel && !secSel.dataset.userSet) secSel.value = isAdult ? "8" : "5";
+}
+
+// Mark as user-set when manually changed so auto-defaults stop overriding
+document.addEventListener("DOMContentLoaded", () => {
+  ["iv-minutes", "iv-scene-sec"].forEach(id => {
+    document.getElementById(id)?.addEventListener("change", e => {
+      e.target.dataset.userSet = "1";
+    });
+  });
+  document.getElementById("iv-genre")?.addEventListener("input", e => {
+    _ivApplyGenreDefaults(e.target.value);
+  });
+});
+
 // ── Load character dropdowns (Char 1 + Char 2) ────────────────
 async function ivLoadCharacters() {
   const sel  = document.getElementById("iv-dev-character");
@@ -177,8 +200,10 @@ window.ivEditIdea = async function ivEditIdea(id) {
   set("iv-text",       idea.rawIdea   || "");
   set("iv-genre",      idea.genre     || "sci-fi action");
   set("iv-tags",       (idea.tags || []).join(", "));
-  set("iv-minutes",    idea.target_minutes || "8");
-  set("iv-scene-sec",  idea.scene_seconds  || "5");
+  // Apply genre-smart defaults first, then override with saved values if present
+  _ivApplyGenreDefaults(idea.genre || "");
+  if (idea.target_minutes) set("iv-minutes",   idea.target_minutes);
+  if (idea.scene_seconds)  set("iv-scene-sec", idea.scene_seconds);
 
   // Track active project for battery and cross-tab awareness
   if (idea.title) {
@@ -257,12 +282,18 @@ window.ivViewStory = function ivViewStory(id) {
   panel?.scrollIntoView({ behavior: "smooth", block: "start" });
   ivRenderStory(idea.story);
 
-  // Auto-select character: prefer idea's saved character_id, then localStorage
-  const charSel = document.getElementById("iv-dev-character");
+  // Auto-select characters from idea's saved character IDs, then localStorage fallback
+  const charSel  = document.getElementById("iv-dev-character");
+  const charSel2 = document.getElementById("iv-dev-character2");
   if (charSel) {
     const targetId = idea.character_id || LEVRAM_CHAR.getId();
     if (targetId && [...charSel.options].some(o => o.value === targetId)) {
       charSel.value = targetId;
+    }
+  }
+  if (charSel2 && idea.character2_id) {
+    if ([...charSel2.options].some(o => o.value === idea.character2_id)) {
+      charSel2.value = idea.character2_id;
     }
   }
 };

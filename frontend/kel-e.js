@@ -2,7 +2,7 @@
 window.KELE = (function () {
   let history = [];
   let streaming = false;
-  let currentModel = "dolphin-mistral";
+  let currentModel = "venice-uncensored";
 
   const QUICK_ACTIONS = [
     {
@@ -47,7 +47,7 @@ TAGS: [comma separated keywords]`,
     },
   ];
 
-  const OLLAMA_LOCAL = "http://localhost:11434";
+  const KELE_API = "/kel-e/chat";
 
   const SYSTEM = `You are KEL-E — creative director for LEVRAM Studios, a professional music video and short film production studio.
 
@@ -127,27 +127,9 @@ When asked for only ONE section, output only that section's format without === h
   async function loadModels() {
     const sel = document.getElementById("kele-model-sel");
     if (!sel) return;
-    const models = [];
-    try {
-      const resp = await fetch(`${OLLAMA_LOCAL}/api/tags`, { signal: AbortSignal.timeout(3000) });
-      const data = await resp.json();
-      (data.models || []).forEach(m => models.push(m.name));
-    } catch { /* Ollama not reachable */ }
-
-    if (models.length) {
-      const saved = localStorage.getItem("kele-model");
-      const def = (saved && models.includes(saved)) ? saved : models[0];
-      sel.innerHTML = models.map(m =>
-        `<option value="${m}"${m === def ? " selected" : ""}>${m}</option>`
-      ).join("");
-      currentModel = def;
-    } else {
-      sel.innerHTML = `<option value="dolphin-mistral">dolphin-mistral</option>`;
-    }
-    sel.onchange = () => {
-      currentModel = sel.value;
-      localStorage.setItem("kele-model", sel.value);
-    };
+    sel.innerHTML = `<option value="venice-uncensored">Venice Uncensored</option>`;
+    currentModel = "venice-uncensored";
+    sel.onchange = () => { currentModel = sel.value; };
   }
 
   // ── Message rendering ──────────────────────────────────────────────────────
@@ -313,29 +295,30 @@ When asked for only ONE section, output only that section's format without === h
     const trimmedHistory = history.length > 10 ? history.slice(-10) : history;
 
     try {
-      const resp = await fetch(`${OLLAMA_LOCAL}/api/chat`, {
+      const resp = await fetch(KELE_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "system", content: SYSTEM }, ...trimmedHistory],
-          stream: true,
-          options: { num_predict: 600, temperature: 0.85, num_ctx: 2048 },
-        }),
+        body: JSON.stringify({ messages: trimmedHistory, model: currentModel }),
       });
-      if (!resp.ok) throw new Error(`Ollama HTTP ${resp.status} — is Ollama running?`);
-      const reader = resp.body.getReader();
+      if (!resp.ok) throw new Error(`KEL-E API ${resp.status}`);
+      const reader  = resp.body.getReader();
       const decoder = new TextDecoder();
+      let buf = "";
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        for (const line of decoder.decode(value, { stream: true }).split("\n")) {
-          if (!line.trim()) continue;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+          if (!payload || payload === "[DONE]") continue;
           try {
-            const chunk = JSON.parse(line);
-            fullText += chunk.message?.content || "";
+            const chunk = JSON.parse(payload);
+            if (chunk.error) { fullText = `⚠️ ${chunk.error}`; setBubble(assistantEl, fullText); break; }
+            fullText += chunk.token || "";
             setBubble(assistantEl, fullText + (chunk.done ? "" : "▋"));
-            if (chunk.done) break;
           } catch { continue; }
         }
       }

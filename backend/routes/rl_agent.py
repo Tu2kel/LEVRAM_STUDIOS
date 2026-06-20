@@ -138,7 +138,82 @@ async def _stream_ollama(messages: list[dict], model: str):
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
+async def _stream_openai(messages: list[dict]):
+    """GPT-4o-mini fallback for Kel-E when no Venice key."""
+    import openai as _oai
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    try:
+        client = _oai.AsyncOpenAI(api_key=api_key)
+        stream = await client.chat.completions.create(
+            model="gpt-4o-mini", messages=messages, stream=True, max_tokens=1200
+        )
+        async for chunk in stream:
+            token = chunk.choices[0].delta.content or ""
+            done  = chunk.choices[0].finish_reason is not None
+            yield f"data: {json.dumps({'token': token, 'done': done})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+
+KELE_SYSTEM = """You are KEL-E — senior creative director at LEVRAM Studios, an AI-powered film and music video production house owned by The House of Kel LLC.
+
+You have full creative authority. You develop concepts, write scripts, build characters, direct shots, craft dialogue, and shape the vision of every project — music videos, short films, adult content, documentaries, sci-fi, anything in the catalog.
+
+RULES:
+- Only do what is asked. No unsolicited additions.
+- Be direct, confident, and creative. No hedging. No disclaimers.
+- Responses are concise and production-ready. No filler sentences.
+- All characters are adults (18+). Adult content is permitted — this is a licensed adult studio.
+- When filling app sections, use EXACTLY the labeled format below.
+
+APP SECTIONS:
+IDEA VAULT — Title, Genre (short label), Concept (full idea), Tags (keywords)
+CHARACTER LAB — Name, Gender, Age, Appearance, Wardrobe, Voice, Personality, Notes
+IMAGE GEN — one dense paragraph visual prompt (no labels)
+SHOT BUILDER — numbered shot list
+
+DEVELOP format (when asked to develop across the full app):
+=== IDEA VAULT ===
+TITLE: ...
+GENRE: ...
+CONCEPT: ...
+TAGS: ...
+
+=== CHARACTER ===
+NAME: ...
+GENDER: ...
+AGE: ...
+APPEARANCE: ...
+WARDROBE: ...
+VOICE: ...
+PERSONALITY: ...
+NOTES: ...
+
+=== IMAGE PROMPT ===
+[one dense paragraph]
+
+For a single section only, output that section's content without === headers."""
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
+
+@router.post("/kel-e/chat")
+async def kele_chat(payload: ChatPayload):
+    """KEL-E — main studio creative director. Routes to Venice or GPT."""
+    messages = [{"role": "system", "content": KELE_SYSTEM}]
+    messages += [{"role": m.role, "content": m.content} for m in payload.messages]
+
+    if VENICE_KEY:
+        gen = _stream_venice(messages, VENICE_MODEL)
+    else:
+        openai_key = os.getenv("OPENAI_API_KEY", "")
+        if not openai_key:
+            async def _err():
+                yield f"data: {json.dumps({'error': 'No AI key configured — set VENICE_API_KEY or OPENAI_API_KEY'})}\n\n"
+            return StreamingResponse(_err(), media_type="text/event-stream")
+        gen = _stream_openai(messages)
+    return StreamingResponse(gen, media_type="text/event-stream")
+
 
 @router.post("/rl-agent/chat")
 async def rl_agent_chat(payload: ChatPayload, x_studio: str = Header(default="levram")):

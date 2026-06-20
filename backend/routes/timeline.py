@@ -20,10 +20,8 @@ async def load_timeline():
     # MongoDB-first: load shots ordered by creation time
     if scenes_col is not None:
         try:
-            cursor = scenes_col.find({}, {"_id": 0}).sort("createdAt", 1)
+            cursor = scenes_col.find({}, {"_id": 0}).sort("shot_number", 1)
             shots  = await cursor.to_list(length=None)
-            for i, s in enumerate(shots, 1):
-                s["shot_number"] = f"SC-{i:03d}"
             if shots:
                 return {"shots": shots}
             # Fall through to local JSON if Mongo is empty (initial state)

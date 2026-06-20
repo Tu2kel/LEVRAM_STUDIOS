@@ -554,17 +554,19 @@
     }
 
     async function eraseTimeline() {
-      if (!confirm("Erase ALL scenes from the timeline? This cannot be undone.")) return;
+      const project = _activeProject;
+      if (!project) {
+        alert("Select a project first — Erase clears the active project only.");
+        return;
+      }
+      if (!confirm(`Erase all scenes for "${project}"? This cannot be undone.`)) return;
       try {
-        setStatus("Erasing timeline…");
-        const res  = await levFetch(`${BASE}/scenes/clear-all`, { method: "DELETE" });
+        setStatus(`Erasing "${project}"…`);
+        const res  = await levFetch(`${BASE}/scenes/clear?project=${encodeURIComponent(project)}`, { method: "DELETE" });
         const data = await res.json();
         shots = [];
         renderTimeline();
-        // Reset project dropdown
-        const sel = document.getElementById("tl-project-sel");
-        if (sel) sel.innerHTML = `<option value="">All Projects</option>`;
-        setStatus(`Timeline erased — ${data.deleted || 0} scenes removed.`);
+        setStatus(`"${project}" erased — ${data.deleted || 0} scenes removed.`);
       } catch (e) {
         setStatus("Erase failed: " + e.message, true);
       }

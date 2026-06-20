@@ -227,7 +227,16 @@ def _count_lyric_lines(concept: str) -> int:
     return count
 
 
-# ── GPT developer ──────────────────────────────────────────────
+# ── Story developer ─────────────────────────────────────────────
+
+def _parse_json_response(raw: str) -> any:
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return json.loads(raw.strip())
+
 
 async def _gpt_develop(
     concept: str, genre: str, character_name: str,
@@ -238,91 +247,112 @@ async def _gpt_develop(
 
     is_adult = "adult" in genre.lower()
     if is_adult and os.getenv("VENICE_API_KEY"):
-        # Adult content → Venice uncensored (no content policy restrictions)
-        client = OpenAI(
-            api_key=os.getenv("VENICE_API_KEY"),
-            base_url="https://api.venice.ai/api/v1",
-        )
+        client = OpenAI(api_key=os.getenv("VENICE_API_KEY"), base_url="https://api.venice.ai/api/v1")
         model = "venice-uncensored"
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model = "gpt-4o-mini"
 
-    # Count lyric lines — if present, scene count is locked to lyric count
-    lyric_lines  = _count_lyric_lines(concept)
-    target_sec   = int(target_minutes * 60)
+    lyric_lines = _count_lyric_lines(concept)
 
-    adult_rules = (
-        "\nADULT CONTENT RULES:\n"
-        "A. Descriptions MUST be sexually explicit — body contact, undressing, explicit acts. No euphemisms.\n"
-        "B. Escalate: Act 1 = tension/flirting, Act 2 = foreplay/undressing, Act 3 = explicit sex acts.\n"
-        "C. Dialogue: original, in-character, explicit. NEVER song lyrics. Max 12 words per line.\n"
+    adult_sys = (
+        "ADULT CONTENT: Write sexually explicit scenes. No euphemisms. "
+        "Escalate across acts: Act 1 = tension/flirting, Act 2 = foreplay/undressing, Act 3 = explicit sex acts. "
+        "Dialogue: original, in-character. Max 12 words. NEVER song lyrics."
     ) if is_adult else ""
 
-    locked = lyric_lines if lyric_lines else num_scenes
-    if lyric_lines:
-        scene_count_rule = f"SCENE COUNT LOCKED AT {lyric_lines} — one scene per lyric line, in order."
-    else:
-        scene_count_rule = (
-            f"SCENE COUNT IS EXACTLY {locked}. Output ALL {locked} scenes. "
-            f"Each scene has duration_seconds between 5–10. "
-            f"Target total: ~{target_minutes} min. Vary duration to match pacing — slow intimacy = 8–10s, quick action/cuts = 5s."
+    base_system = (
+        "You are a scene breakdown writer for LEVRAM Studios. "
+        "Write compact JSON only — no markdown, no commentary. "
+        "Description: 1 sentence. Dialogue: 1 line max 12 words. "
+        + adult_sys
+    )
+
+    # ── Step 1: Header (title, logline, act_structure) ──────────
+    def _call_header():
+        u = (
+            f"Concept: {concept}\nGenre: {genre}\nCharacter: {character_name or 'unnamed'}\n\n"
+            f"Return JSON with ONLY these fields:\n"
+            f"  title (from concept), logline (1 sentence), act_structure (1 sentence 3-act summary)"
         )
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "system", "content": base_system}, {"role": "user", "content": u}],
+            temperature=0.7, max_tokens=300,
+        )
+        return _parse_json_response(resp.choices[0].message.content)
 
-    system = (
-        "You are a scene breakdown writer for LEVRAM Studios.\n"
-        "RULES:\n"
-        "1. Execute the concept LITERALLY — no extra lore, no invented settings.\n"
-        "2. If LYRICS section present: one lyric line per scene VERBATIM as dialogue. No paraphrasing.\n"
-        "   If NO LYRICS: write original in-character dialogue. NEVER use real song lyrics.\n"
-        f"3. {scene_count_rule}\n"
-        "4. Keep tone/genre exactly as described.\n"
-        "5. Return ONLY valid JSON — no markdown, no commentary, no explanation.\n"
-        "6. Keep scene objects compact — description is ONE sentence, dialogue is ONE line.\n"
-        + adult_rules
-    )
-    user = (
-        f"Concept: {concept}\n"
-        f"Genre: {genre}\n"
-        f"Main character: {character_name or 'unnamed'}\n\n"
-        f"Return a JSON object with:\n"
-        f"  title         – story title from concept\n"
-        f"  logline       – one sentence\n"
-        f"  act_structure – one sentence 3-act summary\n"
-        f"  scenes – array of EXACTLY {locked} scene objects (0-based index), each with:\n"
-        f"    index            (int)\n"
-        f"    act              (1, 2, or 3)\n"
-        f"    description      (1 sentence — {'explicit physical action' if is_adult else 'physical action'})\n"
-        f"    dialogue         ({'VERBATIM lyric line' if lyric_lines else 'one line, max 12 words'})\n"
-        f"    reel_weight      (int 1–10)\n"
-        f"    emotion          (one word)\n"
-        f"    duration_seconds (int 5–10)\n"
-        f"\nNO image_prompt field. Output all {locked} scenes. Complete valid JSON only.\n"
-    )
+    # ── Step 2: Scenes per act (3 separate small calls) ──────────
+    def _call_act(act_num: int, act_scene_count: int, start_index: int, act_desc: str):
+        if lyric_lines:
+            dialogue_rule = "VERBATIM lyric line for this scene"
+        elif is_adult:
+            dialogue_rule = "one explicit in-character line, max 12 words"
+        else:
+            dialogue_rule = "one spoken line, max 12 words"
 
-    def _call():
+        u = (
+            f"Concept: {concept}\nGenre: {genre}\nCharacter: {character_name or 'unnamed'}\n"
+            f"Act {act_num} focus: {act_desc}\n\n"
+            f"Return a JSON array of EXACTLY {act_scene_count} scene objects.\n"
+            f"Index starts at {start_index}. Each object:\n"
+            f"  index (int), act ({act_num}), "
+            f"description (1 sentence{'— explicit' if is_adult else ''}), "
+            f"dialogue ({dialogue_rule}), "
+            f"reel_weight (1-10), emotion (1 word), duration_seconds (5-10)\n"
+            f"NO other fields. Return the array only (not wrapped in an object)."
+        )
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "system", "content": base_system}, {"role": "user", "content": u}],
+            temperature=0.85, max_tokens=4000,
+        )
+        raw = resp.choices[0].message.content.strip()
+        # Strip markdown fences
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        return json.loads(raw.strip())
+
+    def _build_story():
         try:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-                temperature=0.85,
-                max_tokens=16000,
-            )
-            raw = resp.choices[0].message.content.strip()
-            # Strip markdown fences
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            raw = raw.strip()
-            return json.loads(raw)
-        except json.JSONDecodeError as e:
-            raise RuntimeError(f"GPT returned invalid JSON: {e} — raw start: {raw[:200]}")
+            header = _call_header()
         except Exception as e:
-            raise RuntimeError(f"GPT develop failed: {type(e).__name__}: {e}")
+            raise RuntimeError(f"Story header failed: {e}")
+
+        if lyric_lines:
+            # Lyric mode — distribute lines across 3 acts
+            a1 = max(1, lyric_lines // 3)
+            a2 = max(1, lyric_lines // 3)
+            a3 = lyric_lines - a1 - a2
+        else:
+            a1 = num_scenes // 3
+            a2 = num_scenes // 3
+            a3 = num_scenes - a1 - a2
+
+        act_descs = [
+            "Introduction — characters meet, tension builds, flirting begins" if is_adult else "Setup and introduction",
+            "Escalation — desire deepens, foreplay and undressing" if is_adult else "Rising action and conflict",
+            "Climax — explicit sexual acts, emotional peak, resolution" if is_adult else "Climax and resolution",
+        ]
+
+        all_scenes = []
+        idx = 0
+        for act_num, count, desc in [(1, a1, act_descs[0]), (2, a2, act_descs[1]), (3, a3, act_descs[2])]:
+            try:
+                scenes = _call_act(act_num, count, idx, desc)
+                if not isinstance(scenes, list):
+                    scenes = scenes.get("scenes", [])
+                all_scenes.extend(scenes)
+                idx += len(scenes)
+            except Exception as e:
+                raise RuntimeError(f"Act {act_num} scene generation failed: {e}")
+
+        return {**header, "scenes": all_scenes}
 
     try:
-        return await loop.run_in_executor(None, _call)
+        return await loop.run_in_executor(None, _build_story)
     except Exception as e:
         raise HTTPException(500, detail=str(e))
 

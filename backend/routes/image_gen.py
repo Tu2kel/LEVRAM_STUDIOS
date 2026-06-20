@@ -558,7 +558,10 @@ def _generate_instantid(prompt: str, face_refs: list[RefImage], aspect: str, sty
         "num_images":           1,
         "enable_safety_checker": False,
     })
-    image_bytes = _download_url(result["images"][0]["url"])
+    imgs = result.get("images") or []
+    if not imgs:
+        raise RuntimeError(f"InstantID returned no images: {result}")
+    image_bytes = _download_url(imgs[0].get("url") or imgs[0].get("image_url") or imgs[0])
     _, output_url = _save_bytes(image_bytes, prefix="instantid")
     return {"imageUrl": output_url, "prompt": full_prompt, "engine": "instantid", "model": "fal-ai/instantid"}
 
@@ -681,10 +684,10 @@ async def generate_image(payload: ImageGenPayload, x_studio: str = Header(defaul
                 )
                 return {"success": True, **result}
 
-            # Single person — InstantID (strong face identity)
+            # Single person — route to WaveSpeed PuLID (avoids fal.ai dependency)
             if face1 and not face2:
                 result = await loop.run_in_executor(
-                    None, _generate_instantid, prompt, face1, payload.aspect, payload.style
+                    None, _ws_pulid, prompt, face1, payload.aspect, payload.style, x_studio
                 )
                 return {"success": True, **result}
 

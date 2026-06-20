@@ -317,9 +317,9 @@ async def _gpt_develop(
         client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
         model  = "hermes-3-llama-3.1-405b"
     elif venice_key:
-        # Main studio — llama-3.3-70b, uncensored creative writing, no WWE softening
+        # Main studio — Hermes 405B, largest uncensored creative writing model on Venice
         client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
-        model  = "llama-3.3-70b"
+        model  = "hermes-3-llama-3.1-405b"
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model  = "gpt-4o-mini"

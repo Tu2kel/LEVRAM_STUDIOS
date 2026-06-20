@@ -13,6 +13,8 @@ const IG_ENGINE_HINTS = {
   novita_photo:         "🔴 NovitaAI Photo — epiCPhotogasm XL++, explicit photorealistic women. ~$0.015/img. Requires NOVITA_API_KEY.",
   novita_realism:       "🔴 NovitaAI Realism — epiCRealism, photorealistic portrait quality. ~$0.015/img. Requires NOVITA_API_KEY.",
   novita_anime:         "🔴 NovitaAI Anime — Meinahentai v4, explicit anime/hentai style. ~$0.015/img. Requires NOVITA_API_KEY.",
+  novita_asian:         "🔴 NovitaAI Asian — MajicMix Realistic, Asian photorealism, distinct facial structure. ~$0.015/img.",
+  novita_hybrid:        "🔴 NovitaAI Hybrid — RevAnimated, anime-realistic blend. Between real and illustrated. ~$0.015/img.",
 };
 
 const IG_VIDEO_ENGINE_HINTS = {
@@ -30,6 +32,7 @@ const _IG_VALID_ENGINES = new Set([
   "dalle3","fal_flux","comfy","consistent_character",
   "ws_flux","ws_pulid","venice_flux",
   "novita_pro","novita_photo","novita_realism","novita_anime",
+  "novita_asian","novita_hybrid",
 ]);
 let igActiveEngine = localStorage.getItem("ig-engine") || _igDefaultEngine();
 if (!_IG_VALID_ENGINES.has(igActiveEngine)) {
@@ -582,6 +585,7 @@ async function igGenerateImage() {
     venice_flux: "Venice FLUX",
     novita_pro: "Novita PRO", novita_photo: "Novita Photo",
     novita_realism: "Novita Realism", novita_anime: "Novita Anime",
+    novita_asian: "Novita Asian", novita_hybrid: "Novita Hybrid",
   }[igActiveEngine] || igActiveEngine;
   if (statusEl) statusEl.textContent = `Generating via ${engineLabel}…`;
   if (btn) { btn.disabled = true; btn.textContent = "Generating…"; btn.classList.add("lora-scanning"); }

@@ -401,6 +401,8 @@ NOVITA_MODELS = {
     "novita_photo":   "epicphotogasm_xPlusPlus_135412.safetensors",      # explicit photorealistic ++
     "novita_realism": "epicrealism_naturalSinRC1VAE_106430.safetensors", # photorealistic
     "novita_anime":   "meinahentai_v4_70340.safetensors",                # anime NSFW
+    "novita_asian":   "majicmixRealistic_v6_65516.safetensors",           # Asian photorealism
+    "novita_hybrid":  "revAnimated_v122.safetensors",                      # anime-realistic hybrid
     # Legacy aliases
     "novita_flux":    "epicphotogasm_xPlusPlus_135412.safetensors",
     "novita_pony":    "epicphotogasm_x_131265.safetensors",

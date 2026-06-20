@@ -259,6 +259,14 @@ function igInitEngineToggle() {
       const hint = document.getElementById("ig-engine-hint");
       if (hint) hint.textContent = IG_ENGINE_HINTS[igActiveEngine] || "";
     });
+    btn.addEventListener("mouseenter", () => {
+      const hint = document.getElementById("ig-engine-hint");
+      if (hint) hint.textContent = IG_ENGINE_HINTS[btn.dataset.engine] || btn.dataset.engine;
+    });
+    btn.addEventListener("mouseleave", () => {
+      const hint = document.getElementById("ig-engine-hint");
+      if (hint) hint.textContent = IG_ENGINE_HINTS[igActiveEngine] || "";
+    });
   });
 
   const hint = document.getElementById("ig-engine-hint");

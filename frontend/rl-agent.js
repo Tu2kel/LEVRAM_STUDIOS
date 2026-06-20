@@ -96,19 +96,22 @@ TAGS: [comma separated keywords]`,
     if (!sel) return;
 
     const models = [];
+    const isLocal = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
 
-    // Check local Ollama directly from the browser
-    try {
-      const resp = await fetch(`${OLLAMA_LOCAL}/api/tags`, { signal: AbortSignal.timeout(3000) });
-      const data = await resp.json();
-      (data.models || []).forEach(m => models.push(m.name));
-    } catch { /* Ollama not reachable locally */ }
+    // Only check Ollama when running locally — on Railway this causes CORS errors
+    if (isLocal) {
+      try {
+        const resp = await fetch(`${OLLAMA_LOCAL}/api/tags`, { signal: AbortSignal.timeout(3000) });
+        const data = await resp.json();
+        (data.models || []).forEach(m => models.push(m.name));
+      } catch { /* Ollama not reachable locally */ }
+    }
 
-    // Check if Venice is available via backend
+    // Always check Venice via backend
     try {
       const data = await levFetch("/rl-agent/models").then(r => r.json());
       (data.models || []).forEach(m => {
-        if (m === VENICE_MODEL_NAME && !models.includes(m)) models.push(m);
+        if (!models.includes(m)) models.push(m);
       });
     } catch { /* backend unavailable */ }
 

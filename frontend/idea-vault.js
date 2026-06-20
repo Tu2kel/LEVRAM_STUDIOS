@@ -785,12 +785,15 @@ let _ivKeyframeShots = [];   // stored after keyframes job completes
 
 window.ivGenerateKeyframes = async function ivGenerateKeyframes() {
   if (!ivCurrentIdeaId) return;
-  const btn      = document.getElementById("iv-keyframe-btn");
-  const statusEl = document.getElementById("iv-approve-status");
-  const charSel  = document.getElementById("iv-dev-character");
-  const charId   = charSel?.value || "";
-  const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
-  const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
+  const btn       = document.getElementById("iv-keyframe-btn");
+  const statusEl  = document.getElementById("iv-approve-status");
+  const charSel   = document.getElementById("iv-dev-character");
+  const charId    = charSel?.value || "";
+  const charName  = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
+  const char2Sel  = document.getElementById("iv-dev-character2");
+  const char2Id   = char2Sel?.value || "";
+  const char2Name = char2Sel?.selectedOptions?.[0]?.dataset?.name || char2Sel?.selectedOptions?.[0]?.textContent || "";
+  const sceneSec  = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
 
   if (btn) { btn.disabled = true; btn.classList.add("lora-scanning"); }
 
@@ -804,22 +807,41 @@ window.ivGenerateKeyframes = async function ivGenerateKeyframes() {
     const rawScenes = idea?.story?.scenes || [];
     if (!rawScenes.length) throw new Error("No scenes — develop story first.");
 
-    const scenes = rawScenes.map(sc => ({
+    const project = idea?.title || charName || "Default";
+
+    const allScenes = rawScenes.map(sc => ({
       description:   sc.description || "",
-      image_prompt:  sc.image_prompt || sc.description || "",
+      image_prompt:  sc.shot_prompt || sc.image_prompt || sc.description || "",
       motion_prompt: sc.motion_prompt || `${sc.emotion || "cinematic"} atmosphere, smooth camera`,
       dialogue:      sc.dialogue || "",
       emotion:       sc.emotion || "",
       duration:      sc.duration_seconds || sceneSec,
     }));
 
+    // Only generate keyframes for scenes that don't already have one
+    let scenes = allScenes;
+    try {
+      const existRes  = await levFetch(`${IV_BASE}/scenes?project=${encodeURIComponent(project)}`);
+      const existData = await existRes.json();
+      const done      = (existData.scenes || []).length;
+      if (done > 0 && done < allScenes.length) {
+        scenes = allScenes.slice(done);
+        if (statusEl) statusEl.textContent = `${done} keyframes already done — generating ${scenes.length} new scene(s)…`;
+      } else if (done >= allScenes.length) {
+        if (statusEl) statusEl.textContent = "All keyframes already generated. Use ⟳ to regenerate individual shots.";
+        if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
+        return;
+      }
+    } catch (_) { /* proceed with all scenes if check fails */ }
+
     const orchRes  = await levFetch(`${IV_BASE}/orchestrate/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         scenes, character_id: charId, character_name: charName,
+        character2_id: char2Id, character2_name: char2Name,
         duration: sceneSec, model: document.getElementById("iv-model")?.value || "ws_wan22", keyframes_only: true,
-        project: charName || idea?.title || "Default",
+        project,
       }),
     });
     const orchData = await orchRes.json();

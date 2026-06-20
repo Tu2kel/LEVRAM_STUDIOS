@@ -92,7 +92,13 @@ async def _patch_character(character_id: str, fields: dict):
 @router.get("/api/characters")
 async def get_characters(x_studio: str = Header(default="levram")):
     if characters_col is not None:
-        docs = await characters_col.find({"studio": x_studio}).to_list(None)
+        docs = await characters_col.find({
+            "$or": [{"studio": x_studio}, {"studio": {"$exists": False}}]
+        }).to_list(None)
+        # Backfill missing studio field so future queries are consistent
+        for doc in docs:
+            if not doc.get("studio"):
+                await characters_col.update_one({"id": doc["id"]}, {"$set": {"studio": x_studio}})
         return {"success": True, "characters": [_strip(d) for d in docs]}
     data = _json_load()
     chars = [c for c in data.get("characters", []) if c.get("studio", "levram") == x_studio]

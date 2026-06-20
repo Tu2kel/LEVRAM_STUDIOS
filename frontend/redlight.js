@@ -137,6 +137,7 @@ window.RL = (function () {
     setTimeout(() => {
       // Characters
       if (typeof loadCharacters === "function") loadCharacters();
+      if (typeof ivLoadCharacters === "function") ivLoadCharacters();
       // Ideas
       if (typeof ivLoadIdeas === "function") ivLoadIdeas();
       // Image gallery

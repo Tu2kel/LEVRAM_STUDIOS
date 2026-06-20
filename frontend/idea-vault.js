@@ -28,6 +28,9 @@ async function ivLoadCharacters() {
   const sel  = document.getElementById("iv-dev-character");
   const sel2 = document.getElementById("iv-dev-character2");
   if (!sel) return;
+  // Clear before repopulating so studio switches don't stack duplicates
+  sel.innerHTML  = `<option value="">None / Original</option>`;
+  if (sel2) sel2.innerHTML = `<option value="">None</option>`;
   try {
     const res  = await levFetch(`${IV_BASE}/characters`);
     const data = await res.json();

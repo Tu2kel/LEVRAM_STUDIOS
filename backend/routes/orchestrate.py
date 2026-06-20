@@ -364,13 +364,24 @@ async def _run_pipeline(job_id: str, payload: dict):
                     step=f"{label} Generating keyframe — {shot.get('description','')[:60]}…")
             try:
                 raw_prompt   = shot.get("image_prompt") or shot.get("shot_prompt") or shot.get("description") or concept
-                # If char2 has appearance info and it's not already in the prompt, prepend it
-                if char2_appearance and char2_name and char2_name.lower() not in raw_prompt.lower():
-                    raw_prompt = f"{char2_name}: {char2_appearance}. {raw_prompt}"
+
+                # Determine which character owns this shot
+                shot_char_field = (shot.get("character") or "").lower()
+                prompt_lower    = raw_prompt.lower()
+                _c1_match = char_name  and char_name.lower()  in (shot_char_field + " " + prompt_lower)
+                _c2_match = char2_name and char2_name.lower() in (shot_char_field + " " + prompt_lower)
+
+                if _c2_match and not _c1_match:
+                    # This scene belongs to char2 — face-lock to char2, inject their appearance
+                    shot_char_id = character2_id
+                    if char2_appearance and char2_name.lower() not in prompt_lower:
+                        raw_prompt = f"{char2_name}: {char2_appearance}. {raw_prompt}"
+                else:
+                    # Default to char1 face lock (or no lock if no char set)
+                    shot_char_id = character_id if shot.get("character_lock", True) else ""
+
                 raw_prompt   = _sanitize_img(raw_prompt)
                 image_prompt = _tone_prefix + raw_prompt if _tone_prefix else raw_prompt
-                # Apply character face lock using char1 reference image
-                shot_char_id = character_id if shot.get("character_lock", True) else ""
                 image_url = await _gen_image(image_prompt, shot_char_id)
             except Exception as e:
                 err_msg = f"Shot {i+1} keyframe failed: {str(e)[:120]}"

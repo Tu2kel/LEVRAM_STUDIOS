@@ -626,16 +626,22 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
     // Match on any word in the character name (e.g. "Michael" from "Michael Jackson")
     const charParts = charLower.split(/\s+/).filter(p => p.length > 2);
 
+    const char2Sel  = document.getElementById("iv-dev-character2");
+    const char2Name = char2Sel?.selectedOptions?.[0]?.dataset?.name || char2Sel?.selectedOptions?.[0]?.textContent || "";
+
     const scenes = rawScenes.map(sc => {
-      const descText  = (sc.description || "").toLowerCase();
-      const imgText   = (sc.image_prompt || "").toLowerCase();
+      // shot_prompt has character appearances baked in (from story generator)
+      // fall back to image_prompt, then description
+      const rawImgPrompt = sc.shot_prompt || sc.image_prompt || sc.description || "";
+      const descText     = (sc.description || "").toLowerCase();
+      const promptText   = rawImgPrompt.toLowerCase();
       // Only lock the character face to scenes that actually feature them by name
       const character_lock = charParts.length
-        ? charParts.some(p => descText.includes(p) || imgText.includes(p))
+        ? charParts.some(p => descText.includes(p) || promptText.includes(p))
         : true;
       return {
         description:    sc.description || "",
-        image_prompt:   sc.image_prompt || sc.description || "",
+        image_prompt:   rawImgPrompt,
         motion_prompt:  sc.motion_prompt ||
           `${sc.emotion || "cinematic"} atmosphere, smooth continuous camera movement, ${(sc.description || "").slice(0, 120)}`,
         dialogue:       sc.dialogue || "",

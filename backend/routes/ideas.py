@@ -308,26 +308,37 @@ async def _gpt_develop(
     is_adult = "adult" in genre.lower()
     if is_adult and os.getenv("VENICE_API_KEY"):
         client = OpenAI(api_key=os.getenv("VENICE_API_KEY"), base_url="https://api.venice.ai/api/v1")
-        model = "llama-3.3-70b"
+        # Hermes 405B is purpose-built uncensored creative writing — no softening
+        model = "hermes-3-llama-3.1-405b"
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model = "gpt-4o-mini"
 
     lyric_lines = _count_lyric_lines(concept)
 
-    # Build performer reference block for image prompts
+    # Build performer reference block — goes into every scene prompt
+    p1 = character_name or ""
+    p2 = char2_name or ""
     performer_block = ""
-    if char1_appearance or character_name:
-        performer_block += f"PERFORMER 1 — {character_name}: {char1_appearance}\n" if char1_appearance else f"PERFORMER 1 — {character_name}\n"
-    if char2_appearance or char2_name:
-        performer_block += f"PERFORMER 2 — {char2_name}: {char2_appearance}\n" if char2_appearance else f"PERFORMER 2 — {char2_name}\n"
+    if p1:
+        performer_block += f"PERFORMER 1 — {p1}: {char1_appearance}\n" if char1_appearance else f"PERFORMER 1 — {p1}\n"
+    if p2:
+        performer_block += f"PERFORMER 2 — {p2}: {char2_appearance}\n" if char2_appearance else f"PERFORMER 2 — {p2}\n"
+
+    # Prefix for every description so names stay consistent
+    cast_prefix = ""
+    if p1 and p2:
+        cast_prefix = f"Scene features {p1} and {p2}. "
+    elif p1:
+        cast_prefix = f"Scene features {p1}. "
 
     adult_sys = (
-        "PROFESSIONAL ADULT FILM CONTENT — West Coast / Evil Angel style. "
-        "Explicit, direct, production-ready. No euphemisms. No romance novel language. "
-        "Write like a director's shot breakdown: what is happening physically, who is doing what, body positions, camera angles. "
-        "Escalate realistically: Act 1 = arrival/setup/chemistry, Act 2 = undressing, oral, foreplay — build intensity, Act 3 = explicit penetrative sex acts, peak performance, climax. "
-        "Dialogue: raw, in-character, direct. Max 10 words. NEVER song lyrics. NEVER poetic filler."
+        "PROFESSIONAL ADULT FILM — West Coast Productions / Evil Angel style. "
+        "NO euphemisms. NO romance novel language. NO 'unspoken desires' or 'charged air'. "
+        "Write exactly what is physically happening: who is doing what, body positions, clothing state, body parts involved. "
+        "Use character names in EVERY description — never 'they' alone. "
+        "Escalate: Act 1 = meet/setup/undressing begins, Act 2 = oral sex and foreplay explicitly described, Act 3 = penetrative sex acts described explicitly — position, action, intensity. "
+        "Dialogue: raw, direct, in-character. Max 10 words. Never poetic."
     ) if is_adult else ""
 
     base_system = (
@@ -380,24 +391,31 @@ async def _gpt_develop(
         if performer_block:
             performer_ctx = f"\nPerformers:\n{performer_block}"
 
-        shot_prompt_instruction = (
-            f"shot_prompt (image gen prompt — start with performers' physical descriptions if provided, "
-            f"then describe this specific scene action, position, setting, lighting, camera angle; "
-            f"1 dense paragraph, no labels)"
+        desc_rule = (
+            f"description (USE CHARACTER NAMES — '{p1}' and '{p2 or 'partner'}'. "
+            f"1 direct sentence stating exactly what {p1}{' and ' + p2 if p2 else ''} are physically doing — "
+            f"explicit adult film action, no euphemisms, no romance language)"
         ) if is_adult else (
-            f"shot_prompt (image gen prompt — subject, action, setting, lighting, camera angle; 1 dense paragraph)"
+            f"description (1 sentence — what is physically happening, use character names)"
+        )
+
+        shot_prompt_instruction = (
+            f"shot_prompt (image gen prompt — MUST open with: '{p1}{(', ' + p2) if p2 else ''}' and their physical appearance, "
+            f"then the exact action/position, setting, lighting, camera angle. "
+            f"1 dense paragraph. Include body details, clothing state, explicit positioning. No labels.)"
+        ) if is_adult else (
+            f"shot_prompt (image gen prompt — subject by name, action, setting, lighting, camera angle; 1 dense paragraph)"
         )
 
         u = (
             f"Concept: {concept}\nGenre: {genre}"
-            f"\nPerformer 1: {character_name or 'unnamed'}"
-            + (f"\nPerformer 2: {char2_name}" if char2_name else "")
-            + performer_ctx
+            f"\nPerformer 1 — {p1 or 'unnamed'}: {char1_appearance}"
+            + (f"\nPerformer 2 — {p2}: {char2_appearance}" if p2 else "")
             + f"\nAct {act_num} focus: {act_desc}\n\n"
             f"Return a JSON array of EXACTLY {act_scene_count} scene objects.\n"
             f"Index starts at {start_index}. Each object:\n"
             f"  index (int), act ({act_num}), "
-            f"description (1 direct sentence — what is physically happening{'— explicit adult film action' if is_adult else ''}), "
+            f"{desc_rule}, "
             f"dialogue ({dialogue_rule}), "
             f"{shot_prompt_instruction}, "
             f"reel_weight (1-10), emotion (1 word), duration_seconds (5-10)\n"

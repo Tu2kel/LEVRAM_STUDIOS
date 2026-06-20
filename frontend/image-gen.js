@@ -26,7 +26,16 @@ const IG_VIDEO_ENGINE_HINTS = {
 
 // Default engine: Venice for RL mode, DALL-E 3 for main studio
 const _igDefaultEngine = () => (window.RL?.isActive?.()) ? "venice_flux" : "dalle3";
+const _IG_VALID_ENGINES = new Set([
+  "dalle3","fal_flux","comfy","consistent_character",
+  "ws_flux","ws_pulid","venice_flux",
+  "novita_pro","novita_photo","novita_realism","novita_anime",
+]);
 let igActiveEngine = localStorage.getItem("ig-engine") || _igDefaultEngine();
+if (!_IG_VALID_ENGINES.has(igActiveEngine)) {
+  igActiveEngine = _igDefaultEngine();
+  localStorage.removeItem("ig-engine");
+}
 
 // Session gallery — images generated this session, persists in memory for picker
 // Format: [{ url: "/output/renders/images/...", created: "HH:MM" }]

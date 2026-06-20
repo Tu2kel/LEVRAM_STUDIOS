@@ -363,18 +363,20 @@ function ivRenderStory(story) {
 
   if (titleEl) titleEl.textContent = story.title || "Story Breakdown";
 
-  const estMin = story.est_minutes || 0;
-  const estSec = story.est_seconds || 0;
-  const m = Math.floor(estMin); const s = Math.round((estMin - m) * 60);
-  if (durEl) durEl.textContent = `~${m}m ${s}s`;
+  // Compute runtime from num_scenes * scene_seconds so left and right sides always match
+  const totalSec = (story.num_scenes || 0) * (story.scene_seconds || 5);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  const targetMin = story.target_minutes || "?";
+  if (durEl) durEl.textContent = `~${m}m ${s > 0 ? ` ${s}s` : ""}`;
 
   if (metaEl) metaEl.innerHTML = `
     <strong style="color:var(--gold);">${story.title || ""}</strong><br/>
     ${story.logline || ""}<br/><br/>
     <em style="color:rgba(255,255,255,0.5);">${story.act_structure || ""}</em><br/><br/>
     <span style="color:var(--gold);">${story.num_scenes} scenes</span> × ${story.scene_seconds}s
-    = <span style="color:var(--gold);">~${m} min ${s}s</span>
-    &nbsp;(target: ${story.target_minutes} min)
+    = <span style="color:var(--gold);">~${m} min${s > 0 ? ` ${s}s` : ""}</span>
+    &nbsp;(target: ${targetMin} min)
   `;
 
   // Reel cuts

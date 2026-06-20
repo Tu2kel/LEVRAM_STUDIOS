@@ -518,11 +518,11 @@ function igAutoFillCharPrompt(charId) {
     const app = (char.appearance || "").toLowerCase();
     let skinToken = "";
     if (igActiveEngine === "novita_asian") {
-      skinToken = "East Asian woman, fair skin, Asian features";
+      skinToken = "korean woman, (asian:1.4), monolid eyes, asian facial features, smooth skin";
     } else if (igActiveEngine === "novita_hybrid") {
-      skinToken = "anime-realistic style, semi-realistic illustration";
+      skinToken = "semi-realistic anime style, detailed illustration, cinematic lighting";
     } else if (igActiveEngine === "novita_anime") {
-      skinToken = "anime style, hentai, illustrated";
+      skinToken = "anime style, hentai, 2d illustration, detailed linework";
     } else if (app.includes("black") || app.includes("african") || app.includes("melanin")) {
       if (app.includes("light skin") || app.includes("light-skin") || app.includes("light brown skin")) {
         skinToken = "light-skinned Black woman, light brown skin, melanin";

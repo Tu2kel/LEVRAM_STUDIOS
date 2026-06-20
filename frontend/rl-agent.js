@@ -186,11 +186,11 @@ TAGS: [comma separated keywords]`,
       const pl = prompt.toLowerCase();
       let skinToken = "";
       if (engine === "novita_asian") {
-        skinToken = "East Asian woman, fair skin, Asian features, ";
+        skinToken = "korean woman, (asian:1.4), monolid eyes, asian facial features, smooth skin, ";
       } else if (engine === "novita_hybrid") {
-        skinToken = "anime-realistic style, semi-realistic illustration, ";
+        skinToken = "semi-realistic anime style, detailed illustration, cinematic lighting, ";
       } else if (engine === "novita_anime") {
-        skinToken = "anime style, hentai, illustrated, ";
+        skinToken = "anime style, hentai, 2d illustration, detailed linework, ";
       } else if (pl.includes("light-skinned black") || pl.includes("light skinned black") || pl.includes("light brown skin")) {
         skinToken = "light-skinned Black woman, light brown skin, melanin, ";
       } else if (pl.includes("black woman") || pl.includes("black female") || pl.includes("african")) {

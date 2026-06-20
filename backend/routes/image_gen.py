@@ -283,7 +283,10 @@ def _generate_fal(prompt: str, aspect: str, style: str, engine: str,
         args["loras"] = [{"path": lora_url, "scale": 1.0}]
 
     result      = fal_client.run(model_id, arguments=args)
-    image_url   = result["images"][0]["url"]
+    imgs_fal    = result.get("images") or []
+    if not imgs_fal:
+        raise RuntimeError(f"fal.ai returned no images: {result}")
+    image_url   = imgs_fal[0].get("url") or imgs_fal[0].get("image_url") or imgs_fal[0]
     image_bytes = _download_url(image_url)
     prefix      = engine.replace("fal_", "")
     _, output_url = _save_bytes(image_bytes, prefix=prefix)
@@ -475,7 +478,9 @@ def _novita_generate_image(prompt: str, aspect: str, style: str,
             imgs = result.get("images") or []
             if not imgs:
                 raise RuntimeError("Novita succeeded but returned no images")
-            image_bytes = _download_url(imgs[0]["image_url"])
+            img_url = imgs[0].get("image_url") or imgs[0].get("url") or imgs[0]
+            print(f"[Novita] image record: {imgs[0]}")
+            image_bytes = _download_url(img_url)
             _, out_url  = _save_bytes(image_bytes, prefix=f"novita_{engine.split('_')[-1]}", studio=studio)
             return {"imageUrl": out_url, "prompt": full, "engine": engine, "model": model}
         if status in ("TASK_STATUS_FAILED", "TASK_STATUS_CANCELED"):
@@ -645,7 +650,9 @@ async def generate_image(payload: ImageGenPayload, x_studio: str = Header(defaul
     face2  = payload.face_references_2
 
     # ── Face reference path ───────────────────────────────────
-    if face1 or face2:
+    # Novita and Venice are txt2img-only — skip face-ref routing entirely
+    _FACE_REF_ENGINES = not (engine in NOVITA_MODELS or engine == "venice_flux")
+    if (face1 or face2) and _FACE_REF_ENGINES:
         prompt = payload.prompt
         if payload.reference_images:
             prompt = await loop.run_in_executor(

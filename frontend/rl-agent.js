@@ -180,10 +180,19 @@ TAGS: [comma separated keywords]`,
   function injectImageGen(text) {
     const concept = parseField(text, "CONCEPT") || parseField(text, "PROMPT");
     let prompt = concept || text;
-    // Lena: prepend NSFW tokens for Novita engines so SD 1.5 models respond to explicit content
+    // Lena: prepend NSFW + skin tone tokens for Novita engines (SD 1.5 weights front tokens highest)
     const engine = window.igActiveEngine || localStorage.getItem("ig-engine") || "";
     if (engine.startsWith("novita_")) {
-      prompt = "nsfw, nude, explicit, bare breasts, nipples visible. " + prompt;
+      const pl = prompt.toLowerCase();
+      let skinToken = "";
+      if (pl.includes("light-skinned black") || pl.includes("light skinned black") || pl.includes("light brown skin")) {
+        skinToken = "light-skinned Black woman, light brown skin, melanin, ";
+      } else if (pl.includes("black woman") || pl.includes("black female") || pl.includes("african")) {
+        skinToken = "Black woman, brown skin, melanin, ";
+      } else if (pl.includes("latina") || pl.includes("hispanic")) {
+        skinToken = "Latina woman, olive skin, ";
+      }
+      prompt = `nsfw, nude, explicit, bare breasts, nipples visible, ${skinToken}` + prompt;
     }
     setField("ig-prompt", prompt);
     if (window.switchTab) window.switchTab("image-gen");

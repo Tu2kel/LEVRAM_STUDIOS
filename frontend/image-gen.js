@@ -510,11 +510,29 @@ function igAutoFillCharPrompt(charId) {
   // Build portrait prompt from character bio fields
   const parts = [];
 
-  // Lena (RL mode) + Novita engine: prepend NSFW trigger tokens so SD 1.5 models respond
+  // Lena (RL mode) + Novita engine: prepend NSFW + skin tone tokens so SD 1.5 weights them highest
   const isNovitaEngine = igActiveEngine?.startsWith("novita_");
   const isRL = window.RL?.isActive?.();
-  if (isRL && isNovitaEngine) {
-    parts.push("nsfw, nude, explicit, bare breasts, nipples visible");
+  if (isNovitaEngine) {
+    // Extract skin tone from appearance and pin it at front — SD 1.5 ignores buried descriptors
+    const app = (char.appearance || "").toLowerCase();
+    let skinToken = "";
+    if (app.includes("black") || app.includes("african") || app.includes("melanin")) {
+      if (app.includes("light skin") || app.includes("light-skin") || app.includes("light brown skin")) {
+        skinToken = "light-skinned Black woman, light brown skin, melanin";
+      } else if (app.includes("dark skin") || app.includes("deep skin")) {
+        skinToken = "dark-skinned Black woman, deep brown skin, melanin";
+      } else {
+        skinToken = "Black woman, brown skin, melanin";
+      }
+    } else if (app.includes("asian") || app.includes("east asian") || app.includes("chinese") || app.includes("korean") || app.includes("japanese")) {
+      skinToken = "East Asian woman, fair skin";
+    } else if (app.includes("latina") || app.includes("hispanic") || app.includes("brown skin")) {
+      skinToken = "Latina woman, olive brown skin";
+    }
+
+    const nsfw = isRL ? "nsfw, nude, explicit, bare breasts, nipples visible" : "";
+    parts.push([nsfw, skinToken].filter(Boolean).join(", "));
   }
 
   if (char.name)        parts.push(`Portrait of ${char.name}`);

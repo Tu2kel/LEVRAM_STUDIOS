@@ -350,6 +350,11 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
     if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Develop failed");
     ivRenderStory(data.story);
     await ivLoadIdeas();
+
+    // Autonomous — immediately kick off keyframe generation, no button press needed
+    if (metaEl) metaEl.innerHTML = `<span style="color:var(--gold);letter-spacing:1px;">Story ready — generating keyframes…</span>`;
+    await ivGenerateKeyframes();
+
   } catch (err) {
     if (metaEl) metaEl.textContent = "Error: " + err.message;
     if (approveBtn) { approveBtn.disabled = false; approveBtn.classList.remove("lora-scanning"); }

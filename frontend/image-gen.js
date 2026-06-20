@@ -514,10 +514,16 @@ function igAutoFillCharPrompt(charId) {
   const isNovitaEngine = igActiveEngine?.startsWith("novita_");
   const isRL = window.RL?.isActive?.();
   if (isNovitaEngine) {
-    // Extract skin tone from appearance and pin it at front — SD 1.5 ignores buried descriptors
+    // Engine-specific skin token override, then character bio detection
     const app = (char.appearance || "").toLowerCase();
     let skinToken = "";
-    if (app.includes("black") || app.includes("african") || app.includes("melanin")) {
+    if (igActiveEngine === "novita_asian") {
+      skinToken = "East Asian woman, fair skin, Asian features";
+    } else if (igActiveEngine === "novita_hybrid") {
+      skinToken = "anime-realistic style, semi-realistic illustration";
+    } else if (igActiveEngine === "novita_anime") {
+      skinToken = "anime style, hentai, illustrated";
+    } else if (app.includes("black") || app.includes("african") || app.includes("melanin")) {
       if (app.includes("light skin") || app.includes("light-skin") || app.includes("light brown skin")) {
         skinToken = "light-skinned Black woman, light brown skin, melanin";
       } else if (app.includes("dark skin") || app.includes("deep skin")) {

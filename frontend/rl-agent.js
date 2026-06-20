@@ -185,7 +185,13 @@ TAGS: [comma separated keywords]`,
     if (engine.startsWith("novita_")) {
       const pl = prompt.toLowerCase();
       let skinToken = "";
-      if (pl.includes("light-skinned black") || pl.includes("light skinned black") || pl.includes("light brown skin")) {
+      if (engine === "novita_asian") {
+        skinToken = "East Asian woman, fair skin, Asian features, ";
+      } else if (engine === "novita_hybrid") {
+        skinToken = "anime-realistic style, semi-realistic illustration, ";
+      } else if (engine === "novita_anime") {
+        skinToken = "anime style, hentai, illustrated, ";
+      } else if (pl.includes("light-skinned black") || pl.includes("light skinned black") || pl.includes("light brown skin")) {
         skinToken = "light-skinned Black woman, light brown skin, melanin, ";
       } else if (pl.includes("black woman") || pl.includes("black female") || pl.includes("african")) {
         skinToken = "Black woman, brown skin, melanin, ";

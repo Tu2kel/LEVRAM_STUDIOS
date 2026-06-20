@@ -308,14 +308,21 @@ async def _gpt_develop(
     _ADULT_KEYWORDS = {"adult", "erotic", "explicit", "xxx", "nsfw"}
     _LESBIAN_KEYWORDS = {"lesbian", "sapphic", "female", "women", "girls", "femme", "wlw"}
     genre_words = set(genre.lower().replace(",", " ").split())
-    is_adult  = bool(_ADULT_KEYWORDS.intersection(genre_words)) or bool(_LESBIAN_KEYWORDS.intersection(genre_words))
+    is_adult   = bool(_ADULT_KEYWORDS.intersection(genre_words)) or bool(_LESBIAN_KEYWORDS.intersection(genre_words))
     is_lesbian = bool(_LESBIAN_KEYWORDS.intersection(genre_words))
-    if is_adult and os.getenv("VENICE_API_KEY"):
-        client = OpenAI(api_key=os.getenv("VENICE_API_KEY"), base_url="https://api.venice.ai/api/v1")
-        model = "hermes-3-llama-3.1-405b"
+
+    venice_key = os.getenv("VENICE_API_KEY")
+    if is_adult and venice_key:
+        # RL content — Hermes 405B, fully uncensored
+        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+        model  = "hermes-3-llama-3.1-405b"
+    elif venice_key:
+        # Main studio — llama-3.3-70b, uncensored creative writing, no WWE softening
+        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+        model  = "llama-3.3-70b"
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        model = "gpt-4o-mini"
+        model  = "gpt-4o-mini"
 
     lyric_lines = _count_lyric_lines(concept)
 
@@ -357,15 +364,17 @@ async def _gpt_develop(
     cinematic_sys = (
         "You are a cinematic scene writer for LEVRAM Studios. Original IP. Prestige quality. "
         "Write compact JSON only — no markdown, no commentary. "
-        "Description: 1 vivid specific sentence — exactly what the camera sees. No generic descriptions. "
-        "Dialogue is OPTIONAL — leave empty string '' when the scene calls for silence, action, or physical intensity with no speech. "
-        "A character being choked, fighting, falling, or dying does NOT speak. "
-        "When dialogue IS written: make it specific to THIS character's voice and THIS exact moment. "
+        "Description: 1 vivid specific sentence — exactly what the camera sees. "
+        "Gore, blood, violence, injury, and death are ALLOWED and should be written with physical specificity when the scene calls for it. "
+        "Describe wounds, impacts, blood, and brutality directly — do not soften or cut away. "
+        "Dialogue is OPTIONAL — empty string '' for action, physical confrontation, choking, dying, silent moments. "
+        "When a character IS speaking: specific to their voice, this exact moment, max 10 words. NO profanity — dialogue must be clean (YouTube-safe). "
         "BANNED DIALOGUE — never write these or anything like them: "
         "'bow before me', 'feel my power', 'this is the beginning/end', 'the world is mine', "
         "'I will reign forever', 'you cannot stop me', 'witness my power', 'all shall know my name', "
-        "'this is only the beginning', 'your time is up', 'tremble before me', 'I am inevitable'. "
-        "Write lines a real person says in that specific moment — not a comic book cliché."
+        "'this is only the beginning', 'your time is up', 'tremble before me', 'I am inevitable', "
+        "'dawn of a new era', 'this storm hides', 'the world will know'. "
+        "Write what a real person says in that exact moment — specific, earned, human."
     ) if not is_adult else ""
 
     base_system = (

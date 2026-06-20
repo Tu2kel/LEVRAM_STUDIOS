@@ -3,6 +3,7 @@ LEVRAM Orchestrator — autonomous scene pipeline
 Idea Vault scenes → Keyframe → I2V → TTS → Timeline (one shot at a time, live updates)
 """
 import os
+import re
 import uuid
 import asyncio
 import json
@@ -15,6 +16,23 @@ router = APIRouter()
 _JOBS: dict = {}
 
 TIMELINE_FILE = Path("data/timelines/main_timeline.json")
+
+# Image gen slang sanitizer — prevents roosters, animals, wrong objects from slang words
+_IMG_SWAP = [
+    (re.compile(r'\bcock\b', re.IGNORECASE), 'erect penis'),
+    (re.compile(r'\bcocks\b', re.IGNORECASE), 'penises'),
+    (re.compile(r'\bpussy\b', re.IGNORECASE), 'vulva'),
+    (re.compile(r'\bcum\b', re.IGNORECASE), 'fluid'),
+    (re.compile(r'\bcums\b', re.IGNORECASE), 'climaxes'),
+    (re.compile(r'\bcumming\b', re.IGNORECASE), 'orgasming'),
+    (re.compile(r'\bblow\s*job\b', re.IGNORECASE), 'oral sex'),
+    (re.compile(r'\bboner\b', re.IGNORECASE), 'erection'),
+]
+
+def _sanitize_img(prompt: str) -> str:
+    for pat, rep in _IMG_SWAP:
+        prompt = pat.sub(rep, prompt)
+    return prompt
 
 
 def _update(job_id: str, **kw):
@@ -258,10 +276,40 @@ async def _run_pipeline(job_id: str, payload: dict):
 
     # Build a tone prefix injected into every image prompt so the AI stays on genre
     _tone_prefix = ""
-    if genre or tone_notes:
+    genre_lower = genre.lower()
+    # Detect female-only cast — lock men out of image gen explicitly
+    _female_keywords = {"lesbian", "female", "women", "woman", "girl", "femme"}
+    _is_female_cast = bool(_female_keywords.intersection(genre_lower.split()))
+
+    # Also check char genders from DB if available
+    if not _is_female_cast and (character_id or character2_id):
+        try:
+            from backend.db import characters_col as _gcc
+            _gender_ids = [_id for _id in [character_id, character2_id] if _id]
+            if _gcc is not None:
+                _gdocs = await _gcc.find({"id": {"$in": _gender_ids}}).to_list(None)
+                _genders = [d.get("gender", "").lower() for d in _gdocs]
+            else:
+                _gcdata = json.loads(Path("data/characters.json").read_text()).get("characters", [])
+                _genders = [c.get("gender", "").lower() for c in _gcdata if c.get("id") in _gender_ids]
+            if _genders and all("female" in g or "woman" in g or "girl" in g for g in _genders):
+                _is_female_cast = True
+        except Exception:
+            pass
+
+    _gender_guard = "two women, both female, no men, no male figures, " if _is_female_cast else ""
+
+    _adult_photo_style = ""
+    _ADULT_IMG_GENRES = {"adult", "lesbian", "erotic", "explicit", "nsfw", "xxx", "female", "sapphic"}
+    if _ADULT_IMG_GENRES.intersection(genre_lower.split()):
+        _adult_photo_style = "photorealistic boudoir photography, intimate, unclothed female bodies, sensual lighting, "
+
+    if genre or tone_notes or _gender_guard or _adult_photo_style:
         parts = []
-        if genre:      parts.append(genre)
-        if tone_notes: parts.append(tone_notes)
+        if _gender_guard:      parts.append(_gender_guard.rstrip(", "))
+        if _adult_photo_style: parts.append(_adult_photo_style.rstrip(", "))
+        if genre:              parts.append(genre)
+        if tone_notes:         parts.append(tone_notes)
         _tone_prefix = ", ".join(parts) + " — "
 
     clear_project = payload.get("clear_project", False)
@@ -299,10 +347,11 @@ async def _run_pipeline(job_id: str, payload: dict):
             _update(job_id, progress=i,
                     step=f"{label} Generating keyframe — {shot.get('description','')[:60]}…")
             try:
-                raw_prompt   = shot.get("image_prompt") or shot.get("description") or concept
+                raw_prompt   = shot.get("image_prompt") or shot.get("shot_prompt") or shot.get("description") or concept
                 # If char2 has appearance info and it's not already in the prompt, prepend it
                 if char2_appearance and char2_name and char2_name.lower() not in raw_prompt.lower():
                     raw_prompt = f"{char2_name}: {char2_appearance}. {raw_prompt}"
+                raw_prompt   = _sanitize_img(raw_prompt)
                 image_prompt = _tone_prefix + raw_prompt if _tone_prefix else raw_prompt
                 # Apply character face lock using char1 reference image
                 shot_char_id = character_id if shot.get("character_lock", True) else ""

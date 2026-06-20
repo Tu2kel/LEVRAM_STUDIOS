@@ -212,7 +212,8 @@ async def regen_scene_image(scene_id: str, body: RegenImageRequest):
 
     # Generate new image
     try:
-        from backend.routes.orchestrate import _gen_image
+        from backend.routes.orchestrate import _gen_image, _sanitize_img
+        prompt = _sanitize_img(prompt)
         image_url = await _gen_image(prompt, char_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image gen failed: {str(e)[:200]}")

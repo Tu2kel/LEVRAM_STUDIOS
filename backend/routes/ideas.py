@@ -305,10 +305,13 @@ async def _gpt_develop(
     from openai import OpenAI
     loop = asyncio.get_event_loop()
 
-    is_adult = "adult" in genre.lower()
+    _ADULT_KEYWORDS = {"adult", "erotic", "explicit", "xxx", "nsfw"}
+    _LESBIAN_KEYWORDS = {"lesbian", "sapphic", "female", "women", "girls", "femme", "wlw"}
+    genre_words = set(genre.lower().replace(",", " ").split())
+    is_adult  = bool(_ADULT_KEYWORDS.intersection(genre_words)) or bool(_LESBIAN_KEYWORDS.intersection(genre_words))
+    is_lesbian = bool(_LESBIAN_KEYWORDS.intersection(genre_words))
     if is_adult and os.getenv("VENICE_API_KEY"):
         client = OpenAI(api_key=os.getenv("VENICE_API_KEY"), base_url="https://api.venice.ai/api/v1")
-        # Hermes 405B is purpose-built uncensored creative writing — no softening
         model = "hermes-3-llama-3.1-405b"
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -332,13 +335,23 @@ async def _gpt_develop(
     elif p1:
         cast_prefix = f"Scene features {p1}. "
 
+    _gender_rule = (
+        "\nBOTH PERFORMERS ARE BIOLOGICAL WOMEN — female anatomy ONLY: vagina, vulva, clitoris, labia, breasts, nipples. "
+        "NEVER write cock/penis/dick for either character — they do not have penises. "
+        "If penetration occurs, use a strap-on or fingers — NEVER a penis. "
+        "No men appear anywhere in this film."
+    ) if is_lesbian else ""
+
     adult_sys = (
         "PROFESSIONAL ADULT FILM — West Coast Productions / Evil Angel style. "
-        "NO euphemisms. NO romance novel language. NO 'unspoken desires' or 'charged air'. "
-        "Write exactly what is physically happening: who is doing what, body positions, clothing state, body parts involved. "
+        "BANNED WORDS IN EVERY SCENE: 'unspoken desires', 'charged air', 'electricity', 'tension', 'flirtatious', 'tease', 'banter', 'longing'. "
+        "Write ONLY what is physically happening right now: exact body positions, clothing state, who is touching what. "
         "Use character names in EVERY description — never 'they' alone. "
-        "Escalate: Act 1 = meet/setup/undressing begins, Act 2 = oral sex and foreplay explicitly described, Act 3 = penetrative sex acts described explicitly — position, action, intensity. "
-        "Dialogue: raw, direct, in-character. Max 10 words. Never poetic."
+        "Act 1 = they meet and immediately begin removing clothing and touching each other's bodies. "
+        "Act 2 = explicit oral sex — who is going down on whom, mouth position, body response. "
+        "Act 3 = full explicit acts — exact positions, penetration (fingers/strap-on), orgasm. "
+        "Dialogue: raw, sexual, direct. Max 10 words. No poetry, no metaphor."
+        + _gender_rule
     ) if is_adult else ""
 
     base_system = (
@@ -399,18 +412,27 @@ async def _gpt_develop(
             f"description (1 sentence — what is physically happening, use character names)"
         )
 
+        _img_gender = "two women, female bodies only, no men — " if is_lesbian else ""
         shot_prompt_instruction = (
-            f"shot_prompt (image gen prompt — MUST open with: '{p1}{(', ' + p2) if p2 else ''}' and their physical appearance, "
-            f"then the exact action/position, setting, lighting, camera angle. "
-            f"1 dense paragraph. Include body details, clothing state, explicit positioning. No labels.)"
+            f"shot_prompt (image gen VISUAL prompt — {_img_gender}"
+            f"describe exactly what camera sees: {p1} and {p2 or 'partner'} physical appearance and clothing state, "
+            f"their body positions, setting, lighting. "
+            f"Use photographic terms: 'medium shot', 'close-up', 'boudoir lighting', 'unclothed'. "
+            f"DO NOT write anatomical slang — describe visually. 1 dense paragraph. No labels.)"
         ) if is_adult else (
             f"shot_prompt (image gen prompt — subject by name, action, setting, lighting, camera angle; 1 dense paragraph)"
         )
+
+        _per_act_gender = (
+            f"\nGENDER RULE: Both {p1} and {p2} are WOMEN with female bodies only. "
+            f"NO penises. NO male anatomy. Penetration = fingers or strap-on only."
+        ) if is_lesbian and p1 and p2 else ""
 
         u = (
             f"Concept: {concept}\nGenre: {genre}"
             f"\nPerformer 1 — {p1 or 'unnamed'}: {char1_appearance}"
             + (f"\nPerformer 2 — {p2}: {char2_appearance}" if p2 else "")
+            + _per_act_gender
             + f"\nAct {act_num} focus: {act_desc}\n\n"
             f"Return a JSON array of EXACTLY {act_scene_count} scene objects.\n"
             f"Index starts at {start_index}. Each object:\n"
@@ -445,9 +467,9 @@ async def _gpt_develop(
             a3 = num_scenes - a1 - a2
 
         act_descs = [
-            "Introduction — characters meet, tension builds, flirting begins" if is_adult else "Setup and introduction",
-            "Escalation — desire deepens, foreplay and undressing" if is_adult else "Rising action and conflict",
-            "Climax — explicit sexual acts, emotional peak, resolution" if is_adult else "Climax and resolution",
+            "Introduction — they meet and immediately begin removing each other's clothing and touching each other's bodies. No flirting banter — direct physical contact from scene 1." if is_adult else "Setup and introduction",
+            "Escalation — explicit oral sex begins. Describe exactly who is performing oral on whom, mouth and tongue on genitals, moaning, body arching." if is_adult else "Rising action and conflict",
+            "Climax — penetrative acts (fingers, strap-on), multiple positions, building to orgasm. Explicit and direct throughout." if is_adult else "Climax and resolution",
         ]
 
         all_scenes = []

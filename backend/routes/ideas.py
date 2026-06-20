@@ -261,11 +261,40 @@ def _count_lyric_lines(concept: str) -> int:
 
 def _parse_json_response(raw: str) -> any:
     raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
+    # Strip markdown fences
+    if "```" in raw:
+        for block in raw.split("```")[1:]:
+            block = block.lstrip("json").strip()
+            if block.startswith("{") or block.startswith("["):
+                raw = block
+                break
     return json.loads(raw.strip())
+
+
+def _extract_json_array(raw: str) -> list:
+    """Robustly extract a JSON array from model output even with leading/trailing text."""
+    raw = raw.strip()
+    # Strip markdown fences first
+    if "```" in raw:
+        for block in raw.split("```")[1:]:
+            block = block.lstrip("json").strip()
+            if block.startswith("["):
+                raw = block
+                break
+    # Find the first [ and walk to its matching ]
+    start = raw.find("[")
+    if start == -1:
+        raise ValueError(f"No JSON array found in model output: {raw[:200]}")
+    depth = 0
+    for i, ch in enumerate(raw[start:], start):
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                return json.loads(raw[start : i + 1])
+    # Fallback: try to parse whatever we have (may raise)
+    raise ValueError(f"Unclosed JSON array in model output: {raw[:200]}")
 
 
 async def _gpt_develop(
@@ -379,13 +408,7 @@ async def _gpt_develop(
             messages=[{"role": "system", "content": base_system}, {"role": "user", "content": u}],
             temperature=0.85, max_tokens=4000,
         )
-        raw = resp.choices[0].message.content.strip()
-        # Strip markdown fences
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        return json.loads(raw.strip())
+        return _extract_json_array(resp.choices[0].message.content)
 
     def _build_story():
         try:

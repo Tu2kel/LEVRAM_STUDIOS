@@ -645,7 +645,7 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
       };
     });
 
-    const activeProject = charName || idea?.title || "Default";
+    const activeProject = idea?.title || charName || "Default";
     localStorage.setItem("levram_active_project", activeProject);
 
     if (statusEl) statusEl.innerHTML =

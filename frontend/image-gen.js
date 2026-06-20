@@ -359,6 +359,10 @@ window.igLockToCharacter = async function igLockToCharacter() {
     await window.igLoadCharacters();
     // Auto-load the new ref into Person 1 face slot
     igLoadCharacterFaceRefs(charId, 1);
+    // Refresh Character Lab panel so the new image shows in the thumb strip immediately
+    if (typeof loadCharacters === "function") await loadCharacters();
+    const updatedChar = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === charId);
+    if (updatedChar && typeof clRefreshLoraPanel === "function") clRefreshLoraPanel(updatedChar);
     setTimeout(() => {
       if (btn) { btn.textContent = "→ Lock to Char"; btn.disabled = false; btn.style.background = "rgba(40,120,40,0.25)"; }
     }, 3000);

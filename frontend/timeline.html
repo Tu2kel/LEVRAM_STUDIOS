@@ -428,7 +428,7 @@
             <span style="font-size: 14px;color:rgba(201,168,76,.3);margin-left:2px;">s</span>
             <button class="tl-del-btn" title="Move Up"   onclick="moveShot('${s.id}', -1)">↑</button>
             <button class="tl-del-btn" title="Move Down" onclick="moveShot('${s.id}', 1)">↓</button>
-            <button class="tl-del-btn" title="Regenerate keyframe" onclick="regenKeyframe('${s.id}')" style="color:#4caf50;border-color:rgba(76,175,80,0.4);">⟳</button>
+            <button class="tl-del-btn" title="Regenerate keyframe" onclick="openRegenPanel('${s.id}')" style="color:#4caf50;border-color:rgba(76,175,80,0.4);">⟳</button>
             <button class="tl-del-btn" title="Delete"    onclick="deleteShot('${s.id}')">✕</button>
           </div>
           <div style="display:flex;gap:12px;align-items:flex-start;margin-top:6px;">
@@ -554,26 +554,96 @@
       }
     }
 
-    async function regenKeyframe(id) {
+    let _regenPanel = null;
+    let _allCharacters = [];
+
+    async function _loadCharacters() {
+      if (_allCharacters.length) return _allCharacters;
+      try {
+        const r = await levFetch(`${BASE}/characters`);
+        const d = await r.json();
+        _allCharacters = d.characters || [];
+      } catch { _allCharacters = []; }
+      return _allCharacters;
+    }
+
+    async function openRegenPanel(id) {
       const shot = shots.find(s => s.id === id);
       if (!shot) return;
-      const prompt = shot.shotPrompt || shot.shotDesc || shot.shot_description || "";
-      if (!prompt) { setStatus("No image prompt on this scene — edit it in Shot Builder first.", true); return; }
-      setStatus(`Regenerating ${shot.shot_number || id}…`);
+
+      // Remove existing panel
+      if (_regenPanel) _regenPanel.remove();
+
+      const chars = await _loadCharacters();
+      const charOptions = chars.map(c =>
+        `<option value="${c.id}">${c.name}</option>`
+      ).join("");
+
+      const panel = document.createElement("div");
+      panel.id = "regen-panel-" + id;
+      panel.style.cssText = `
+        position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+        background:#0d0d1a; border:1px solid rgba(76,175,80,0.5);
+        border-radius:6px; padding:20px; z-index:9999; width:420px;
+        box-shadow:0 0 40px rgba(0,0,0,0.8); font-family:Rajdhani,sans-serif;
+      `;
+      panel.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div style="color:#4caf50;font-size:13px;letter-spacing:2px;text-transform:uppercase;">
+            ⟳ AI Rewrite & Regen — ${shot.shot_number || id}
+          </div>
+          <button onclick="document.getElementById('regen-panel-${id}').remove()"
+            style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:18px;cursor:pointer;">✕</button>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:12px;line-height:1.5;">
+          ${shot.shotDesc || shot.shot_description || "No description"}
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:1px;margin-bottom:6px;">WHO OWNS THIS FRAME?</div>
+        <select id="regen-char-sel" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:8px;border-radius:3px;margin-bottom:14px;font-family:Rajdhani,sans-serif;font-size:13px;">
+          <option value="">— Pick camera subject —</option>
+          ${charOptions}
+        </select>
+        <div id="regen-status" style="font-size:11px;color:rgba(255,255,255,0.4);min-height:18px;margin-bottom:10px;"></div>
+        <button onclick="runAiRegen('${id}')"
+          style="width:100%;background:linear-gradient(90deg,rgba(76,175,80,0.4),rgba(129,199,132,0.4));border:1px solid rgba(76,175,80,0.6);color:#a5d6a7;font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:10px;border-radius:3px;cursor:pointer;">
+          Hermes Rewrites → Generate
+        </button>
+      `;
+      document.body.appendChild(panel);
+      _regenPanel = panel;
+    }
+
+    async function runAiRegen(id) {
+      const shot = shots.find(s => s.id === id);
+      if (!shot) return;
+      const charId  = document.getElementById("regen-char-sel")?.value;
+      if (!charId) { document.getElementById("regen-status").textContent = "Pick a character first."; return; }
+      const statusEl = document.getElementById("regen-status");
+      statusEl.textContent = "Hermes rewriting prompt…";
+
       try {
-        const res  = await levFetch(`${BASE}/scene/${id}/regen-image`, {
+        const res  = await levFetch(`${BASE}/scene/${id}/ai-regen`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
+          body: JSON.stringify({
+            character_id: charId,
+            scene_description: shot.shotDesc || shot.shot_description || "",
+            original_prompt:   shot.shotPrompt || "",
+          }),
         });
         const data = await res.json();
-        if (!res.ok || !data.success) throw new Error(data.detail || "Regen failed");
+        if (!res.ok || !data.success) throw new Error(data.detail || "Failed");
+        statusEl.textContent = "Generating image…";
         const local = shots.find(s => s.id === id);
-        if (local) local.imageUrl = data.imageUrl;
+        if (local) {
+          local.imageUrl   = data.imageUrl;
+          local.shotPrompt = data.new_prompt;
+        }
         renderTimeline();
-        setStatus(`${shot.shot_number || id} regenerated.`);
+        setStatus(`${shot.shot_number || id} rewritten & regenerated.`);
+        if (_regenPanel) _regenPanel.remove();
       } catch (e) {
-        setStatus("Regen failed: " + e.message, true);
+        statusEl.textContent = "Failed: " + e.message;
       }
     }
 

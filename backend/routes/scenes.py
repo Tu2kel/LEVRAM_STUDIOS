@@ -173,6 +173,12 @@ class RegenImageRequest(BaseModel):
     character_id: Optional[str] = None
 
 
+class AiRegenRequest(BaseModel):
+    character_id: str
+    scene_description: Optional[str] = ""
+    original_prompt: Optional[str] = ""
+
+
 @router.post("/scene/{scene_id}/regen-image")
 async def regen_scene_image(scene_id: str, body: RegenImageRequest):
     """Regenerate the keyframe image for a single scene."""
@@ -249,6 +255,90 @@ async def regen_scene_image(scene_id: str, body: RegenImageRequest):
             pass
 
     return {"success": True, "imageUrl": image_url, "scene_id": scene_id}
+
+
+@router.post("/scene/{scene_id}/ai-regen")
+async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
+    """Hermes rewrites the shot_prompt focused on the selected character, then regenerates the image."""
+    import os, asyncio
+    from openai import OpenAI
+
+    # Fetch character from DB
+    from backend.db import characters_col
+    char_doc = None
+    if characters_col is not None:
+        char_doc = await characters_col.find_one({"id": body.character_id})
+    if not char_doc:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    char_name   = char_doc.get("name", "Character")
+    appearance  = char_doc.get("appearance", "")
+    wardrobe    = char_doc.get("wardrobe", "")
+    char_visual = " ".join(filter(None, [appearance, wardrobe]))
+
+    venice_key = os.getenv("VENICE_API_KEY")
+    if not venice_key:
+        raise HTTPException(status_code=500, detail="VENICE_API_KEY not set")
+
+    client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+
+    rewrite_prompt = (
+        f"You are a cinematographer writing image generation prompts for LEVRAM Studios.\n\n"
+        f"Scene action: {body.scene_description}\n"
+        f"Camera subject: {char_name}\n"
+        f"Their appearance: {char_visual}\n\n"
+        f"Write ONE dense paragraph image generation prompt that:\n"
+        f"- Opens immediately with {char_name}'s full physical description\n"
+        f"- Places {char_name} as the dominant camera subject\n"
+        f"- Includes camera angle (low angle, close-up, etc.), dramatic lighting, and setting\n"
+        f"- Reflects the scene action without losing {char_name} as the visual focus\n"
+        f"- Is photorealistic, cinematic, hyper-detailed\n"
+        f"- No labels, no character name headers — pure visual description only\n"
+        f"Return the prompt paragraph only. Nothing else."
+    )
+
+    loop = asyncio.get_event_loop()
+
+    def _call_hermes():
+        resp = client.chat.completions.create(
+            model="hermes-3-llama-3.1-405b",
+            messages=[
+                {"role": "system", "content": "You write cinematic image generation prompts. Return the prompt only — no commentary, no labels."},
+                {"role": "user", "content": rewrite_prompt},
+            ],
+            temperature=0.75, max_tokens=400,
+        )
+        return resp.choices[0].message.content.strip()
+
+    new_prompt = await loop.run_in_executor(None, _call_hermes)
+
+    # Generate image with new prompt + character face lock
+    try:
+        from backend.routes.orchestrate import _gen_image, _sanitize_img
+        new_prompt_clean = _sanitize_img(new_prompt)
+        image_url = await _gen_image(new_prompt_clean, body.character_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image gen failed: {str(e)[:200]}")
+
+    # Persist updates
+    now = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    updates = {"imageUrl": image_url, "renderOutputUrl": image_url, "shotPrompt": new_prompt, "updated_at": now}
+    if scenes_col is not None:
+        await scenes_col.update_one({"id": scene_id}, {"$set": updates})
+
+    TIMELINE_FILE = Path("data/timelines/main_timeline.json")
+    if TIMELINE_FILE.exists():
+        try:
+            data = json.loads(TIMELINE_FILE.read_text())
+            for s in data.get("shots", []):
+                if s.get("id") == scene_id:
+                    s.update(updates)
+                    break
+            TIMELINE_FILE.write_text(json.dumps(data, indent=2))
+        except Exception:
+            pass
+
+    return {"success": True, "imageUrl": image_url, "new_prompt": new_prompt, "scene_id": scene_id}
 
 
 @router.delete("/scene/{scene_id}")

@@ -399,23 +399,17 @@ async def _run_pipeline(job_id: str, payload: dict):
                     prompt_lower    = raw_prompt.lower()
                     shot_char_field = _shot_char
 
-                    # Resolve face lock by character NAME first (matches any Character Lab entry
-                    # with a ref image whose name appears in the shot) — ID from dropdown is fallback
-                    _resolved_id = _char_name_map.get(shot_char_field.strip())
-                    if not _resolved_id:
-                        # Try matching any name in the map against the prompt
-                        for _cname_key, _cid_val in _char_name_map.items():
-                            if _cname_key and _cname_key in (shot_char_field + " " + prompt_lower):
-                                _resolved_id = _cid_val
-                                break
+                    # Resolve face lock by character NAME — match shot's character field
+                    # against Character Lab entries that have ref images. Dropdown ID is fallback.
+                    _resolved_id   = _char_name_map.get(shot_char_field.strip())
+                    _resolved_cname = shot_char_field.strip()  # the name we matched on
 
                     if _resolved_id:
                         shot_char_id = _resolved_id
-                        # Inject appearance if name not already in prompt
-                        _resolved_name = shot_char_field.strip() or ""
-                        if _resolved_name == char2_name.lower() and char2_appearance and char2_name.lower() not in prompt_lower:
+                        # Inject appearance using the matched character's cast slot
+                        if _resolved_cname == char2_name.lower() and char2_appearance and char2_name.lower() not in prompt_lower:
                             raw_prompt = f"{char2_name}: {char2_appearance}. {raw_prompt}"
-                        elif char1_appearance and char_name and char_name.lower() not in prompt_lower:
+                        elif _resolved_cname == char_name.lower() and char1_appearance and char_name.lower() not in prompt_lower:
                             raw_prompt = f"{char_name}: {char1_appearance}. {raw_prompt}"
                     else:
                         # Fallback to dropdown IDs

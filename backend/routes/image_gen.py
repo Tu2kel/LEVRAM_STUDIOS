@@ -425,19 +425,22 @@ def _novita_generate_image(prompt: str, aspect: str, style: str,
     is_flux = "flux" in engine
 
     body = _json.dumps({
-        "model_name":          model,
-        "prompt":              full,
-        "negative_prompt":     "" if is_flux else "blurry, low quality, watermark, censored",
-        "width":               w,
-        "height":              h,
-        "image_num":           1,
-        "steps":               20 if not is_flux else 28,
-        "cfg_scale":           1.0 if is_flux else 7.0,
-        "sampler_name":        "DPM++ 2M Karras",
-        "guidance_rescale":    0.0,
-        "clip_skip":           1,
-        "loras":               [],
-        "embeddings":          [],
+        "extra": {"response_image_type": "jpeg"},
+        "request": {
+            "model_name":      model,
+            "prompt":          full,
+            "negative_prompt": "" if is_flux else "blurry, low quality, watermark, censored",
+            "width":           w,
+            "height":          h,
+            "image_num":       1,
+            "steps":           20,
+            "seed":            -1,
+            "clip_skip":       1,
+            "guidance_scale":  7.5,
+            "sampler_name":    "Euler a",
+            "loras":           [],
+            "embeddings":      [],
+        }
     }).encode()
 
     headers = {

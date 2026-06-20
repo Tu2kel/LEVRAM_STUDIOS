@@ -23,9 +23,10 @@ window.LEVRAM_CHAR = {
   },
 };
 
-// ── Load character dropdown ────────────────────────────────────
+// ── Load character dropdowns (Char 1 + Char 2) ────────────────
 async function ivLoadCharacters() {
-  const sel = document.getElementById("iv-dev-character");
+  const sel  = document.getElementById("iv-dev-character");
+  const sel2 = document.getElementById("iv-dev-character2");
   if (!sel) return;
   try {
     const res  = await levFetch(`${IV_BASE}/characters`);
@@ -34,6 +35,11 @@ async function ivLoadCharacters() {
       const o = document.createElement("option");
       o.value = c.id; o.textContent = c.name; o.dataset.name = c.name;
       sel.appendChild(o);
+      if (sel2) {
+        const o2 = document.createElement("option");
+        o2.value = c.id; o2.textContent = c.name; o2.dataset.name = c.name;
+        sel2.appendChild(o2);
+      }
     });
     // Restore last-used character
     const saved = LEVRAM_CHAR.getId();
@@ -280,8 +286,12 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
   if (approveBtn) { approveBtn.disabled = true; approveBtn.classList.add("lora-scanning"); }
   panel?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  const charSel  = document.getElementById("iv-dev-character");
-  const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
+  const charSel   = document.getElementById("iv-dev-character");
+  const charSel2  = document.getElementById("iv-dev-character2");
+  const charName  = charSel?.selectedOptions?.[0]?.dataset?.name  || charSel?.selectedOptions?.[0]?.textContent  || "";
+  const charId    = charSel?.value || "";
+  const char2Name = charSel2?.selectedOptions?.[0]?.dataset?.name || charSel2?.selectedOptions?.[0]?.textContent || "";
+  const char2Id   = charSel2?.value || "";
 
   // Use the idea's saved target_minutes if available — don't rely on form which may show wrong default
   const cachedIdea = (_ivIdeasCache || []).find(i => i.id === id);
@@ -294,7 +304,11 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
     const res  = await levFetch(`${IV_BASE}/ideas/${id}/develop`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ character_name: charName, target_minutes: minutes, scene_seconds: sceneSec }),
+      body: JSON.stringify({
+        character_name: charName, character_id: charId,
+        character2_name: char2Name, character2_id: char2Id,
+        target_minutes: minutes, scene_seconds: sceneSec,
+      }),
     });
     const text = await res.text();
     let data;

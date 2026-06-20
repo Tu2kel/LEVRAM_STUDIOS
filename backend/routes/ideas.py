@@ -5,7 +5,7 @@ from datetime import datetime
 from math import ceil
 import json, uuid, asyncio, os
 
-from backend.db import ideas_col
+from backend.db import ideas_col, characters_col
 
 router = APIRouter()
 DATA_FILE = Path("data/ideas.json")
@@ -24,6 +24,8 @@ class IdeaPayload(BaseModel):
 class DevelopRequest(BaseModel):
     character_name: str = ""
     character_id: str = ""
+    character2_name: str = ""
+    character2_id: str = ""
     target_minutes: float = 8.0
     scene_seconds: int = 5
 
@@ -131,23 +133,48 @@ def _patch_idea(idea_id: str, updates: dict):
     _save(data)
 
 
+async def _fetch_char_appearance(char_id: str) -> str:
+    """Return a one-paragraph physical description for image prompt injection."""
+    if not char_id:
+        return ""
+    try:
+        if characters_col is not None:
+            doc = await characters_col.find_one({"id": char_id})
+        else:
+            from pathlib import Path as _P; import json as _j
+            chars = _j.loads(_P("data/characters.json").read_text()).get("characters", [])
+            doc = next((c for c in chars if c.get("id") == char_id), None)
+        if not doc:
+            return ""
+        parts = [p for p in [doc.get("appearance", ""), doc.get("wardrobe", "")] if p]
+        return " ".join(parts)
+    except Exception:
+        return ""
+
+
 @router.post("/ideas/{idea_id}/develop")
 async def develop_idea(idea_id: str, body: DevelopRequest):
     idea = await _get_idea_any(idea_id)
     if not idea:
         raise HTTPException(404, "Idea not found")
 
-    target_sec  = int(body.target_minutes * 60)
-    # Give Venice a concrete scene count (assume avg 7s/scene) so it doesn't under-generate
-    num_scenes  = max(10, round(target_sec / 7))
+    target_sec = int(body.target_minutes * 60)
+    num_scenes = max(10, round(target_sec / 7))
+
+    # Look up full character appearance so image prompts know what the performers look like
+    char1_appearance = await _fetch_char_appearance(body.character_id)
+    char2_appearance = await _fetch_char_appearance(body.character2_id)
 
     story = await _gpt_develop(
-        concept        = idea["rawIdea"],
-        genre          = idea.get("genre", "sci-fi action"),
-        character_name = body.character_name,
-        num_scenes     = num_scenes,
-        scene_seconds  = body.scene_seconds,
-        target_minutes = body.target_minutes,
+        concept           = idea["rawIdea"],
+        genre             = idea.get("genre", "sci-fi action"),
+        character_name    = body.character_name,
+        char2_name        = body.character2_name,
+        char1_appearance  = char1_appearance,
+        char2_appearance  = char2_appearance,
+        num_scenes        = num_scenes,
+        scene_seconds     = body.scene_seconds,
+        target_minutes    = body.target_minutes,
     )
 
     scenes = story.get("scenes", [])
@@ -166,8 +193,11 @@ async def develop_idea(idea_id: str, body: DevelopRequest):
              "target_minutes": body.target_minutes,
              "scene_seconds": body.scene_seconds}
     if body.character_id:
-        patch["character_id"]   = body.character_id
-        patch["character_name"] = body.character_name
+        patch["character_id"]    = body.character_id
+        patch["character_name"]  = body.character_name
+    if body.character2_id:
+        patch["character2_id"]   = body.character2_id
+        patch["character2_name"] = body.character2_name
     await _patch_idea_any(idea_id, patch)
     return {"success": True, "story": story}
 
@@ -241,6 +271,7 @@ def _parse_json_response(raw: str) -> any:
 async def _gpt_develop(
     concept: str, genre: str, character_name: str,
     num_scenes: int, scene_seconds: int, target_minutes: float,
+    char2_name: str = "", char1_appearance: str = "", char2_appearance: str = "",
 ) -> dict:
     from openai import OpenAI
     loop = asyncio.get_event_loop()
@@ -248,30 +279,42 @@ async def _gpt_develop(
     is_adult = "adult" in genre.lower()
     if is_adult and os.getenv("VENICE_API_KEY"):
         client = OpenAI(api_key=os.getenv("VENICE_API_KEY"), base_url="https://api.venice.ai/api/v1")
-        model = "venice-uncensored"
+        model = "llama-3.3-70b"
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model = "gpt-4o-mini"
 
     lyric_lines = _count_lyric_lines(concept)
 
+    # Build performer reference block for image prompts
+    performer_block = ""
+    if char1_appearance or character_name:
+        performer_block += f"PERFORMER 1 — {character_name}: {char1_appearance}\n" if char1_appearance else f"PERFORMER 1 — {character_name}\n"
+    if char2_appearance or char2_name:
+        performer_block += f"PERFORMER 2 — {char2_name}: {char2_appearance}\n" if char2_appearance else f"PERFORMER 2 — {char2_name}\n"
+
     adult_sys = (
-        "ADULT CONTENT: Write sexually explicit scenes. No euphemisms. "
-        "Escalate across acts: Act 1 = tension/flirting, Act 2 = foreplay/undressing, Act 3 = explicit sex acts. "
-        "Dialogue: original, in-character. Max 12 words. NEVER song lyrics."
+        "PROFESSIONAL ADULT FILM CONTENT — West Coast / Evil Angel style. "
+        "Explicit, direct, production-ready. No euphemisms. No romance novel language. "
+        "Write like a director's shot breakdown: what is happening physically, who is doing what, body positions, camera angles. "
+        "Escalate realistically: Act 1 = arrival/setup/chemistry, Act 2 = undressing, oral, foreplay — build intensity, Act 3 = explicit penetrative sex acts, peak performance, climax. "
+        "Dialogue: raw, in-character, direct. Max 10 words. NEVER song lyrics. NEVER poetic filler."
     ) if is_adult else ""
 
     base_system = (
         "You are a scene breakdown writer for LEVRAM Studios. "
         "Write compact JSON only — no markdown, no commentary. "
-        "Description: 1 sentence. Dialogue: 1 line max 12 words. "
+        "Description: 1 direct sentence — what is physically happening. Dialogue: 1 line max 10 words. "
         + adult_sys
     )
 
     # ── Step 1: Header (title, logline, act_structure) ──────────
     def _call_header():
+        performers = character_name or "unnamed"
+        if char2_name:
+            performers += f" and {char2_name}"
         u = (
-            f"Concept: {concept}\nGenre: {genre}\nCharacter: {character_name or 'unnamed'}\n\n"
+            f"Concept: {concept}\nGenre: {genre}\nPerformers: {performers}\n\n"
             f"Return JSON with ONLY these fields:\n"
             f"  title (from concept), logline (1 sentence), act_structure (1 sentence 3-act summary)"
         )
@@ -282,23 +325,52 @@ async def _gpt_develop(
         )
         return _parse_json_response(resp.choices[0].message.content)
 
+    # Build image prompt prefix from performer appearances (used in shot_prompt)
+    def _build_shot_prompt_prefix():
+        parts = []
+        if char1_appearance:
+            name = character_name or "Performer 1"
+            parts.append(f"{name}: {char1_appearance}")
+        if char2_appearance:
+            name = char2_name or "Performer 2"
+            parts.append(f"{name}: {char2_appearance}")
+        return ". ".join(parts)
+
+    shot_prompt_prefix = _build_shot_prompt_prefix()
+
     # ── Step 2: Scenes per act (3 separate small calls) ──────────
     def _call_act(act_num: int, act_scene_count: int, start_index: int, act_desc: str):
         if lyric_lines:
             dialogue_rule = "VERBATIM lyric line for this scene"
         elif is_adult:
-            dialogue_rule = "one explicit in-character line, max 12 words"
+            dialogue_rule = "one explicit in-character raw line, max 10 words"
         else:
             dialogue_rule = "one spoken line, max 12 words"
 
+        performer_ctx = ""
+        if performer_block:
+            performer_ctx = f"\nPerformers:\n{performer_block}"
+
+        shot_prompt_instruction = (
+            f"shot_prompt (image gen prompt — start with performers' physical descriptions if provided, "
+            f"then describe this specific scene action, position, setting, lighting, camera angle; "
+            f"1 dense paragraph, no labels)"
+        ) if is_adult else (
+            f"shot_prompt (image gen prompt — subject, action, setting, lighting, camera angle; 1 dense paragraph)"
+        )
+
         u = (
-            f"Concept: {concept}\nGenre: {genre}\nCharacter: {character_name or 'unnamed'}\n"
-            f"Act {act_num} focus: {act_desc}\n\n"
+            f"Concept: {concept}\nGenre: {genre}"
+            f"\nPerformer 1: {character_name or 'unnamed'}"
+            + (f"\nPerformer 2: {char2_name}" if char2_name else "")
+            + performer_ctx
+            + f"\nAct {act_num} focus: {act_desc}\n\n"
             f"Return a JSON array of EXACTLY {act_scene_count} scene objects.\n"
             f"Index starts at {start_index}. Each object:\n"
             f"  index (int), act ({act_num}), "
-            f"description (1 sentence{'— explicit' if is_adult else ''}), "
+            f"description (1 direct sentence — what is physically happening{'— explicit adult film action' if is_adult else ''}), "
             f"dialogue ({dialogue_rule}), "
+            f"{shot_prompt_instruction}, "
             f"reel_weight (1-10), emotion (1 word), duration_seconds (5-10)\n"
             f"NO other fields. Return the array only (not wrapped in an object)."
         )

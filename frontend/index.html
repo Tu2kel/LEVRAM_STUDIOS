@@ -548,10 +548,14 @@
             <!-- Approve bar -->
             <div style="margin-top:16px;border-top:1px solid rgba(201,168,76,0.15);padding-top:14px;">
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-                <div class="field-label" style="margin:0;white-space:nowrap;">Character:</div>
+                <div class="field-label" style="margin:0;white-space:nowrap;">Char 1:</div>
                 <select id="iv-dev-character" class="voice-char-select" style="flex:1;min-width:120px;" data-char-sync
                   onchange="LEVRAM_CHAR.set(this.value, this.selectedOptions[0]?.textContent)">
                   <option value="">None / Original</option>
+                </select>
+                <div class="field-label" style="margin:0;white-space:nowrap;">Char 2:</div>
+                <select id="iv-dev-character2" class="voice-char-select" style="flex:1;min-width:120px;">
+                  <option value="">None</option>
                 </select>
                 <div class="field-label" style="margin:0;white-space:nowrap;">Quality:</div>
                 <select id="iv-model" class="voice-char-select" style="flex:2;min-width:160px;" onchange="ivUpdateCostEst()">

@@ -296,6 +296,23 @@ async def _run_pipeline(job_id: str, payload: dict):
         _fetch_appearance(character2_id),
     )
 
+    # Build name → character_id map from Character Lab (only chars with ref images)
+    # This lets every shot resolve face lock by NAME, not by dropdown ID
+    _char_name_map: dict[str, str] = {}  # lowercase name → character_id
+    try:
+        from backend.db import characters_col as _cmap_col
+        if _cmap_col is not None:
+            _all_chars = await _cmap_col.find({}).to_list(None)
+        else:
+            _all_chars = json.loads(Path("data/characters.json").read_text()).get("characters", [])
+        for _c in _all_chars:
+            _cname = (_c.get("name") or "").strip().lower()
+            _has_ref = bool(_c.get("reference_images") or _c.get("reference_images_b64") or _c.get("preview_images"))
+            if _cname and _has_ref:
+                _char_name_map[_cname] = _c.get("id", "")
+    except Exception:
+        pass
+
     # Build a tone prefix injected into every image prompt so the AI stays on genre
     _tone_prefix = ""
     genre_lower = genre.lower()
@@ -381,17 +398,36 @@ async def _run_pipeline(job_id: str, payload: dict):
                 else:
                     prompt_lower    = raw_prompt.lower()
                     shot_char_field = _shot_char
-                    _c1_match = char_name  and char_name.lower()  in (shot_char_field + " " + prompt_lower)
-                    _c2_match = char2_name and char2_name.lower() in (shot_char_field + " " + prompt_lower)
 
-                    if _c2_match and not _c1_match:
-                        shot_char_id = character2_id
-                        if char2_appearance and char2_name.lower() not in prompt_lower:
+                    # Resolve face lock by character NAME first (matches any Character Lab entry
+                    # with a ref image whose name appears in the shot) — ID from dropdown is fallback
+                    _resolved_id = _char_name_map.get(shot_char_field.strip())
+                    if not _resolved_id:
+                        # Try matching any name in the map against the prompt
+                        for _cname_key, _cid_val in _char_name_map.items():
+                            if _cname_key and _cname_key in (shot_char_field + " " + prompt_lower):
+                                _resolved_id = _cid_val
+                                break
+
+                    if _resolved_id:
+                        shot_char_id = _resolved_id
+                        # Inject appearance if name not already in prompt
+                        _resolved_name = shot_char_field.strip() or ""
+                        if _resolved_name == char2_name.lower() and char2_appearance and char2_name.lower() not in prompt_lower:
                             raw_prompt = f"{char2_name}: {char2_appearance}. {raw_prompt}"
-                    else:
-                        shot_char_id = character_id if shot.get("character_lock", True) else ""
-                        if char1_appearance and char_name and char_name.lower() not in prompt_lower:
+                        elif char1_appearance and char_name and char_name.lower() not in prompt_lower:
                             raw_prompt = f"{char_name}: {char1_appearance}. {raw_prompt}"
+                    else:
+                        # Fallback to dropdown IDs
+                        _c2_match = char2_name and char2_name.lower() in (shot_char_field + " " + prompt_lower)
+                        if _c2_match:
+                            shot_char_id = character2_id
+                            if char2_appearance and char2_name.lower() not in prompt_lower:
+                                raw_prompt = f"{char2_name}: {char2_appearance}. {raw_prompt}"
+                        else:
+                            shot_char_id = character_id if shot.get("character_lock", True) else ""
+                            if char1_appearance and char_name and char_name.lower() not in prompt_lower:
+                                raw_prompt = f"{char_name}: {char1_appearance}. {raw_prompt}"
 
                 raw_prompt   = _sanitize_img(raw_prompt)
                 image_prompt = _tone_prefix + raw_prompt if _tone_prefix else raw_prompt

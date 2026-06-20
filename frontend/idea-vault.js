@@ -282,8 +282,13 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
 
   const charSel  = document.getElementById("iv-dev-character");
   const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
-  const minutes  = parseFloat(document.getElementById("iv-minutes")?.value || "8");
-  const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
+
+  // Use the idea's saved target_minutes if available — don't rely on form which may show wrong default
+  const cachedIdea = (_ivIdeasCache || []).find(i => i.id === id);
+  const savedMinutes = cachedIdea?.target_minutes;
+  const formMinutes  = parseFloat(document.getElementById("iv-minutes")?.value || "10");
+  const minutes  = savedMinutes || formMinutes;
+  const sceneSec = parseInt(cachedIdea?.scene_seconds || document.getElementById("iv-scene-sec")?.value || "5");
 
   try {
     const res  = await levFetch(`${IV_BASE}/ideas/${id}/develop`, {

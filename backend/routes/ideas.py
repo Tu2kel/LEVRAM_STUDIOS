@@ -52,7 +52,13 @@ def _strip(doc):
 @router.get("/ideas")
 async def get_ideas(x_studio: str = Header(default="levram")):
     if ideas_col is not None:
-        docs = await ideas_col.find({"studio": x_studio}).sort("createdAt", -1).to_list(None)
+        docs = await ideas_col.find({
+            "$or": [{"studio": x_studio}, {"studio": {"$exists": False}}]
+        }).sort("createdAt", -1).to_list(None)
+        # Backfill missing studio field
+        for doc in docs:
+            if not doc.get("studio"):
+                await ideas_col.update_one({"id": doc["id"]}, {"$set": {"studio": x_studio}})
         return {"success": True, "ideas": [_strip(d) for d in docs]}
     ideas = [i for i in _load()["ideas"] if i.get("studio", "levram") == x_studio]
     return {"success": True, "ideas": ideas}

@@ -397,20 +397,20 @@ NOVITA_KEY      = os.getenv("NOVITA_API_KEY", "")
 NOVITA_IMG_BASE = "https://api.novita.ai/v3/async"
 
 NOVITA_MODELS = {
-    "novita_pro":     "pornmasterPro_fullV5-inpainting_135217.safetensors",
-    "novita_photo":   "epicphotogasm_xPlusPlus_135412.safetensors",
-    "novita_realism": "epicrealism_naturalSinRC1VAE_106430.safetensors",
-    "novita_anime":   "meinahentai_v4_70340.safetensors",
-    # Legacy aliases — cached browsers may still send these
+    "novita_pro":     "epicphotogasm_x_131265.safetensors",              # explicit photorealistic
+    "novita_photo":   "epicphotogasm_xPlusPlus_135412.safetensors",      # explicit photorealistic ++
+    "novita_realism": "epicrealism_naturalSinRC1VAE_106430.safetensors", # photorealistic
+    "novita_anime":   "meinahentai_v4_70340.safetensors",                # anime NSFW
+    # Legacy aliases
     "novita_flux":    "epicphotogasm_xPlusPlus_135412.safetensors",
-    "novita_pony":    "pornmasterPro_fullV5-inpainting_135217.safetensors",
+    "novita_pony":    "epicphotogasm_x_131265.safetensors",
 }
 
 NOVITA_IMG_SIZES = {
-    "widescreen": (1344, 768),
-    "cinematic":  (1344, 576),
-    "portrait":   (768,  1344),
-    "square":     (1024, 1024),
+    "widescreen": (768, 512),
+    "cinematic":  (768, 432),
+    "portrait":   (512, 768),
+    "square":     (512, 512),
 }
 
 def _novita_generate_image(prompt: str, aspect: str, style: str,

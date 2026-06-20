@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import uuid
 import json
 import zipfile
@@ -113,11 +114,41 @@ async def get_characters(x_studio: str = Header(default="levram")):
 async def create_character(payload: CharacterPayload, x_studio: str = Header(default="levram")):
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="Character name is required")
+    name_clean = payload.name.strip()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Dedup: return existing character if same name+studio already exists
+    if characters_col is not None:
+        if x_studio == "levram":
+            dedup_query = {
+                "name": {"$regex": f"^{re.escape(name_clean)}$", "$options": "i"},
+                "$or": [{"studio": "levram"}, {"studio": {"$exists": False}}],
+            }
+        else:
+            dedup_query = {
+                "name": {"$regex": f"^{re.escape(name_clean)}$", "$options": "i"},
+                "studio": x_studio,
+            }
+        existing_doc = await characters_col.find_one(dedup_query)
+        if existing_doc:
+            docs = await characters_col.find({"studio": x_studio}).to_list(None)
+            return {"success": True, "character": _strip(existing_doc), "characters": [_strip(d) for d in docs]}
+    else:
+        data = _json_load()
+        existing_doc = next(
+            (c for c in data["characters"]
+             if c.get("name", "").strip().lower() == name_clean.lower()
+             and c.get("studio", "levram") == x_studio),
+            None,
+        )
+        if existing_doc:
+            chars = [c for c in data["characters"] if c.get("studio", "levram") == x_studio]
+            return {"success": True, "character": existing_doc, "characters": chars}
+
     character = {"id": str(uuid.uuid4()), **payload.model_dump(), "studio": x_studio, "createdAt": now, "updatedAt": now}
-    character["name"] = character["name"].strip()
+    character["name"] = name_clean
     if not character.get("lora_trigger"):
-        character["lora_trigger"] = character["name"].upper().replace(" ", "_")
+        character["lora_trigger"] = name_clean.upper().replace(" ", "_")
     if characters_col is not None:
         await characters_col.insert_one(character)
         docs = await characters_col.find({"studio": x_studio}).to_list(None)

@@ -21,6 +21,8 @@ You help produce adult content — scripts, scenes, characters, shot directions,
 
 CRITICAL: Only do what is asked. Match your response exactly to the scope of the request. Do NOT auto-generate content unless explicitly asked.
 
+RESPONSE LENGTH: Be concise. Scene descriptions = 1 sentence. Dialogue = 1 line, 15 words max. Image prompts = 1 dense paragraph, no filler. Never pad. Never explain your output.
+
 APP SECTIONS — you know the entire app and can fill each section:
 
 IDEA VAULT — Where rough concepts become structured productions.
@@ -162,14 +164,16 @@ async def rl_agent_models(x_studio: str = Header(default="levram")):
 
     models = []
 
-    # Always try to get local Ollama models
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{OLLAMA_URL}/api/tags")
-            data = resp.json()
-            models += [m["name"] for m in data.get("models", [])]
-    except Exception:
-        pass
+    # Only try Ollama if explicitly configured (skip localhost probe on Railway)
+    ollama_configured = os.getenv("OLLAMA_URL") and not OLLAMA_URL.startswith("http://localhost")
+    if ollama_configured:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{OLLAMA_URL}/api/tags")
+                data = resp.json()
+                models += [m["name"] for m in data.get("models", [])]
+        except Exception:
+            pass
 
     # Add Venice option if key is set
     if VENICE_KEY and VENICE_MODEL not in models:

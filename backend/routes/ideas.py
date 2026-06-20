@@ -137,28 +137,28 @@ async def develop_idea(idea_id: str, body: DevelopRequest):
     if not idea:
         raise HTTPException(404, "Idea not found")
 
-    target_sec  = body.target_minutes * 60
-    num_scenes  = ceil((target_sec / body.scene_seconds) * 1.1)  # 10% buffer
+    target_sec  = int(body.target_minutes * 60)
 
     story = await _gpt_develop(
         concept        = idea["rawIdea"],
         genre          = idea.get("genre", "sci-fi action"),
         character_name = body.character_name,
-        num_scenes     = num_scenes,
+        num_scenes     = 0,           # unused — Venice decides scene count
         scene_seconds  = body.scene_seconds,
         target_minutes = body.target_minutes,
     )
 
     scenes = story.get("scenes", [])
+    actual_total_sec = sum(s.get("duration_seconds", 5) for s in scenes)
+    num_scenes  = len(scenes)
     story["num_scenes"]      = num_scenes
-    story["actual_scenes"]   = len(scenes)
-    story["scene_seconds"]   = body.scene_seconds
+    story["actual_scenes"]   = num_scenes
     story["target_minutes"]  = body.target_minutes
-    story["est_seconds"]     = num_scenes * body.scene_seconds
-    story["est_minutes"]     = round(story["est_seconds"] / 60, 1)
-    story["reel_60s"]      = _top_scene_indices(scenes, 60,  body.scene_seconds)
-    story["reel_30s"]      = _top_scene_indices(scenes, 30,  body.scene_seconds)
-    story["reel_15s"]      = _top_scene_indices(scenes, 15,  body.scene_seconds)
+    story["est_seconds"]     = actual_total_sec
+    story["est_minutes"]     = round(actual_total_sec / 60, 1)
+    story["reel_60s"]        = _top_scene_indices(scenes, 60,  5)
+    story["reel_30s"]        = _top_scene_indices(scenes, 30,  5)
+    story["reel_15s"]        = _top_scene_indices(scenes, 15,  5)
 
     patch = {"story": story, "status": "developed",
              "target_minutes": body.target_minutes,
@@ -246,48 +246,56 @@ async def _gpt_develop(
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model = "gpt-4o-mini"
 
-    # Count lyric lines in the concept so the model can't pad with filler
-    lyric_lines = _count_lyric_lines(concept)
-    locked_scenes = lyric_lines if lyric_lines else num_scenes
+    # Count lyric lines — if present, scene count is locked to lyric count
+    lyric_lines  = _count_lyric_lines(concept)
+    target_sec   = int(target_minutes * 60)
+
     adult_rules = (
-        "\nADULT CONTENT RULES (this genre requires explicit output):\n"
-        "A. Scene descriptions MUST be sexually explicit — describe physical acts, body contact, undressing, and explicit sexual activity directly. Do NOT euphemize.\n"
-        "B. Escalate across acts: Act 1 = flirting/tension, Act 2 = foreplay and undressing, Act 3 = explicit sexual acts.\n"
-        "C. Dialogue must be original, in-character, and sensual/explicit — NOT song lyrics, NOT generic romance lines. Write what these specific characters would actually say.\n"
+        "\nADULT CONTENT RULES:\n"
+        "A. Descriptions MUST be sexually explicit — body contact, undressing, explicit acts. No euphemisms.\n"
+        "B. Escalate: Act 1 = tension/flirting, Act 2 = foreplay/undressing, Act 3 = explicit sex acts.\n"
+        "C. Dialogue: original, in-character, explicit. NEVER song lyrics. Max 12 words per line.\n"
     ) if is_adult else ""
 
+    if lyric_lines:
+        scene_count_rule = f"SCENE COUNT LOCKED AT {lyric_lines} — one scene per lyric line, in order."
+    else:
+        scene_count_rule = (
+            f"TARGET DURATION: {target_minutes} min ({target_sec}s total). "
+            f"You decide how many scenes are needed. Each scene has a duration_seconds (5–10). "
+            f"The sum of all duration_seconds must be approximately {target_sec}s. "
+            f"Do not pad — every scene must advance the story."
+        )
+
     system = (
-        "You are a scene breakdown writer for LEVRAM Studios. "
-        "CRITICAL RULES:\n"
-        "1. Execute the concept LITERALLY — do not reimagine, upgrade, or add lore not mentioned.\n"
-        "2. If a LYRICS section is present, assign EXACTLY one lyric line per scene in order — use them VERBATIM as the dialogue field. Do not paraphrase or combine lines.\n"
-        "   If NO LYRICS section is present, write original dialogue specific to the characters and their moment. NEVER use real song lyrics.\n"
-        f"3. SCENE COUNT IS LOCKED AT {locked_scenes}. You MUST output ALL {locked_scenes} scenes. Do not stop early. Do not add intro/outro filler.\n"
-        "4. Do not invent settings (no space, no future, no fantasy) unless the concept explicitly says so.\n"
-        "5. Keep tone/genre exactly as described. A comedy skit stays a comedy skit.\n"
-        "6. The 'Scene setup' in the concept describes the ACTION happening during the lyrics — apply it progressively across scenes, do not make it a separate scene.\n"
-        "7. Return ONLY valid JSON — no markdown fences, no commentary."
+        "You are a scene breakdown writer for LEVRAM Studios.\n"
+        "RULES:\n"
+        "1. Execute the concept LITERALLY — no extra lore, no invented settings.\n"
+        "2. If LYRICS section present: one lyric line per scene VERBATIM as dialogue. No paraphrasing.\n"
+        "   If NO LYRICS: write original in-character dialogue. NEVER use real song lyrics.\n"
+        f"3. {scene_count_rule}\n"
+        "4. Keep tone/genre exactly as described.\n"
+        "5. Return ONLY valid JSON — no markdown, no commentary, no explanation.\n"
+        "6. Keep scene objects compact — description is ONE sentence, dialogue is ONE line.\n"
         + adult_rules
     )
     user = (
         f"Concept: {concept}\n"
         f"Genre: {genre}\n"
-        f"Main character: {character_name or 'unnamed'}\n"
-        f"Scene length: {scene_seconds}s each\n\n"
+        f"Main character: {character_name or 'unnamed'}\n\n"
         f"Return a JSON object with:\n"
-        f"  title         – story title (taken from concept, not invented)\n"
-        f"  logline       – one sentence summary\n"
-        f"  act_structure – brief 3-act breakdown (string)\n"
-        f"  scenes        – array of EXACTLY {locked_scenes} scene objects (no more, no less), each with:\n"
-        f"    index        (int, 0-based)\n"
-        f"    act          (1, 2, or 3)\n"
-        f"    description  (one sentence — what is physically happening in this scene, literal to the concept{'— be explicit and graphic' if is_adult else ''})\n"
-        f"    image_prompt (visual prompt — body language, setting, lighting, costume only — NO face descriptions)\n"
-        f"    dialogue     ({'VERBATIM lyric line for this scene — copy it exactly as written' if lyric_lines else 'original spoken line from a character — explicit and in-character' if is_adult else 'spoken line from a character'})\n"
-        f"    reel_weight  (int 1-10 — impact value for highlight reel)\n"
-        f"    emotion      (single word: tension, triumph, comedy, fear, etc.)\n"
-        f"    duration_seconds (int — clip length: 5 for most scenes, 8 for slow/cinematic/emotional moments, 5 for action/quick cuts; never less than 5)\n"
-        f"\nYou MUST output all {locked_scenes} scenes. Output the complete JSON array in one response.\n"
+        f"  title         – story title from concept\n"
+        f"  logline       – one sentence\n"
+        f"  act_structure – one sentence 3-act summary\n"
+        f"  scenes        – array of scene objects, each with:\n"
+        f"    index            (int, 0-based)\n"
+        f"    act              (1, 2, or 3)\n"
+        f"    description      (1 sentence — physical action, {'explicit' if is_adult else 'literal'})\n"
+        f"    dialogue         ({'VERBATIM lyric line' if lyric_lines else 'one spoken line, max 12 words'})\n"
+        f"    reel_weight      (int 1–10)\n"
+        f"    emotion          (one word)\n"
+        f"    duration_seconds (int 5–10)\n"
+        f"\nNO image_prompt field. Keep it compact. Output complete valid JSON.\n"
     )
 
     def _call():

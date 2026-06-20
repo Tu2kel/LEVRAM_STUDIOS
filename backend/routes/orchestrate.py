@@ -225,17 +225,36 @@ async def _append_to_timeline(shot: dict):
 # ── Main autonomous pipeline ──────────────────────────────────────────────────
 
 async def _run_pipeline(job_id: str, payload: dict):
-    scenes_input  = payload.get("scenes", [])    # pre-built scenes from Idea Vault
-    concept       = payload.get("concept", "")
-    character_id  = payload.get("character_id", "")
-    char_name     = payload.get("character_name", "")
-    genre         = payload.get("genre", "")
-    tone_notes    = payload.get("tone_notes", "")
-    duration      = int(payload.get("duration", 5))
-    model         = payload.get("model", "ws_wan22")
-    include_tts   = payload.get("include_tts", True)   # default ON
-    project       = payload.get("project", char_name or "Default")
+    scenes_input   = payload.get("scenes", [])    # pre-built scenes from Idea Vault
+    concept        = payload.get("concept", "")
+    character_id   = payload.get("character_id", "")
+    char_name      = payload.get("character_name", "")
+    character2_id  = payload.get("character2_id", "")
+    char2_name     = payload.get("character2_name", "")
+    genre          = payload.get("genre", "")
+    tone_notes     = payload.get("tone_notes", "")
+    duration       = int(payload.get("duration", 5))
+    model          = payload.get("model", "ws_wan22")
+    include_tts    = payload.get("include_tts", True)
+    project        = payload.get("project", char_name or "Default")
     keyframes_only = payload.get("keyframes_only", False)
+
+    # Look up char2 appearance for prompt injection when no face lock available
+    char2_appearance = ""
+    if character2_id:
+        try:
+            from backend.db import characters_col as _cc
+            if _cc is not None:
+                _doc2 = await _cc.find_one({"id": character2_id})
+                if _doc2:
+                    char2_appearance = " ".join(filter(None, [_doc2.get("appearance",""), _doc2.get("wardrobe","")]))
+            else:
+                _chars = json.loads(Path("data/characters.json").read_text()).get("characters", [])
+                _doc2  = next((c for c in _chars if c.get("id") == character2_id), None)
+                if _doc2:
+                    char2_appearance = " ".join(filter(None, [_doc2.get("appearance",""), _doc2.get("wardrobe","")]))
+        except Exception:
+            pass
 
     # Build a tone prefix injected into every image prompt so the AI stays on genre
     _tone_prefix = ""
@@ -281,8 +300,11 @@ async def _run_pipeline(job_id: str, payload: dict):
                     step=f"{label} Generating keyframe — {shot.get('description','')[:60]}…")
             try:
                 raw_prompt   = shot.get("image_prompt") or shot.get("description") or concept
+                # If char2 has appearance info and it's not already in the prompt, prepend it
+                if char2_appearance and char2_name and char2_name.lower() not in raw_prompt.lower():
+                    raw_prompt = f"{char2_name}: {char2_appearance}. {raw_prompt}"
                 image_prompt = _tone_prefix + raw_prompt if _tone_prefix else raw_prompt
-                # Only apply character face lock to scenes that feature the main character
+                # Apply character face lock using char1 reference image
                 shot_char_id = character_id if shot.get("character_lock", True) else ""
                 image_url = await _gen_image(image_prompt, shot_char_id)
             except Exception as e:

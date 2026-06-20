@@ -216,6 +216,7 @@
         <button onclick="shots.reverse(); renumberShots(); renderTimeline(); setStatus('Order reversed — click Save Order to keep.')">⇅ Reverse</button>
         <button class="gold" onclick="saveTimelineOrder()">Save Order</button>
         <button class="gold" onclick="exportTimeline()">⬇ Export Video</button>
+        <button onclick="eraseTimeline()" style="color:#ff4444;border-color:rgba(255,68,68,0.4);">🗑 Erase All</button>
         <button onclick="window.close()">Close</button>
       </div>
     </div>
@@ -549,6 +550,23 @@
         setStatus("Export failed: " + e.message, true);
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = "⬇ Export Video"; }
+      }
+    }
+
+    async function eraseTimeline() {
+      if (!confirm("Erase ALL scenes from the timeline? This cannot be undone.")) return;
+      try {
+        setStatus("Erasing timeline…");
+        const res  = await levFetch(`${BASE}/scenes/clear-all`, { method: "DELETE" });
+        const data = await res.json();
+        shots = [];
+        renderTimeline();
+        // Reset project dropdown
+        const sel = document.getElementById("tl-project-sel");
+        if (sel) sel.innerHTML = `<option value="">All Projects</option>`;
+        setStatus(`Timeline erased — ${data.deleted || 0} scenes removed.`);
+      } catch (e) {
+        setStatus("Erase failed: " + e.message, true);
       }
     }
 

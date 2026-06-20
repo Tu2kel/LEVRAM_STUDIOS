@@ -663,15 +663,17 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         scenes,
-        character_id:   charId,
-        character_name: charName,
+        character_id:    charId,
+        character_name:  charName,
+        character2_id:   char2Id,
+        character2_name: char2Name,
         genre,
-        tone_notes:     toneNotes,
-        duration:       sceneSec,   // fallback for scenes that don't carry their own
+        tone_notes:      toneNotes,
+        duration:        sceneSec,
         model,
-        include_tts:    true,
-        project:        activeProject,
-        clear_project:  true,
+        include_tts:     true,
+        project:         activeProject,
+        clear_project:   true,
       }),
     });
     const orchData = await orchRes.json();

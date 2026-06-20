@@ -121,11 +121,24 @@ async def clear_project_scenes(project: str):
     if scenes_col is not None:
         result = await scenes_col.delete_many({"project": project})
         return {"success": True, "deleted": result.deleted_count}
-    # JSON fallback: remove matching files
     deleted = 0
     if SCENES_DIR.exists():
         slug = project.replace(" ", "_").replace("/", "_")
         for f in SCENES_DIR.glob(f"{slug}_*.json"):
+            f.unlink()
+            deleted += 1
+    return {"success": True, "deleted": deleted}
+
+
+@router.delete("/scenes/clear-all")
+async def clear_all_scenes():
+    """Erase every scene in the database — full timeline wipe."""
+    if scenes_col is not None:
+        result = await scenes_col.delete_many({})
+        return {"success": True, "deleted": result.deleted_count}
+    deleted = 0
+    if SCENES_DIR.exists():
+        for f in SCENES_DIR.glob("*.json"):
             f.unlink()
             deleted += 1
     return {"success": True, "deleted": deleted}

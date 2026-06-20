@@ -1307,9 +1307,10 @@ window.clPickGenImage = async function clPickGenImage(url, thumbEl) {
 
     if (status) status.textContent = `✔ Added — ${data.total_refs} face ref${data.total_refs !== 1 ? "s" : ""} on this character`;
 
-    // Refresh the reference panel
-    const char = await (await levFetch(`${CL_CL_BASE}/characters/${editingCharacterId}`)).json();
-    clRefreshLoraPanel(char.character || char);
+    // Refresh cache then re-render the reference panel for the current character
+    await loadCharacters();
+    const updatedChar = (window.LEVRAM_CHARACTERS_CACHE || []).find(c => c.id === editingCharacterId);
+    if (updatedChar) clRefreshLoraPanel(updatedChar);
 
     // Close after short delay so user sees confirmation
     setTimeout(() => window.clCloseGenPicker(), 900);

@@ -108,22 +108,21 @@ async def _gen_image(prompt: str, character_id: str) -> str:
     byo_ref_url  = (byo_entry or {}).get("url", "") if byo_entry else ""
 
     # LoRA disabled — WaveSpeed handles character lock via PuLID face reference
+    print(f"[PULID] char_id={character_id} db_char={'found' if db_char else 'MISSING'} refs={refs} preview={byo_ref_url[:60] if byo_ref_url else 'none'}")
     if byo_ref_url or refs:
-        # Build a public URL for the face reference so WaveSpeed can fetch it
         domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+        print(f"[PULID] domain={domain!r}")
         face_url = ""
         if byo_ref_url and byo_ref_url.startswith("http"):
             face_url = byo_ref_url
-        elif byo_ref_url:
-            p = Path(byo_ref_url.lstrip("/"))
-            if p.exists() and domain:
-                face_url = f"https://{domain}/{byo_ref_url.lstrip('/')}"
+        elif byo_ref_url and domain:
+            # Don't gate on file existence — just build the URL and let WaveSpeed try
+            face_url = f"https://{domain}/{byo_ref_url.lstrip('/')}"
         if not face_url and refs and domain:
-            ref_path = Path(refs[0].lstrip("/"))
-            if ref_path.exists():
-                face_url = f"https://{domain}/{refs[0].lstrip('/')}"
+            # Don't gate on file existence — volume should serve it
+            face_url = f"https://{domain}/{refs[0].lstrip('/')}"
 
-        # Railway ephemeral filesystem fallback — restore from MongoDB base64
+        # MongoDB base64 fallback — restore file to volume then serve it
         if not face_url and domain:
             refs_b64 = (db_char or {}).get("reference_images_b64") or []
             if refs_b64:
@@ -137,6 +136,8 @@ async def _gen_image(prompt: str, character_id: str) -> str:
                     face_url = f"https://{domain}/{entry['url'].lstrip('/')}"
                 except Exception:
                     pass
+
+        print(f"[PULID] face_url={face_url!r}")
 
         if face_url:
             # Use WaveSpeed PuLID with public URL directly

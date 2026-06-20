@@ -14,7 +14,7 @@ DEFAULT_MODEL = os.getenv("RL_AGENT_MODEL", "dolphin-mistral")
 # Venice.ai — uncensored platform
 VENICE_BASE        = "https://api.venice.ai/api/v1"
 VENICE_MODEL       = os.getenv("RL_AGENT_VENICE_MODEL", "venice-uncensored")        # Lena (adult)
-KELE_VENICE_MODEL  = os.getenv("KELE_VENICE_MODEL", "llama-3.3-70b")                # KEL-E (main studio)
+KELE_VENICE_MODEL  = os.getenv("KELE_VENICE_MODEL", "hermes-3-llama-3.1-405b")      # KEL-E (main studio)
 
 SYSTEM_PROMPT = """You are Lena — creative director embedded inside LEVRAM Studios, an adult AI fantasy studio production app.
 
@@ -218,7 +218,7 @@ Single section request → output only that section, no === headers."""
 
 @router.post("/kel-e/chat")
 async def kele_chat(payload: ChatPayload):
-    """KEL-E — main studio creative director. Venice llama-3.3-70b (uncensored, smart); GPT fallback."""
+    """KEL-E — main studio creative director. Venice Hermes 405B (uncensored, 405B); GPT fallback."""
     messages = [{"role": "system", "content": KELE_SYSTEM}]
     messages += [{"role": m.role, "content": m.content} for m in payload.messages]
 

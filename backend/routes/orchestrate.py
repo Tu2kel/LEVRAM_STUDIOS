@@ -119,8 +119,24 @@ async def _gen_image(prompt: str, character_id: str) -> str:
             if p.exists() and domain:
                 face_url = f"https://{domain}/{byo_ref_url.lstrip('/')}"
         if not face_url and refs and domain:
-            ref = refs[0].lstrip("/")
-            face_url = f"https://{domain}/{ref}"
+            ref_path = Path(refs[0].lstrip("/"))
+            if ref_path.exists():
+                face_url = f"https://{domain}/{refs[0].lstrip('/')}"
+
+        # Railway ephemeral filesystem fallback — restore from MongoDB base64
+        if not face_url and domain:
+            refs_b64 = (db_char or {}).get("reference_images_b64") or []
+            if refs_b64:
+                import base64 as _b64f
+                entry = refs_b64[0]
+                raw   = _b64f.b64decode(entry["data"])
+                try:
+                    restore_path = Path(entry["url"].lstrip("/"))
+                    restore_path.parent.mkdir(parents=True, exist_ok=True)
+                    restore_path.write_bytes(raw)
+                    face_url = f"https://{domain}/{entry['url'].lstrip('/')}"
+                except Exception:
+                    pass
 
         if face_url:
             # Use WaveSpeed PuLID with public URL directly

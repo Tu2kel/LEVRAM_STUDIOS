@@ -365,26 +365,43 @@ async def _run_pipeline(job_id: str, payload: dict):
             try:
                 raw_prompt   = shot.get("image_prompt") or shot.get("shot_prompt") or shot.get("description") or concept
 
-                # Determine which character owns this shot
-                shot_char_field = (shot.get("character") or "").lower()
-                prompt_lower    = raw_prompt.lower()
-                _c1_match = char_name  and char_name.lower()  in (shot_char_field + " " + prompt_lower)
-                _c2_match = char2_name and char2_name.lower() in (shot_char_field + " " + prompt_lower)
+                # Wide/establishing shots have no single character subject — skip face lock
+                _angle      = (shot.get("angle_type") or "").lower()
+                _shot_char  = (shot.get("character") or "").lower()
+                _is_env_shot = _angle in {"wide", "establishing"} or _shot_char in {"both", "environment", ""}
 
-                if _c2_match and not _c1_match:
-                    # This scene belongs to char2 — face-lock to char2, inject their appearance
-                    shot_char_id = character2_id
-                    if char2_appearance and char2_name.lower() not in prompt_lower:
-                        raw_prompt = f"{char2_name}: {char2_appearance}. {raw_prompt}"
+                if _is_env_shot:
+                    shot_char_id = ""  # no face lock — environment / two-shot
                 else:
-                    # Default to char1 face lock (or no lock if no char set)
-                    shot_char_id = character_id if shot.get("character_lock", True) else ""
+                    prompt_lower    = raw_prompt.lower()
+                    shot_char_field = _shot_char
+                    _c1_match = char_name  and char_name.lower()  in (shot_char_field + " " + prompt_lower)
+                    _c2_match = char2_name and char2_name.lower() in (shot_char_field + " " + prompt_lower)
+
+                    if _c2_match and not _c1_match:
+                        shot_char_id = character2_id
+                        if char2_appearance and char2_name.lower() not in prompt_lower:
+                            raw_prompt = f"{char2_name}: {char2_appearance}. {raw_prompt}"
+                    else:
+                        shot_char_id = character_id if shot.get("character_lock", True) else ""
 
                 raw_prompt   = _sanitize_img(raw_prompt)
                 image_prompt = _tone_prefix + raw_prompt if _tone_prefix else raw_prompt
-                image_url = await _gen_image(image_prompt, shot_char_id)
+
+                # Autonomous QC — retry up to 3 times on failure
+                image_url = None
+                _qc_suffixes = ["", ", photorealistic cinematic 8K", ", high detail film still sharp focus"]
+                for _attempt, _suffix in enumerate(_qc_suffixes):
+                    try:
+                        image_url = await _gen_image(image_prompt + _suffix, shot_char_id)
+                        break
+                    except Exception as _e:
+                        if _attempt == len(_qc_suffixes) - 1:
+                            raise _e
+                        _update(job_id, step=f"{label} ↻ Retry {_attempt+1} — {str(_e)[:60]}")
+
             except Exception as e:
-                err_msg = f"Shot {i+1} keyframe failed: {str(e)[:120]}"
+                err_msg = f"Shot {i+1} keyframe failed after 3 attempts: {str(e)[:120]}"
                 print(f"[ORCH] {err_msg}")
                 _JOBS[job_id].setdefault("errors", []).append(err_msg)
                 _update(job_id, step=f"{label} ⚠ Keyframe failed — {str(e)[:80]}")

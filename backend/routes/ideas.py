@@ -414,7 +414,7 @@ async def _gpt_develop(
     shot_prompt_prefix = _build_shot_prompt_prefix()
 
     # ── Step 2: Scenes per act (3 separate small calls) ──────────
-    def _call_act(act_num: int, act_scene_count: int, start_index: int, act_desc: str):
+    def _call_act(act_num: int, beat_count: int, start_index: int, act_desc: str):
         if lyric_lines:
             dialogue_rule = "VERBATIM lyric line for this scene"
         elif is_adult:
@@ -454,25 +454,48 @@ async def _gpt_develop(
             f"NO penises. NO male anatomy. Penetration = fingers or strap-on only."
         ) if is_lesbian and p1 and p2 else ""
 
+        # LS (non-adult) — cinematic multi-angle coverage per beat
+        # Each dramatic beat outputs 3 consecutive shot objects: CU char1, CU char2, wide
+        # RL stays 1 shot per beat — continuous explicit action doesn't need cross-cutting
+        if not is_adult and p1 and p2:
+            expected_total = beat_count * 3
+            coverage_instruction = (
+                f"\nCAMERA COVERAGE — for every dramatic beat output EXACTLY 3 consecutive scene objects:\n"
+                f"  SHOT A: angle_type 'cu_char1'  — close-up on {p1}: their face, expression, action\n"
+                f"  SHOT B: angle_type 'cu_char2'  — close-up on {p2}: their reaction or counter-action\n"
+                f"  SHOT C: angle_type 'wide'       — pull back: both characters visible, environment around them\n"
+                f"  character field = who this shot focuses on: '{p1}', '{p2}', or 'both' for wide shots\n"
+                f"EXCEPTION — establishing/transition beats: 1 shot only, angle_type 'establishing', character 'both'\n"
+                f"EXCEPTION — peak action/climax beats: add 4th shot, angle_type 'impact', character = whoever lands the blow\n"
+                f"Total output ≈ {expected_total} objects ({beat_count} beats × 3). Flat array, beat shots consecutive.\n"
+            )
+            angle_field = "angle_type (string: cu_char1|cu_char2|wide|establishing|impact), character (string: who this shot focuses on),"
+            total_label = f"~{expected_total}"
+        else:
+            coverage_instruction = ""
+            angle_field = ""
+            total_label = str(beat_count)
+
         u = (
             f"Concept: {concept}\nGenre: {genre}"
             f"\nPerformer 1 — {p1 or 'unnamed'}: {char1_appearance}"
             + (f"\nPerformer 2 — {p2}: {char2_appearance}" if p2 else "")
             + _per_act_gender
+            + coverage_instruction
             + f"\nAct {act_num} focus: {act_desc}\n\n"
-            f"Return a JSON array of EXACTLY {act_scene_count} scene objects.\n"
+            f"Return a JSON array of {total_label} scene objects.\n"
             f"Index starts at {start_index}. Each object:\n"
-            f"  index (int), act ({act_num}), "
+            f"  index (int), act ({act_num}), {angle_field} "
             f"{desc_rule}, "
             f"dialogue ({dialogue_rule}), "
             f"{shot_prompt_instruction}, "
-            f"reel_weight (1-10), emotion (1 word), duration_seconds (5-10)\n"
+            f"reel_weight (1-10), emotion (1 word), duration_seconds (3-5)\n"
             f"NO other fields. Return the array only (not wrapped in an object)."
         )
         resp = client.chat.completions.create(
             model=model,
             messages=[{"role": "system", "content": base_system}, {"role": "user", "content": u}],
-            temperature=0.85, max_tokens=4000,
+            temperature=0.85, max_tokens=6000,
         )
         return _extract_json_array(resp.choices[0].message.content)
 
@@ -483,10 +506,15 @@ async def _gpt_develop(
             raise RuntimeError(f"Story header failed: {e}")
 
         if lyric_lines:
-            # Lyric mode — distribute lines across 3 acts
             a1 = max(1, lyric_lines // 3)
             a2 = max(1, lyric_lines // 3)
             a3 = lyric_lines - a1 - a2
+        elif not is_adult:
+            # LS: beats per act (each beat → 3 shots). Cap at 8 beats/act → 24 shots/act → 72 total
+            beats_per_act = max(6, min(8, num_scenes // 9))
+            a1 = beats_per_act
+            a2 = beats_per_act
+            a3 = beats_per_act - 1  # act 3 slightly shorter — avoids ending bloat
         else:
             a1 = num_scenes // 3
             a2 = num_scenes // 3
@@ -510,6 +538,9 @@ async def _gpt_develop(
             except Exception as e:
                 raise RuntimeError(f"Act {act_num} scene generation failed: {e}")
 
+        # Autonomous QC: editor trims redundancy, clean_dialogue strips clichés
+        all_scenes = _editor_pass(all_scenes, is_adult, is_lesbian, p1, p2, client, model)
+
         return {**header, "scenes": all_scenes}
 
     try:
@@ -522,3 +553,108 @@ def _top_scene_indices(scenes: list, reel_sec: int, scene_sec: int) -> list[int]
     capacity = max(1, reel_sec // scene_sec)
     ranked   = sorted(scenes, key=lambda s: s.get("reel_weight", 0), reverse=True)
     return sorted(s.get("index", 0) for s in ranked[:capacity])
+
+
+# ── Autonomous QC passes ─────────────────────────────────────────
+
+_BANNED_DIALOGUE = [
+    "bow before", "feel my power", "this is the beginning", "this is the end",
+    "the world is mine", "i will reign", "you cannot stop me", "witness my power",
+    "all shall know", "this is only the beginning", "your time is up",
+    "tremble before", "i am inevitable", "dawn of a new era", "the world will know",
+    "this storm", "destiny", "reckoning", "bow down", "kneel before",
+    "i was born for", "nothing can stop", "my true power", "unleash",
+]
+
+def _clean_dialogue(scenes: list) -> list:
+    """Strip cliché dialogue without a Hermes call — runs instantly."""
+    import re
+    for s in scenes:
+        dlg = s.get("dialogue", "")
+        if not dlg:
+            continue
+        low = dlg.lower()
+        if any(phrase in low for phrase in _BANNED_DIALOGUE):
+            s["dialogue"] = ""
+    return scenes
+
+
+def _editor_pass(
+    all_scenes: list,
+    is_adult: bool,
+    is_lesbian: bool,
+    p1: str,
+    p2: str,
+    client,
+    model: str,
+) -> list:
+    """
+    Hermes reviews the full scene list and outputs only the index numbers to keep.
+    Token-efficient: input summaries only, output is a number array.
+    """
+    max_total = 75 if not is_adult else 42
+
+    # Skip editor if already within bounds and act 3 isn't bloated
+    act3 = [s for s in all_scenes if s.get("act") == 3]
+    if len(all_scenes) <= max_total and len(act3) / max(len(all_scenes), 1) <= 0.32:
+        return _clean_dialogue(all_scenes)
+
+    summaries = [
+        {"i": s.get("index", idx), "act": s.get("act", 1),
+         "emotion": s.get("emotion", ""), "reel_weight": s.get("reel_weight", 5),
+         "desc": (s.get("description", "") or "")[:60]}
+        for idx, s in enumerate(all_scenes)
+    ]
+
+    if is_adult:
+        rules = (
+            f"Adult film pacing rules:\n"
+            f"1. Keep max {max_total} total scenes\n"
+            f"2. Act 1 ≤ 30% of kept total — by scene 4 explicit contact must begin\n"
+            f"3. Act 2 = ~40% — oral sex scenes\n"
+            f"4. Act 3 = ~30% — penetrative acts, climax\n"
+            f"5. Cut any pure setup/flirting scenes beyond the first 3\n"
+            f"6. Prefer high reel_weight scenes when cutting\n"
+        )
+    else:
+        rules = (
+            f"Cinematic film pacing rules:\n"
+            f"1. Keep max {max_total} total scenes\n"
+            f"2. Act 3 must be ≤ 28% of total — cut redundant ending/aftermath beats\n"
+            f"3. No more than 2 consecutive scenes with identical emotion — cut duplicates\n"
+            f"4. Prefer high reel_weight when cutting\n"
+            f"5. Never cut the first or last scene of any act\n"
+            f"6. Wide/establishing shots (angle_type 'wide') should not be consecutive — cut one if so\n"
+        )
+
+    prompt = (
+        f"You are a film editor for LEVRAM Studios. Review this scene list.\n"
+        f"{rules}\n"
+        f"Scene list (index, act, emotion, weight, description):\n"
+        f"{json.dumps(summaries)}\n\n"
+        f"Return ONLY a JSON array of index numbers (i values) to KEEP. Example: [0,1,2,4,5,...]\n"
+        f"No commentary. No other text."
+    )
+
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a film editor. Return only a JSON array of integers."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3, max_tokens=800,
+        )
+        raw = resp.choices[0].message.content.strip()
+        keep_indices = set(json.loads(raw.strip().lstrip("```json").lstrip("```").rstrip("```")))
+        kept = [s for s in all_scenes if s.get("index", all_scenes.index(s)) in keep_indices]
+        if len(kept) < 6:
+            kept = all_scenes  # editor returned too few — use original
+    except Exception:
+        kept = all_scenes  # editor failed — use original
+
+    # Re-index so indices are sequential
+    for i, s in enumerate(kept):
+        s["index"] = i
+
+    return _clean_dialogue(kept)

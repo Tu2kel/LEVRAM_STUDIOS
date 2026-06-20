@@ -28,6 +28,13 @@ from dotenv import load_dotenv
 from pathlib import Path
 load_dotenv()
 
+# Strip whitespace/newlines from API keys — Railway sometimes saves keys with trailing \n
+for _k in ["FAL_KEY", "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "WAVESPEED_KEY",
+           "VENICE_API_KEY", "NOVITA_API_KEY", "MONGODB_URL"]:
+    _v = os.getenv(_k)
+    if _v and _v != _v.strip():
+        os.environ[_k] = _v.strip()
+
 # Ensure output dirs exist (Railway has no persistent FS pre-created)
 for _d in ["output/renders/images", "output/renders/keyframes",
            "output/audio/tts", "output/audio/voice",

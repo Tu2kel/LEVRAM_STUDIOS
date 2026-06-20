@@ -502,6 +502,14 @@ function igAutoFillCharPrompt(charId) {
 
   // Build portrait prompt from character bio fields
   const parts = [];
+
+  // Lena (RL mode) + Novita engine: prepend NSFW trigger tokens so SD 1.5 models respond
+  const isNovitaEngine = igActiveEngine?.startsWith("novita_");
+  const isRL = window.RL?.isActive?.();
+  if (isRL && isNovitaEngine) {
+    parts.push("nsfw, nude, explicit, bare breasts, nipples visible");
+  }
+
   if (char.name)        parts.push(`Portrait of ${char.name}`);
   if (char.gender && char.age) parts.push(`${char.gender}, ${char.age} years old`);
   else if (char.gender) parts.push(char.gender);

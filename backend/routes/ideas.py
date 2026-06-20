@@ -138,18 +138,20 @@ async def develop_idea(idea_id: str, body: DevelopRequest):
         raise HTTPException(404, "Idea not found")
 
     target_sec  = int(body.target_minutes * 60)
+    # Give Venice a concrete scene count (assume avg 7s/scene) so it doesn't under-generate
+    num_scenes  = max(10, round(target_sec / 7))
 
     story = await _gpt_develop(
         concept        = idea["rawIdea"],
         genre          = idea.get("genre", "sci-fi action"),
         character_name = body.character_name,
-        num_scenes     = 0,           # unused — Venice decides scene count
+        num_scenes     = num_scenes,
         scene_seconds  = body.scene_seconds,
         target_minutes = body.target_minutes,
     )
 
     scenes = story.get("scenes", [])
-    actual_total_sec = sum(s.get("duration_seconds", 5) for s in scenes)
+    actual_total_sec = sum(int(s.get("duration_seconds", 7)) for s in scenes)
     num_scenes  = len(scenes)
     story["num_scenes"]      = num_scenes
     story["actual_scenes"]   = num_scenes
@@ -257,14 +259,14 @@ async def _gpt_develop(
         "C. Dialogue: original, in-character, explicit. NEVER song lyrics. Max 12 words per line.\n"
     ) if is_adult else ""
 
+    locked = lyric_lines if lyric_lines else num_scenes
     if lyric_lines:
         scene_count_rule = f"SCENE COUNT LOCKED AT {lyric_lines} — one scene per lyric line, in order."
     else:
         scene_count_rule = (
-            f"TARGET DURATION: {target_minutes} min ({target_sec}s total). "
-            f"You decide how many scenes are needed. Each scene has a duration_seconds (5–10). "
-            f"The sum of all duration_seconds must be approximately {target_sec}s. "
-            f"Do not pad — every scene must advance the story."
+            f"SCENE COUNT IS EXACTLY {locked}. Output ALL {locked} scenes. "
+            f"Each scene has duration_seconds between 5–10. "
+            f"Target total: ~{target_minutes} min. Vary duration to match pacing — slow intimacy = 8–10s, quick action/cuts = 5s."
         )
 
     system = (
@@ -287,15 +289,15 @@ async def _gpt_develop(
         f"  title         – story title from concept\n"
         f"  logline       – one sentence\n"
         f"  act_structure – one sentence 3-act summary\n"
-        f"  scenes        – array of scene objects, each with:\n"
-        f"    index            (int, 0-based)\n"
+        f"  scenes – array of EXACTLY {locked} scene objects (0-based index), each with:\n"
+        f"    index            (int)\n"
         f"    act              (1, 2, or 3)\n"
-        f"    description      (1 sentence — physical action, {'explicit' if is_adult else 'literal'})\n"
-        f"    dialogue         ({'VERBATIM lyric line' if lyric_lines else 'one spoken line, max 12 words'})\n"
+        f"    description      (1 sentence — {'explicit physical action' if is_adult else 'physical action'})\n"
+        f"    dialogue         ({'VERBATIM lyric line' if lyric_lines else 'one line, max 12 words'})\n"
         f"    reel_weight      (int 1–10)\n"
         f"    emotion          (one word)\n"
         f"    duration_seconds (int 5–10)\n"
-        f"\nNO image_prompt field. Keep it compact. Output complete valid JSON.\n"
+        f"\nNO image_prompt field. Output all {locked} scenes. Complete valid JSON only.\n"
     )
 
     def _call():

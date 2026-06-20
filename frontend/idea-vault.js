@@ -364,7 +364,7 @@ function ivRenderStory(story) {
   if (titleEl) titleEl.textContent = story.title || "Story Breakdown";
 
   // Runtime from actual per-scene durations (est_seconds = sum of duration_seconds)
-  const totalSec = story.est_seconds || (story.num_scenes || 0) * 5;
+  const totalSec = Math.max(0, story.est_seconds || (story.num_scenes || 0) * 7);
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   const targetMin = story.target_minutes || "?";

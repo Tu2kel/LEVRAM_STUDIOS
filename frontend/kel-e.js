@@ -127,8 +127,13 @@ When asked for only ONE section, output only that section's format without === h
   async function loadModels() {
     const sel = document.getElementById("kele-model-sel");
     if (!sel) return;
-    sel.innerHTML = `<option value="gpt-4o-mini">GPT-4o Mini</option>`;
-    currentModel = "gpt-4o-mini";
+    sel.innerHTML = `
+      <option value="llama-3.3-70b" selected>Llama 3.3 70B (Recommended)</option>
+      <option value="hermes-3-llama-3.1-405b">Hermes 3 405B (Uncensored)</option>
+      <option value="deepseek-v3.2">DeepSeek V3.2</option>
+      <option value="gemma-4-uncensored">Gemma 4 Uncensored</option>
+    `;
+    currentModel = "llama-3.3-70b";
     sel.onchange = () => { currentModel = sel.value; };
   }
 

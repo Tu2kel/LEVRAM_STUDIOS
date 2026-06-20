@@ -11,9 +11,10 @@ OLLAMA_URL    = os.getenv("OLLAMA_URL", "http://localhost:11434")
 VENICE_KEY    = os.getenv("VENICE_API_KEY", "")
 DEFAULT_MODEL = os.getenv("RL_AGENT_MODEL", "dolphin-mistral")
 
-# Venice.ai defaults — uncensored, built for adult content
-VENICE_BASE   = "https://api.venice.ai/api/v1"
-VENICE_MODEL  = os.getenv("RL_AGENT_VENICE_MODEL", "venice-uncensored")
+# Venice.ai — uncensored platform
+VENICE_BASE        = "https://api.venice.ai/api/v1"
+VENICE_MODEL       = os.getenv("RL_AGENT_VENICE_MODEL", "venice-uncensored")        # Lena (adult)
+KELE_VENICE_MODEL  = os.getenv("KELE_VENICE_MODEL", "llama-3.3-70b")                # KEL-E (main studio)
 
 SYSTEM_PROMPT = """You are Lena — creative director embedded inside LEVRAM Studios, an adult AI fantasy studio production app.
 
@@ -217,18 +218,18 @@ Single section request → output only that section, no === headers."""
 
 @router.post("/kel-e/chat")
 async def kele_chat(payload: ChatPayload):
-    """KEL-E — main studio creative director. Uses GPT (smarter); Venice is adult-only."""
+    """KEL-E — main studio creative director. Venice llama-3.3-70b (uncensored, smart); GPT fallback."""
     messages = [{"role": "system", "content": KELE_SYSTEM}]
     messages += [{"role": m.role, "content": m.content} for m in payload.messages]
 
-    openai_key = os.getenv("OPENAI_API_KEY", "")
-    if openai_key:
+    model = payload.model if payload.model else KELE_VENICE_MODEL
+    if VENICE_KEY:
+        gen = _stream_venice(messages, model)
+    elif os.getenv("OPENAI_API_KEY", ""):
         gen = _stream_openai(messages)
-    elif VENICE_KEY:
-        gen = _stream_venice(messages, VENICE_MODEL)
     else:
         async def _err():
-            yield f"data: {json.dumps({'error': 'No AI key configured — set OPENAI_API_KEY or VENICE_API_KEY'})}\n\n"
+            yield f"data: {json.dumps({'error': 'No AI key configured — set VENICE_API_KEY or OPENAI_API_KEY'})}\n\n"
         return StreamingResponse(_err(), media_type="text/event-stream")
     return StreamingResponse(gen, media_type="text/event-stream")
 

@@ -623,25 +623,45 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
     const genre     = idea?.genre || "";
     const toneNotes = idea?.story?.tone_notes || "";
     const charLower = charName.toLowerCase();
-    // Match on any word in the character name (e.g. "Michael" from "Michael Jackson")
     const charParts = charLower.split(/\s+/).filter(p => p.length > 2);
 
     const char2Sel  = document.getElementById("iv-dev-character2");
-    const char2Name = char2Sel?.selectedOptions?.[0]?.dataset?.name || char2Sel?.selectedOptions?.[0]?.textContent || "";
+    const char2Id   = char2Sel?.value || "";
+    const char2Name = (char2Sel?.selectedOptions?.[0]?.dataset?.name || char2Sel?.selectedOptions?.[0]?.textContent || "").replace("None","").trim();
+
+    // Fetch both characters' appearances NOW (at generate time) so they're always
+    // in the image prompt regardless of whether they were selected at develop time
+    async function fetchAppearance(id) {
+      if (!id) return "";
+      try {
+        const r = await levFetch(`${IV_BASE}/characters`);
+        const d = await r.json();
+        const c = (d.characters || []).find(ch => ch.id === id);
+        return [c?.appearance, c?.wardrobe].filter(Boolean).join(" ");
+      } catch { return ""; }
+    }
+    const [char1App, char2App] = await Promise.all([fetchAppearance(charId), fetchAppearance(char2Id)]);
 
     const scenes = rawScenes.map(sc => {
-      // shot_prompt has character appearances baked in (from story generator)
-      // fall back to image_prompt, then description
       const rawImgPrompt = sc.shot_prompt || sc.image_prompt || sc.description || "";
+      const promptLower  = rawImgPrompt.toLowerCase();
       const descText     = (sc.description || "").toLowerCase();
-      const promptText   = rawImgPrompt.toLowerCase();
-      // Only lock the character face to scenes that actually feature them by name
+
+      // Inject character appearances into prompt if not already present
+      let imagePrompt = rawImgPrompt;
+      if (char1App && charName && !promptLower.includes(charName.toLowerCase().split(" ")[0])) {
+        imagePrompt = `${charName}: ${char1App}. ` + imagePrompt;
+      }
+      if (char2App && char2Name && !promptLower.includes(char2Name.toLowerCase().split(" ")[0])) {
+        imagePrompt = `${char2Name}: ${char2App}. ` + imagePrompt;
+      }
+
       const character_lock = charParts.length
-        ? charParts.some(p => descText.includes(p) || promptText.includes(p))
+        ? charParts.some(p => descText.includes(p) || promptLower.includes(p))
         : true;
       return {
         description:    sc.description || "",
-        image_prompt:   rawImgPrompt,
+        image_prompt:   imagePrompt,
         motion_prompt:  sc.motion_prompt ||
           `${sc.emotion || "cinematic"} atmosphere, smooth continuous camera movement, ${(sc.description || "").slice(0, 120)}`,
         dialogue:       sc.dialogue || "",

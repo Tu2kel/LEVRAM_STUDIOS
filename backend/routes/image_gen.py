@@ -397,10 +397,13 @@ NOVITA_KEY      = os.getenv("NOVITA_API_KEY", "")
 NOVITA_IMG_BASE = "https://api.novita.ai/v3/async"
 
 NOVITA_MODELS = {
-    "novita_pro":     "pornmasterPro_fullV5-inpainting_135217.safetensors",  # most explicit adult
-    "novita_photo":   "epicphotogasm_xPlusPlus_135412.safetensors",           # explicit photorealistic
-    "novita_realism": "epicrealism_naturalSinRC1VAE_106430.safetensors",      # photorealistic
-    "novita_anime":   "meinahentai_v4_70340.safetensors",                     # anime NSFW
+    "novita_pro":     "pornmasterPro_fullV5-inpainting_135217.safetensors",
+    "novita_photo":   "epicphotogasm_xPlusPlus_135412.safetensors",
+    "novita_realism": "epicrealism_naturalSinRC1VAE_106430.safetensors",
+    "novita_anime":   "meinahentai_v4_70340.safetensors",
+    # Legacy aliases — cached browsers may still send these
+    "novita_flux":    "epicphotogasm_xPlusPlus_135412.safetensors",
+    "novita_pony":    "pornmasterPro_fullV5-inpainting_135217.safetensors",
 }
 
 NOVITA_IMG_SIZES = {

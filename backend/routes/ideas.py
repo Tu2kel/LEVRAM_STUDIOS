@@ -354,12 +354,25 @@ async def _gpt_develop(
         + _gender_rule
     ) if is_adult else ""
 
+    cinematic_sys = (
+        "You are a cinematic scene writer for LEVRAM Studios. Original IP. Prestige quality. "
+        "Write compact JSON only — no markdown, no commentary. "
+        "Description: 1 vivid specific sentence — exactly what the camera sees. No generic descriptions. "
+        "Dialogue is OPTIONAL — leave empty string '' when the scene calls for silence, action, or physical intensity with no speech. "
+        "A character being choked, fighting, falling, or dying does NOT speak. "
+        "When dialogue IS written: make it specific to THIS character's voice and THIS exact moment. "
+        "BANNED DIALOGUE — never write these or anything like them: "
+        "'bow before me', 'feel my power', 'this is the beginning/end', 'the world is mine', "
+        "'I will reign forever', 'you cannot stop me', 'witness my power', 'all shall know my name', "
+        "'this is only the beginning', 'your time is up', 'tremble before me', 'I am inevitable'. "
+        "Write lines a real person says in that specific moment — not a comic book cliché."
+    ) if not is_adult else ""
+
     base_system = (
+        cinematic_sys if not is_adult else
         "You are a scene breakdown writer for LEVRAM Studios. "
         "Write compact JSON only — no markdown, no commentary. "
-        "Description: 1 direct sentence — what is physically happening. Dialogue: 1 line max 10 words. "
-        + adult_sys
-    )
+    ) + adult_sys
 
     # ── Step 1: Header (title, logline, act_structure) ──────────
     def _call_header():
@@ -398,7 +411,11 @@ async def _gpt_develop(
         elif is_adult:
             dialogue_rule = "one explicit in-character raw line, max 10 words"
         else:
-            dialogue_rule = "one spoken line, max 12 words"
+            dialogue_rule = (
+                "dialogue — OPTIONAL spoken line (empty string '' if scene has no natural speech). "
+                "Action scenes, physical confrontations, silent moments = empty string. "
+                "When included: character-specific, max 10 words, NO stock villain/hero phrases"
+            )
 
         performer_ctx = ""
         if performer_block:
@@ -467,9 +484,9 @@ async def _gpt_develop(
             a3 = num_scenes - a1 - a2
 
         act_descs = [
-            "Introduction — they meet and immediately begin removing each other's clothing and touching each other's bodies. No flirting banter — direct physical contact from scene 1." if is_adult else "Setup and introduction",
-            "Escalation — explicit oral sex begins. Describe exactly who is performing oral on whom, mouth and tongue on genitals, moaning, body arching." if is_adult else "Rising action and conflict",
-            "Climax — penetrative acts (fingers, strap-on), multiple positions, building to orgasm. Explicit and direct throughout." if is_adult else "Climax and resolution",
+            "Introduction — they meet and immediately begin removing each other's clothing and touching each other's bodies. No flirting banter — direct physical contact from scene 1." if is_adult else f"Setup — establish the world, the characters, the stakes. Specific to: {genre}. Show don't tell.",
+            "Escalation — explicit oral sex begins. Describe exactly who is performing oral on whom, mouth and tongue on genitals, moaning, body arching." if is_adult else f"Confrontation and rising tension. Physical action, conflict escalation. Genre: {genre}. Visceral and specific.",
+            "Climax — penetrative acts (fingers, strap-on), multiple positions, building to orgasm. Explicit and direct throughout." if is_adult else f"Climax and aftermath. The decisive moment and its consequences. Genre: {genre}. Earned, not generic.",
         ]
 
         all_scenes = []

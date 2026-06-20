@@ -502,6 +502,22 @@
             </div>
             <button id="iv-save-btn" class="gen-btn">Save Idea</button>
             <p id="iv-status" class="status"></p>
+
+            <!-- Cast — set BEFORE hitting Develop -->
+            <div style="margin-top:12px;padding:10px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.25);border-radius:3px;">
+              <div style="font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Cast — Set Before Develop</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <div class="field-label" style="margin:0;white-space:nowrap;">Char 1:</div>
+                <select id="iv-dev-character" class="voice-char-select" style="flex:1;min-width:100px;" data-char-sync
+                  onchange="LEVRAM_CHAR.set(this.value, this.selectedOptions[0]?.textContent)">
+                  <option value="">None / Original</option>
+                </select>
+                <div class="field-label" style="margin:0;white-space:nowrap;">Char 2:</div>
+                <select id="iv-dev-character2" class="voice-char-select" style="flex:1;min-width:100px;">
+                  <option value="">None</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -548,15 +564,6 @@
             <!-- Approve bar -->
             <div style="margin-top:16px;border-top:1px solid rgba(201,168,76,0.15);padding-top:14px;">
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-                <div class="field-label" style="margin:0;white-space:nowrap;">Char 1:</div>
-                <select id="iv-dev-character" class="voice-char-select" style="flex:1;min-width:120px;" data-char-sync
-                  onchange="LEVRAM_CHAR.set(this.value, this.selectedOptions[0]?.textContent)">
-                  <option value="">None / Original</option>
-                </select>
-                <div class="field-label" style="margin:0;white-space:nowrap;">Char 2:</div>
-                <select id="iv-dev-character2" class="voice-char-select" style="flex:1;min-width:120px;">
-                  <option value="">None</option>
-                </select>
                 <div class="field-label" style="margin:0;white-space:nowrap;">Quality:</div>
                 <select id="iv-model" class="voice-char-select" style="flex:2;min-width:160px;" onchange="ivUpdateCostEst()">
                   <option value="ws_wan22" selected>Wan 2.2 ⚡ — WaveSpeed</option>

@@ -80,6 +80,12 @@ Build cinematic AI generation fields from the user's idea.
 If shot type, camera mood, or color palette says "AI Suggested", choose the best matching option from the available LEVRAM style.
 For suggested_shot_type, suggested_camera_mood, and suggested_color_palette, return a clean dropdown-ready value.
 Do not include markdown.
+
+CRITICAL CHARACTER RULES — enforce these in every shot_prompt you write:
+- If a character's profile specifies their physical size, scale, or mass, preserve those descriptors VERBATIM in the shot_prompt. Never shrink, normalize, or downscale a character's stated proportions.
+- If a character is described as "same size as the Hulk", "superhuman scale", "Hulk-equivalent mass", etc., the shot_prompt MUST include explicit size language like "towering", "same mass as the Hulk", "superhuman proportions" so the image generator does not default to normal human scale.
+- When two characters share a scene and one is stated to be large, write the shot_prompt so their relative scale is explicit.
+
 JSON keys:
 shot_description, shot_prompt, negative_prompt, title, suggested_shot_type, suggested_camera_mood, suggested_color_palette
 """

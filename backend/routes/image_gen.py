@@ -464,6 +464,69 @@ def _venice_body_ref(prompt: str, body_ref_bytes: bytes, aspect: str = "cinemati
     return {"imageUrl": out_url, "prompt": full_prompt, "engine": "venice_bodyref", "model": "flux-dev"}
 
 
+def _novita_body_ref(prompt: str, body_ref_bytes: bytes, aspect: str = "cinematic", studio: str = "levram") -> dict:
+    """Novita img2img — body/character consistency via denoising init image."""
+    import json as _json, time, base64 as _b64n, urllib.error
+    if not NOVITA_KEY:
+        raise RuntimeError("NOVITA_API_KEY not set")
+
+    w, h = NOVITA_IMG_SIZES.get(aspect, NOVITA_IMG_SIZES["cinematic"])
+    b64_str = _b64n.b64encode(body_ref_bytes).decode()
+    full    = f"Preserve the character's exact appearance, outfit, face, and features. {prompt}, cinematic photorealistic"
+
+    body = _json.dumps({
+        "extra": {"response_image_type": "jpeg"},
+        "request": {
+            "model_name":          "epicphotogasm_xPlusPlus_135412.safetensors",
+            "prompt":              full,
+            "negative_prompt":     "blurry, low quality, watermark, different outfit, different person, bad anatomy",
+            "width":               w,
+            "height":              h,
+            "image_num":           1,
+            "steps":               25,
+            "seed":                -1,
+            "guidance_scale":      7.5,
+            "sampler_name":        "Euler a",
+            "image_base64":        [b64_str],
+            "denoising_strength":  0.60,
+        }
+    }).encode()
+
+    headers = {"Authorization": f"Bearer {NOVITA_KEY}", "Content-Type": "application/json"}
+    req = urllib.request.Request(f"{NOVITA_IMG_BASE}/img2img", data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            submit = _json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Novita img2img submit {e.code}: {e.read().decode()[:300]}")
+
+    task_id = submit.get("task_id")
+    if not task_id:
+        raise RuntimeError(f"Novita img2img no task_id: {submit}")
+
+    for _ in range(120):
+        time.sleep(1)
+        poll = urllib.request.Request(
+            f"https://api.novita.ai/v3/async/task-result?task_id={task_id}",
+            headers={"Authorization": f"Bearer {NOVITA_KEY}"},
+        )
+        with urllib.request.urlopen(poll, timeout=20) as r:
+            result = _json.loads(r.read())
+        status = result.get("task", {}).get("status", "")
+        if status == "TASK_STATUS_SUCCEED":
+            imgs = result.get("images") or []
+            if not imgs:
+                raise RuntimeError("Novita img2img succeeded but returned no images")
+            img_url = imgs[0].get("image_url") or imgs[0].get("url") or imgs[0]
+            img_bytes = _download_url(img_url)
+            _, out_url = _save_bytes(img_bytes, prefix="novita_bodyref", studio=studio)
+            return {"imageUrl": out_url, "prompt": full, "engine": "novita_bodyref", "model": "epicphotogasm_xPlusPlus"}
+        if status in ("TASK_STATUS_FAILED", "TASK_STATUS_CANCELED"):
+            raise RuntimeError(f"Novita img2img {status}: {result}")
+
+    raise RuntimeError("Novita img2img timed out")
+
+
 # ── NovitaAI — uncensored adult content, FLUX + Pony models ──
 NOVITA_KEY      = os.getenv("NOVITA_API_KEY", "")
 NOVITA_IMG_BASE = "https://api.novita.ai/v3/async"

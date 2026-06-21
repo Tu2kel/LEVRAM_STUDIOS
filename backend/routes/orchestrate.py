@@ -146,17 +146,25 @@ async def _gen_image(prompt: str, character_id: str) -> str:
                 (IMAGE_DIR / fname).write_bytes(image_bytes)
                 return "/output/renders/images/" + fname
             except Exception as _seedream_err:
-                print(f"[BODY_REF] Seedream failed ({_seedream_err}), trying Venice body-ref")
+                print(f"[BODY_REF] Seedream failed ({_seedream_err}), trying Venice/Novita body-ref")
+                _body_bytes = None
                 try:
-                    from backend.routes.image_gen import _venice_body_ref
                     _body_bytes = await loop.run_in_executor(None, lambda: _download_url(body_ref_url))
-                    _vr = await loop.run_in_executor(None, lambda: _venice_body_ref(
-                        f"{prompt}, cinematic photorealistic", _body_bytes, "cinematic"
-                    ))
-                    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-                    return _vr["imageUrl"]
-                except Exception as _venice_err:
-                    print(f"[BODY_REF] Venice body-ref failed ({_venice_err}), falling back to PuLID/plain")
+                except Exception as _dl_err:
+                    print(f"[BODY_REF] body-ref download failed ({_dl_err})")
+                if _body_bytes:
+                    _body_prompt = f"{prompt}, cinematic photorealistic"
+                    for _provider, _fn in [
+                        ("Venice",  lambda: __import__('backend.routes.image_gen', fromlist=['_venice_body_ref'])._venice_body_ref(_body_prompt, _body_bytes, "cinematic")),
+                        ("Novita",  lambda: __import__('backend.routes.image_gen', fromlist=['_novita_body_ref'])._novita_body_ref(_body_prompt, _body_bytes, "cinematic")),
+                    ]:
+                        try:
+                            _r = await loop.run_in_executor(None, _fn)
+                            print(f"[BODY_REF] {_provider} body-ref succeeded")
+                            return _r["imageUrl"]
+                        except Exception as _prov_err:
+                            print(f"[BODY_REF] {_provider} body-ref failed ({_prov_err}), trying next")
+                print(f"[BODY_REF] all body-ref providers failed, falling back to PuLID/plain")
 
     # ── Face-only lock via PuLID (fallback when no full body ref) ──────────────
     print(f"[PULID] char_id={character_id} db_char={'found' if db_char else 'MISSING'} refs={refs} preview={byo_ref_url[:60] if byo_ref_url else 'none'}")

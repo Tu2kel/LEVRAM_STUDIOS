@@ -25,6 +25,28 @@
       <span id="ep-status" style="font-size: 17px;color:var(--text-dim);margin-left:12px;"></span>
     </div>
 
+    <!-- Quick Test Shot -->
+    <div id="quick-shot-panel" style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;color:#aaa;letter-spacing:.08em;margin-bottom:12px;">⚡ QUICK TEST SHOT</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:0 0 200px;">
+          <label style="font-size:11px;color:#666;">CHARACTER</label>
+          <select id="qs-char" style="background:#1a1a1a;border:1px solid #333;color:#fff;padding:7px 10px;border-radius:4px;font-size:13px;">
+            <option value="">Loading characters…</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:240px;">
+          <label style="font-size:11px;color:#666;">SCENE DESCRIPTION</label>
+          <input id="qs-prompt" type="text" placeholder="e.g. Severus stands in a dark alley, cinematic lighting…"
+            style="background:#1a1a1a;border:1px solid #333;color:#fff;padding:7px 10px;border-radius:4px;font-size:13px;" />
+        </div>
+        <button onclick="quickTestShot()" style="background:#c0a000;color:#000;font-weight:700;font-size:13px;padding:8px 18px;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;">
+          + Add &amp; Render
+        </button>
+      </div>
+      <div id="qs-status" style="font-size:12px;color:#888;margin-top:8px;"></div>
+    </div>
+
     <div id="render-queue-panel" class="rq-page-panel"></div>
   </div>
 
@@ -33,12 +55,77 @@
     let renderQueue = [];
     window.renderQueue = renderQueue;
     function setStatus(){}
+
+    async function _loadCharactersIntoQS() {
+      try {
+        const res  = await levFetch(`${BASE}/characters`);
+        const data = await res.json();
+        const chars = data.characters || data || [];
+        const sel = document.getElementById("qs-char");
+        sel.innerHTML = `<option value="">— pick character —</option>` +
+          chars.map(c => `<option value="${c.id}" data-name="${c.name}">${c.name}</option>`).join("");
+      } catch(e) {
+        document.getElementById("qs-char").innerHTML = `<option value="">Failed to load</option>`;
+      }
+    }
+
+    async function quickTestShot() {
+      const sel    = document.getElementById("qs-char");
+      const prompt = document.getElementById("qs-prompt").value.trim();
+      const status = document.getElementById("qs-status");
+      const charId = sel.value;
+      const charName = sel.selectedOptions[0]?.dataset?.name || sel.selectedOptions[0]?.text || "";
+
+      if (!charId) { status.textContent = "Pick a character first."; return; }
+      if (!prompt)  { status.textContent = "Enter a scene description."; return; }
+
+      status.textContent = "Adding to queue…";
+      try {
+        const addRes = await levFetch(`${BASE}/render-queue`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            character:    charName,
+            character_id: charId,
+            shot: {
+              character:    charName,
+              character_id: charId,
+              shotDesc:     prompt,
+              shotPrompt:   prompt,
+              renderStyle:  "cinematic photorealistic",
+            },
+          }),
+        });
+        const addData = await addRes.json();
+        if (!addData.success) throw new Error(addData.error || "Add failed");
+
+        const itemId = addData.item?.id;
+        renderQueue = addData.queue || [];
+        window.renderQueue = renderQueue;
+        renderRenderQueue();
+
+        status.textContent = "Rendering… this may take 30–60s.";
+        const kfRes = await levFetch(`${BASE}/render-queue/${itemId}/keyframe`, { method: "POST" });
+        const kfData = await kfRes.json();
+        if (!kfData.success) throw new Error(kfData.error || "Render failed");
+
+        renderQueue = kfData.queue || [];
+        window.renderQueue = renderQueue;
+        renderRenderQueue();
+        status.style.color = "#4caf50";
+        status.textContent = `Done — ${kfData.render?.engineUsed || "ws"} · scroll down to see result.`;
+      } catch(e) {
+        status.style.color = "#f44";
+        status.textContent = "Error: " + e.message;
+      }
+    }
   </script>
 
   <script src="render-queue.js"></script>
   <script>
     window.addEventListener("DOMContentLoaded", () => {
       if (typeof loadRenderQueue === "function") loadRenderQueue();
+      _loadCharactersIntoQS();
     });
   </script>
 <script src="themes.js"></script>

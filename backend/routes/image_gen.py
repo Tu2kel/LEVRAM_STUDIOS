@@ -412,6 +412,58 @@ def _venice_generate_image(prompt: str, aspect: str, style: str, studio: str = "
     return {"imageUrl": out_url, "prompt": full_prompt, "engine": "venice_flux", "model": "venice-sd35"}
 
 
+def _venice_body_ref(prompt: str, body_ref_bytes: bytes, aspect: str = "cinematic", studio: str = "levram") -> dict:
+    """Venice flux-dev with image_prompts — body/character consistency when Seedream credits exhausted."""
+    import json as _json, urllib.error, base64 as _b64v
+    api_key = os.getenv("VENICE_API_KEY", "") or VENICE_KEY
+    if not api_key:
+        raise RuntimeError("VENICE_API_KEY not set")
+
+    w, h = VENICE_IMG_SIZES.get(aspect, VENICE_IMG_SIZES["cinematic"])
+    b64_str  = _b64v.b64encode(body_ref_bytes).decode()
+    data_url = f"data:image/jpeg;base64,{b64_str}"
+
+    full_prompt = (
+        f"Preserve the character's exact appearance, outfit, face, and features. "
+        f"{prompt}, cinematic photorealistic"
+    )
+
+    body = _json.dumps({
+        "model":           "flux-dev",
+        "prompt":          full_prompt,
+        "negative_prompt": "blurry, low quality, watermark, different outfit, different person",
+        "width":           w,
+        "height":          h,
+        "steps":           28,
+        "cfg_scale":       3.5,
+        "safe_mode":       False,
+        "image_prompts": [{"content_image": data_url, "strength": 0.35}],
+    }).encode()
+
+    req = urllib.request.Request(
+        f"{VENICE_IMG_BASE}/image/generate",
+        data=body,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            data = _json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Venice body-ref {e.code}: {e.read().decode('utf-8', errors='replace')[:400]}")
+
+    images = data.get("images") or []
+    if not images:
+        raise RuntimeError(f"Venice body-ref returned no images: {data}")
+
+    raw = images[0].get("b64") or images[0].get("base64") or images[0]
+    if not isinstance(raw, str):
+        raise RuntimeError(f"Venice body-ref unexpected image format: {type(raw)}")
+    img_bytes = _b64v.b64decode(raw)
+    _, out_url = _save_bytes(img_bytes, prefix="venice_bodyref", studio=studio)
+    return {"imageUrl": out_url, "prompt": full_prompt, "engine": "venice_bodyref", "model": "flux-dev"}
+
+
 # ── NovitaAI — uncensored adult content, FLUX + Pony models ──
 NOVITA_KEY      = os.getenv("NOVITA_API_KEY", "")
 NOVITA_IMG_BASE = "https://api.novita.ai/v3/async"

@@ -146,7 +146,17 @@ async def _gen_image(prompt: str, character_id: str) -> str:
                 (IMAGE_DIR / fname).write_bytes(image_bytes)
                 return "/output/renders/images/" + fname
             except Exception as _seedream_err:
-                print(f"[BODY_REF] Seedream failed ({_seedream_err}), falling back to PuLID/plain")
+                print(f"[BODY_REF] Seedream failed ({_seedream_err}), trying Venice body-ref")
+                try:
+                    from backend.routes.image_gen import _venice_body_ref
+                    _body_bytes = await loop.run_in_executor(None, lambda: _download_url(body_ref_url))
+                    _vr = await loop.run_in_executor(None, lambda: _venice_body_ref(
+                        f"{prompt}, cinematic photorealistic", _body_bytes, "cinematic"
+                    ))
+                    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+                    return _vr["imageUrl"]
+                except Exception as _venice_err:
+                    print(f"[BODY_REF] Venice body-ref failed ({_venice_err}), falling back to PuLID/plain")
 
     # ── Face-only lock via PuLID (fallback when no full body ref) ──────────────
     print(f"[PULID] char_id={character_id} db_char={'found' if db_char else 'MISSING'} refs={refs} preview={byo_ref_url[:60] if byo_ref_url else 'none'}")

@@ -599,8 +599,13 @@
           ${shot.shotDesc || shot.shot_description || "No description"}
         </div>
         <div style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:1px;margin-bottom:6px;">WHO OWNS THIS FRAME?</div>
-        <select id="regen-char-sel" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:8px;border-radius:3px;margin-bottom:14px;font-family:Rajdhani,sans-serif;font-size:13px;">
+        <select id="regen-char-sel" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:8px;border-radius:3px;margin-bottom:10px;font-family:Rajdhani,sans-serif;font-size:13px;">
           <option value="">— Pick camera subject —</option>
+          ${charOptions}
+        </select>
+        <div style="font-size:10px;color:rgba(255,255,255,0.2);letter-spacing:1px;margin-bottom:6px;">SECOND CHARACTER? <span style="color:rgba(255,255,255,0.15);">OPTIONAL — for two-character scenes</span></div>
+        <select id="regen-char-sel-2" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);padding:8px;border-radius:3px;margin-bottom:14px;font-family:Rajdhani,sans-serif;font-size:13px;">
+          <option value="">— None —</option>
           ${charOptions}
         </select>
         <div id="regen-status" style="font-size:11px;color:rgba(255,255,255,0.4);min-height:18px;margin-bottom:10px;"></div>
@@ -617,6 +622,7 @@
       const shot = shots.find(s => s.id === id);
       if (!shot) return;
       const charId  = document.getElementById("regen-char-sel")?.value;
+      const charId2 = document.getElementById("regen-char-sel-2")?.value || "";
       if (!charId) { document.getElementById("regen-status").textContent = "Pick a character first."; return; }
       const statusEl = document.getElementById("regen-status");
       statusEl.textContent = "Hermes rewriting prompt…";
@@ -626,7 +632,8 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            character_id: charId,
+            character_id:   charId,
+            character_id_2: charId2,
             scene_description: shot.shotDesc || shot.shot_description || "",
             original_prompt:   shot.shotPrompt || "",
           }),

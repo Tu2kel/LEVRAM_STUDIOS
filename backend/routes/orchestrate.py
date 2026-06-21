@@ -242,6 +242,56 @@ async def _gen_image(prompt: str, character_id: str) -> str:
     raise RuntimeError("All image providers failed — check credits on WaveSpeed, Venice, and Novita")
 
 
+# ── Second character face-swap (two-character scenes) ─────────────────────────
+
+async def _apply_char2_swap(image_url: str, character_id_2: str) -> str:
+    """Face-swap a second character into an already-generated image. Returns original URL on any failure."""
+    if not character_id_2 or not image_url:
+        return image_url
+    loop = asyncio.get_event_loop()
+
+    from backend.db import characters_col
+    db_char2 = None
+    if characters_col is not None:
+        doc2 = await characters_col.find_one({"id": character_id_2})
+        db_char2 = {k: v for k, v in doc2.items() if k != "_id"} if doc2 else None
+    else:
+        data_file = Path("data/characters.json")
+        if data_file.exists():
+            chars = json.loads(data_file.read_text()).get("characters", [])
+            db_char2 = next((c for c in chars if c.get("id") == character_id_2), None)
+
+    refs2 = (db_char2 or {}).get("reference_images") or []
+    face2_bytes = None
+
+    if refs2:
+        ref_path = Path(refs2[0].lstrip("/"))
+        if ref_path.exists():
+            face2_bytes = ref_path.read_bytes()
+    if not face2_bytes:
+        refs2_b64 = (db_char2 or {}).get("reference_images_b64") or []
+        if refs2_b64:
+            import base64 as _b64c2
+            face2_bytes = _b64c2.b64decode(refs2_b64[0]["data"])
+
+    if not face2_bytes:
+        print(f"[CHAR2] no face ref for {character_id_2}, skipping swap")
+        return image_url
+
+    try:
+        from backend.routes.image_gen import _ws_face_swap, IMAGE_DIR
+        import base64 as _b64c2
+        _b64str = _b64c2.b64encode(face2_bytes).decode()
+        _ref2   = type("R", (), {"base64": _b64str, "mediaType": "image/jpeg"})()
+        base_path = str(IMAGE_DIR / Path(image_url).name)
+        _, swapped_url = await loop.run_in_executor(None, lambda: _ws_face_swap(base_path, _ref2))
+        print(f"[CHAR2] face-swap applied for {character_id_2}")
+        return swapped_url
+    except Exception as _e:
+        print(f"[CHAR2] face-swap failed ({_e}), keeping primary image")
+        return image_url
+
+
 # ── I2V animation ─────────────────────────────────────────────────────────────
 
 async def _animate(image_url: str, motion_prompt: str, model: str, duration: int) -> str:
@@ -491,6 +541,15 @@ async def _run_pipeline(job_id: str, payload: dict):
                             if char1_appearance and char_name and char_name.lower() not in prompt_lower:
                                 raw_prompt = f"{char_name}: {char1_appearance}. {raw_prompt}"
 
+                # Detect second character from prompt text
+                shot_char_id_2 = ""
+                if shot_char_id:
+                    _pl = raw_prompt.lower()
+                    for _n2, _i2 in _char_name_map.items():
+                        if _i2 != shot_char_id and _n2 in _pl:
+                            shot_char_id_2 = _i2
+                            break
+
                 raw_prompt   = _sanitize_img(raw_prompt)
                 image_prompt = _tone_prefix + raw_prompt if _tone_prefix else raw_prompt
 
@@ -505,6 +564,10 @@ async def _run_pipeline(job_id: str, payload: dict):
                         if _attempt == len(_qc_suffixes) - 1:
                             raise _e
                         _update(job_id, step=f"{label} ↻ Retry {_attempt+1} — {str(_e)[:60]}")
+
+                # Two-character face-swap (if second char detected + WaveSpeed available)
+                if shot_char_id_2 and image_url:
+                    image_url = await _apply_char2_swap(image_url, shot_char_id_2)
 
             except Exception as e:
                 err_msg = f"Shot {i+1} keyframe failed after 3 attempts: {str(e)[:120]}"

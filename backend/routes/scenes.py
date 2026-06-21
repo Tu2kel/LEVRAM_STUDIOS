@@ -174,7 +174,8 @@ class RegenImageRequest(BaseModel):
 
 
 class AiRegenRequest(BaseModel):
-    character_id: str
+    character_id:   str
+    character_id_2: str = ""
     scene_description: Optional[str] = ""
     original_prompt: Optional[str] = ""
 
@@ -276,20 +277,38 @@ async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
     wardrobe    = char_doc.get("wardrobe", "")
     char_visual = " ".join(filter(None, [appearance, wardrobe]))
 
+    # Optional second character
+    char2_doc    = None
+    char2_name   = ""
+    char2_visual = ""
+    if body.character_id_2:
+        if characters_col is not None:
+            char2_doc = await characters_col.find_one({"id": body.character_id_2})
+        if char2_doc:
+            char2_name   = char2_doc.get("name", "")
+            char2_visual = " ".join(filter(None, [char2_doc.get("appearance", ""), char2_doc.get("wardrobe", "")]))
+
     venice_key = os.getenv("VENICE_API_KEY")
     if not venice_key:
         raise HTTPException(status_code=500, detail="VENICE_API_KEY not set")
 
     client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
 
+    _two_char_block = (
+        f"Second character in scene: {char2_name}\n"
+        f"Their appearance: {char2_visual}\n"
+    ) if char2_name else ""
+
     rewrite_prompt = (
         f"You are a cinematographer writing image generation prompts for LEVRAM Studios.\n\n"
         f"Scene action: {body.scene_description}\n"
-        f"Camera subject: {char_name}\n"
-        f"Their appearance: {char_visual}\n\n"
+        f"Primary subject: {char_name}\n"
+        f"Their appearance: {char_visual}\n"
+        f"{_two_char_block}\n"
         f"Write ONE dense paragraph image generation prompt. RULES:\n"
-        f"- FULL BODY SHOT — head to toe. Never a portrait, never a headshot, never cropped.\n"
+        f"- FULL BODY SHOT — head to toe, face visible. Never cropped at the neck or waist.\n"
         f"- {char_name} must be in a DYNAMIC POSE matching the scene action — not standing neutrally.\n"
+        f"{'- ' + char2_name + ' must also be visible in the frame, same scale and presence.' + chr(10) if char2_name else ''}"
         f"- Include the scene ENVIRONMENT (darkness, fire, wasteland, shadows, etc.) — never a plain background.\n"
         f"- Dramatic cinematic lighting (rim light, volumetric, low-key) — never flat or studio lighting.\n"
         f"- Low angle or Dutch angle preferred to convey power and threat.\n"
@@ -316,9 +335,11 @@ async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
 
     # Generate image with new prompt + character face lock
     try:
-        from backend.routes.orchestrate import _gen_image, _sanitize_img
+        from backend.routes.orchestrate import _gen_image, _apply_char2_swap, _sanitize_img
         new_prompt_clean = _sanitize_img(new_prompt)
         image_url = await _gen_image(new_prompt_clean, body.character_id)
+        if body.character_id_2:
+            image_url = await _apply_char2_swap(image_url, body.character_id_2)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image gen failed: {str(e)[:200]}")
 

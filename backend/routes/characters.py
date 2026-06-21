@@ -405,13 +405,30 @@ async def _submit_lora_training(character_id: str, char: dict):
             return
         os.environ["FAL_KEY"] = api_key
 
-        refs = char.get("reference_images") or []
-        buf  = io.BytesIO()
+        refs      = char.get("reference_images") or []
+        refs_b64  = char.get("reference_images_b64") or []
+        buf       = io.BytesIO()
+        added     = 0
+        import base64 as _b64mod
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
             for ref_url in refs:
                 local_path = Path(ref_url.lstrip("/"))
                 if local_path.exists():
                     zf.write(local_path, local_path.name)
+                    added += 1
+                else:
+                    # Railway restarted and wiped the filesystem — recover from b64 backup
+                    entry = next((e for e in refs_b64 if e.get("url") == ref_url), None)
+                    if entry and entry.get("data"):
+                        img_bytes = _b64mod.b64decode(entry["data"])
+                        zf.writestr(entry.get("filename", f"ref_{uuid.uuid4().hex[:8]}.jpg"), img_bytes)
+                        added += 1
+
+        if added == 0:
+            await _patch_character(character_id, {
+                "lora_status": "failed: no reference images found — re-upload refs and try again"
+            })
+            return
         buf.seek(0)
 
         loop    = asyncio.get_running_loop()

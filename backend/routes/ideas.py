@@ -87,15 +87,16 @@ async def save_idea(payload: IdeaPayload, x_studio: str = Header(default="levram
 
 
 @router.delete("/ideas/{idea_id}")
-async def delete_idea(idea_id: str):
+async def delete_idea(idea_id: str, x_studio: str = Header(default="levram")):
     if ideas_col is not None:
         await ideas_col.delete_one({"id": idea_id})
-        docs = await ideas_col.find({}).sort("createdAt", -1).to_list(None)
+        docs = await ideas_col.find({"studio": x_studio}).sort("createdAt", -1).to_list(None)
         return {"success": True, "ideas": [_strip(d) for d in docs]}
     data = _load()
     data["ideas"] = [i for i in data["ideas"] if i["id"] != idea_id]
     _save(data)
-    return {"success": True, "ideas": data["ideas"]}
+    scoped = [i for i in data["ideas"] if i.get("studio", "levram") == x_studio]
+    return {"success": True, "ideas": scoped}
 
 
 def _get_idea(idea_id: str) -> dict | None:

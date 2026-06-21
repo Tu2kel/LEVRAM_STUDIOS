@@ -8,7 +8,7 @@ import os
 import uuid
 import urllib.request
 
-from backend.routes.characters import _get_character
+from backend.routes.characters import _get_character, _get_b64_refs
 
 router = APIRouter()
 
@@ -36,9 +36,6 @@ COMFY_SIZES = {
     "square":     (512, 512),
 }
 
-# ── Provider flag ─────────────────────────────────────────────
-FAL_DISABLED = False  # fal.ai temporarily active — draining remaining credits
-
 # ── WaveSpeed ─────────────────────────────────────────────────
 WAVESPEED_API_BASE = "https://api.wavespeed.ai/api/v3"
 
@@ -59,7 +56,124 @@ WS_IMG_MODELS = {
     "ws_flux_uncensored":  "wavespeed-ai/flux-dev",              # No spicy image model — safety checker off handles it
 }
 
-# fal.ai model IDs (standby — do not route here while FAL_DISABLED)
+# ── Topview ───────────────────────────────────────────────────
+TOPVIEW_API_BASE = "https://api.topview.ai/api/v1"
+
+TV_IMG_SIZES = {
+    "widescreen": {"width": 1280, "height": 720},
+    "cinematic":  {"width": 1280, "height": 544},
+    "portrait":   {"width": 720,  "height": 1280},
+    "square":     {"width": 1024, "height": 1024},
+}
+
+TV_IMG_MODELS = {
+    "tv_nano":      "nano-banana-2",
+    "tv_nano_pro":  "nano-banana-pro",
+    "tv_seedream":  "seedream-5.0",
+    "tv_flux":      "flux-1-dev",
+}
+
+
+def _tv_submit_poll(endpoint: str, payload: dict, timeout_secs: int = 120) -> dict:
+    """Submit to Topview API, poll until complete. Returns result dict."""
+    import json, time, urllib.error
+    api_key = os.getenv("TOPVIEW_API_KEY")
+    if not api_key:
+        raise RuntimeError("TOPVIEW_API_KEY not set — add it to Railway Variables and .env")
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type":  "application/json",
+    }
+    submit_req = urllib.request.Request(
+        f"{TOPVIEW_API_BASE}/{endpoint}",
+        data=json.dumps(payload).encode(),
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(submit_req, timeout=30) as r:
+            submit = json.loads(r.read())
+    except urllib.request.HTTPError as e:
+        raise RuntimeError(f"Topview submit {e.code}: {e.read().decode()[:300]}")
+
+    task_id = (submit.get("data") or {}).get("task_id") or submit.get("task_id")
+    if not task_id:
+        raise RuntimeError(f"Topview returned no task_id: {submit}")
+
+    for _ in range(timeout_secs):
+        time.sleep(1)
+        poll_req = urllib.request.Request(
+            f"{TOPVIEW_API_BASE}/task/result?task_id={task_id}",
+            headers=headers,
+        )
+        with urllib.request.urlopen(poll_req, timeout=30) as r:
+            poll = json.loads(r.read())
+        data   = poll.get("data") or {}
+        status = data.get("status", "")
+        if status in ("completed", "success", "COMPLETED", "SUCCESS"):
+            return data
+        if status in ("failed", "error", "FAILED", "ERROR", "cancelled"):
+            raise RuntimeError(f"Topview task {status}: {data.get('error', 'unknown')}")
+
+    raise RuntimeError("Topview generation timed out")
+
+
+def _tv_generate_image(prompt: str, aspect: str, style: str,
+                       engine: str = "tv_nano", studio: str = "levram") -> dict:
+    model   = TV_IMG_MODELS.get(engine, TV_IMG_MODELS["tv_nano"])
+    size    = TV_IMG_SIZES.get(aspect, TV_IMG_SIZES["widescreen"])
+    full    = f"{prompt}, {style}".strip(", ") if style else prompt
+
+    result  = _tv_submit_poll("image/generate", {
+        "model":                 model,
+        "prompt":                full,
+        "width":                 size["width"],
+        "height":                size["height"],
+        "num_inference_steps":   28,
+        "guidance_scale":        3.5,
+        "enable_safety_checker": False,
+    })
+
+    img_url = (result.get("images") or [{}])[0].get("url") or result.get("url") or ""
+    if not img_url:
+        raise RuntimeError(f"Topview returned no image URL: {result}")
+
+    image_bytes = _download_url(img_url)
+    _, out_url  = _save_bytes(image_bytes, prefix=f"tv_{engine.split('_')[-1]}", studio=studio)
+    return {"imageUrl": out_url, "prompt": full, "engine": engine, "model": model}
+
+
+def _tv_nano_pulid(prompt: str, face_refs: list, aspect: str,
+                   style: str = "", studio: str = "levram") -> dict:
+    """Topview Nano Banana with face reference — character-locked generation."""
+    import base64 as _b64m
+    size     = TV_IMG_SIZES.get(aspect, TV_IMG_SIZES["widescreen"])
+    full     = f"{prompt}, {style}".strip(", ") if style else prompt
+    face_b64 = face_refs[0].base64
+    mime     = face_refs[0].mediaType
+
+    result = _tv_submit_poll("image/generate", {
+        "model":                 TV_IMG_MODELS["tv_nano"],
+        "prompt":                full,
+        "width":                 size["width"],
+        "height":                size["height"],
+        "reference_images":      [{"data": f"data:{mime};base64,{face_b64}", "type": "face"}],
+        "num_inference_steps":   28,
+        "guidance_scale":        3.5,
+        "enable_safety_checker": False,
+    })
+
+    img_url = (result.get("images") or [{}])[0].get("url") or result.get("url") or ""
+    if not img_url:
+        raise RuntimeError(f"Topview Nano PuLID returned no image URL: {result}")
+
+    image_bytes = _download_url(img_url)
+    _, out_url  = _save_bytes(image_bytes, prefix="tv_nanopulid", studio=studio)
+    return {"imageUrl": out_url, "prompt": full, "engine": "tv_nano_pulid", "model": "nano-banana-2"}
+
+
+# ── fal.ai model IDs (standby)
 FAL_MODELS = {
     "fal_flux":         "fal-ai/flux/dev",
     "fal_flux_lora":    "fal-ai/flux-lora",
@@ -736,6 +850,77 @@ def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> 
         return prompt
 
 
+# ── Full character lock: Seedream body → face swap face ───────
+async def _full_lock_generate(
+    character_id: str, prompt: str, face_refs: list,
+    aspect: str, style: str, studio: str,
+) -> dict:
+    """
+    Two-step lock:
+      1. Seedream Edit — locks body shape, outfit, proportions from uploaded body refs
+      2. WaveSpeed face swap — stamps the character's face on top of the body-locked image
+
+    Requires: body reference images uploaded via Character Lab.
+    Face ref is optional — skipped if not supplied (body-lock only).
+    """
+    char = await _get_character(character_id)
+    if not char:
+        raise RuntimeError("Character not found. Check the character_id.")
+
+    body_refs_local = char.get("body_reference_images") or []
+    domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+    loop   = asyncio.get_event_loop()
+
+    # Build public URLs for Seedream (needs publicly reachable URLs, not local paths)
+    public_body_urls = []
+    if domain:
+        for ref_url in body_refs_local:
+            local_path = Path(ref_url.lstrip("/"))
+            if local_path.exists():
+                public_body_urls.append(f"https://{domain}{ref_url}")
+
+    # Railway restarted and wiped FS — recover from b64 backups
+    if not public_body_urls:
+        b64_refs = await _get_b64_refs(character_id)
+        for entry in b64_refs[:3]:
+            try:
+                pub_url = _ws_to_public_url(
+                    entry["data"], entry.get("mime", "image/jpeg"), prefix="bodyref"
+                )
+                public_body_urls.append(pub_url)
+            except Exception:
+                pass
+
+    if not public_body_urls:
+        raise RuntimeError(
+            f"No body reference images for '{char.get('name', character_id)}'. "
+            "Upload full-body photos in Character Lab → Body Reference section first."
+        )
+
+    # Step 1: Seedream Edit — body/outfit/shape lock
+    outputs = await loop.run_in_executor(
+        None, lambda: _ws_seedream_edit(prompt, public_body_urls[:3], studio)
+    )
+    if not outputs:
+        raise RuntimeError("Seedream body lock returned no image.")
+
+    seedream_bytes     = _download_url(outputs[0])
+    saved_path, out_url = _save_bytes(seedream_bytes, prefix="locked_body", studio=studio)
+
+    # Step 2: Face swap — paste character's face onto the body-locked image
+    if face_refs:
+        _, out_url = await loop.run_in_executor(
+            None, lambda: _ws_face_swap(saved_path, face_refs[0], studio)
+        )
+
+    return {
+        "imageUrl": out_url,
+        "prompt":   prompt,
+        "engine":   "full_lock",
+        "model":    "seedream-edit-sequential + wavespeed-face-swap",
+    }
+
+
 # ── Route ─────────────────────────────────────────────────────
 @router.post("/image-gen/generate")
 async def generate_image(payload: ImageGenPayload, x_studio: str = Header(default="levram")):
@@ -745,121 +930,96 @@ async def generate_image(payload: ImageGenPayload, x_studio: str = Header(defaul
     face1  = payload.face_references_1
     face2  = payload.face_references_2
 
+    # Enhance prompt with any scene reference images
+    prompt = payload.prompt
+    if payload.reference_images:
+        prompt = await loop.run_in_executor(
+            None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
+        )
+
+    lora_url = lora_trigger = ""
+
     # ── Face reference path ───────────────────────────────────
-    # Novita and Venice are txt2img-only — skip face-ref routing entirely
-    _FACE_REF_ENGINES = not (engine in NOVITA_MODELS or engine == "venice_flux")
-    if (face1 or face2) and _FACE_REF_ENGINES:
-        prompt = payload.prompt
-        if payload.reference_images:
-            prompt = await loop.run_in_executor(
-                None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
-            )
+    # Novita and Venice are txt2img-only — no face-ref routing
+    _supports_face_ref = engine not in NOVITA_MODELS and engine != "venice_flux"
+    if (face1 or face2) and _supports_face_ref:
         try:
-            if FAL_DISABLED:
-                # Single person — WaveSpeed PuLID
-                if face1 and not face2:
+            # Topview Nano — multi-reference character lock
+            if engine in TV_IMG_MODELS or engine == "tv_nano_pulid":
+                if face1:
                     result = await loop.run_in_executor(
-                        None, _ws_pulid, prompt, face1, payload.aspect, payload.style, x_studio
+                        None, _tv_nano_pulid, prompt, face1, payload.aspect, payload.style, x_studio
                     )
                     return {"success": True, **result}
 
-                # Two people — cheap base image then face swap each person in
-                base_result = await loop.run_in_executor(
-                    None, _ws_generate_image, prompt, payload.aspect, payload.style, "ws_flux", "", "", x_studio
-                )
-                base_path  = str(IMAGE_DIR / Path(base_result["imageUrl"]).name)
-                saved_path, swap1_url = await loop.run_in_executor(
-                    None, _ws_face_swap, base_path, face1[0], x_studio
-                )
-                if face2:
-                    _, final_url = await loop.run_in_executor(
-                        None, _ws_face_swap, saved_path, face2[0], x_studio
-                    )
-                else:
-                    final_url = swap1_url
-                return {"success": True, "imageUrl": final_url, "engine": "ws_faceswap-2p", "model": "wavespeed-ai/image-face-swap"}
-
-            # ── fal.ai path (FAL_DISABLED = False) ───────────────
-            # Consistent Character — engine-selected, locks appearance across scenes
+            # Consistent Character — explicit fal.ai selection
             if engine == "consistent_character" and face1:
                 result = await loop.run_in_executor(
                     None, _generate_consistent_character, prompt, face1, payload.aspect, payload.style
                 )
                 return {"success": True, **result}
 
-            # Single person — route to WaveSpeed PuLID (avoids fal.ai dependency)
+            # WaveSpeed PuLID — single person
             if face1 and not face2:
                 result = await loop.run_in_executor(
                     None, _ws_pulid, prompt, face1, payload.aspect, payload.style, x_studio
                 )
                 return {"success": True, **result}
 
-            # Two people — generate composition then face-swap each person in
-            base_engine = engine if engine in FAL_MODELS else "fal_flux"
+            # Two people — base image then face-swap each person in
             base_result = await loop.run_in_executor(
-                None, _generate_fal, prompt, payload.aspect, payload.style, base_engine, "", ""
+                None, _ws_generate_image, prompt, payload.aspect, payload.style, "ws_flux", "", "", x_studio
             )
             base_path = str(IMAGE_DIR / Path(base_result["imageUrl"]).name)
-
             saved_path, swap1_url = await loop.run_in_executor(
-                None, _face_swap, base_path, face1[0]
+                None, _ws_face_swap, base_path, face1[0], x_studio
             )
-
             if face2:
                 _, final_url = await loop.run_in_executor(
-                    None, _face_swap, saved_path, face2[0]
+                    None, _ws_face_swap, saved_path, face2[0], x_studio
                 )
             else:
                 final_url = swap1_url
-
-            return {"success": True, "imageUrl": final_url, "prompt": prompt,
-                    "engine": "faceswap-2p", "model": "fal-ai/face-swap"}
+            return {"success": True, "imageUrl": final_url, "engine": "ws_faceswap-2p",
+                    "model": "wavespeed-ai/image-face-swap"}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    # Enhance prompt with scene reference images if provided
-    prompt = payload.prompt
-    if payload.reference_images:
-        loop = asyncio.get_event_loop()
-        prompt = await loop.run_in_executor(
-            None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
-        )
-
-    # LoRA disabled — character locking uses WaveSpeed PuLID (face reference method)
-    lora_url = lora_trigger = ""
-
-    # Venice always routes directly regardless of FAL_DISABLED
-    if engine == "venice_flux":
+    # ── Main routing — explicit, no hidden fallbacks ──────────
+    if engine == "full_lock":
+        if not payload.character_id:
+            raise HTTPException(status_code=400, detail="full_lock requires a character_id — select a character first.")
+        if not os.getenv("WAVESPEED_KEY"):
+            raise HTTPException(status_code=400, detail="WAVESPEED_KEY not set — required for full_lock.")
+        try:
+            result = await _full_lock_generate(
+                payload.character_id, prompt, face1, payload.aspect, payload.style, x_studio
+            )
+            return {"success": True, **result}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    elif engine in TV_IMG_MODELS:
+        if not os.getenv("TOPVIEW_API_KEY"):
+            raise HTTPException(status_code=400, detail="TOPVIEW_API_KEY not set — add it to Railway Variables and .env")
+        fn = lambda: _tv_generate_image(prompt, payload.aspect, payload.style, engine, x_studio)
+    elif engine == "venice_flux":
         if not VENICE_KEY:
-            raise HTTPException(status_code=400, detail="VENICE_API_KEY not set — add it to your environment variables")
+            raise HTTPException(status_code=400, detail="VENICE_API_KEY not set")
         fn = lambda: _venice_generate_image(prompt, payload.aspect, payload.style, x_studio)
     elif engine in NOVITA_MODELS:
         if not NOVITA_KEY:
             raise HTTPException(status_code=400, detail="NOVITA_API_KEY not set")
         fn = lambda: _novita_generate_image(prompt, payload.aspect, payload.style, engine, x_studio)
     elif engine in WS_IMG_MODELS:
-        # WaveSpeed engines always route to WaveSpeed regardless of FAL_DISABLED
         fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, engine, lora_url, lora_trigger, x_studio)
-    elif FAL_DISABLED:
-        # Route everything to WaveSpeed
-        if engine == "consistent_character":
-            raise HTTPException(status_code=400, detail="Consistent Character requires a Person 1 face photo")
-        if engine == "comfy":
-            raise HTTPException(status_code=400, detail="ComfyUI is local-only and not available on Railway")
-        if engine == "dalle3":
-            fn = lambda: _generate_dalle3(prompt, payload.aspect, payload.style)
-        else:
-            ws_engine = engine if engine in WS_IMG_MODELS else ("ws_flux_uncensored" if x_studio == "redlight" else "ws_flux")
-            fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, ws_engine, lora_url, lora_trigger, x_studio)
-    elif engine in FAL_MODELS or (lora_url and engine not in ("dalle3", "comfy")):
-        fn = lambda: _generate_fal(prompt, payload.aspect, payload.style,
-                                   engine, lora_url, lora_trigger)
+    elif engine in FAL_MODELS:
+        fn = lambda: _generate_fal(prompt, payload.aspect, payload.style, engine, lora_url, lora_trigger)
     elif engine == "dalle3":
         fn = lambda: _generate_dalle3(prompt, payload.aspect, payload.style)
     elif engine == "comfy":
         fn = lambda: _generate_comfy(prompt, payload.aspect, payload.style, payload.character)
     elif engine == "consistent_character":
-        raise HTTPException(status_code=400, detail="Consistent Character requires a Person 1 face photo — drop one in the face reference box and try again.")
+        raise HTTPException(status_code=400, detail="Consistent Character requires a Person 1 face photo.")
     else:
         raise HTTPException(status_code=400, detail=f"Unknown engine: {engine}")
 
@@ -878,18 +1038,25 @@ def list_models():
         "success": True,
         "default": "ws_flux",
         "engines": [
-            {"id": "ws_pulid",           "label": "★ PuLID — Character Lock ⚡",  "provider": "WaveSpeed", "speed": "fast",   "quality": "best",  "note": "Drop a face photo → FLUX PuLID locks identity. $0.03/img"},
-            {"id": "ws_flux",            "label": "FLUX Dev ⚡",                   "provider": "WaveSpeed", "speed": "fast",   "quality": "high",  "note": "$0.012/img"},
-            {"id": "ws_flux_schnell",    "label": "FLUX Schnell ⚡ (draft)",       "provider": "WaveSpeed", "speed": "turbo",  "quality": "good",  "note": "Fastest + cheapest draft. $0.003/img"},
-            {"id": "ws_flux_uncensored", "label": "FLUX Uncensored 🌶",            "provider": "WaveSpeed", "speed": "fast",   "quality": "high",  "note": "No content filter — Redlight mode. $0.012/img"},
-            {"id": "dalle3",          "label": "DALL-E 3",                        "provider": "OpenAI",    "speed": "medium", "quality": "high",  "note": "Uses OpenAI key"},
-            # fal.ai engines — inactive while FAL_DISABLED = True
-            # {"id": "consistent_character", "label": "Consistent Character (fal)",  "provider": "fal.ai"},
-            # {"id": "fal_flux_lora",        "label": "FLUX LoRA (fal)",            "provider": "fal.ai"},
-            # {"id": "fal_flux",             "label": "FLUX Dev (fal)",             "provider": "fal.ai"},
-            # {"id": "fal_flux_schnell",     "label": "FLUX Schnell (fal)",         "provider": "fal.ai"},
-            # {"id": "fal_flux_pro",         "label": "FLUX Pro (fal)",             "provider": "fal.ai"},
-            # {"id": "fal_sd3",              "label": "Stable Diffusion 3 (fal)",   "provider": "fal.ai"},
+            # ── Full Character Lock ───────────────────────────────────────────────
+            {"id": "full_lock",      "label": "★ Full Lock — Body + Face 🔒",      "provider": "WaveSpeed", "speed": "slow",  "quality": "best", "note": "Seedream locks body/outfit → face swap locks face. Select a character with body refs uploaded."},
+            # ── Topview ──────────────────────────────────────────────────────────
+            {"id": "tv_nano_pulid",  "label": "★ Nano Banana — Character Lock 🎯", "provider": "Topview", "speed": "fast",  "quality": "best", "note": "Multi-reference face lock. Unlimited on Business plan."},
+            {"id": "tv_nano",        "label": "Nano Banana 2 🎯",                  "provider": "Topview", "speed": "fast",  "quality": "high", "note": "Unlimited on Business plan."},
+            {"id": "tv_nano_pro",    "label": "Nano Banana Pro 🎯",                "provider": "Topview", "speed": "fast",  "quality": "best", "note": "Unlimited on Business plan."},
+            {"id": "tv_seedream",    "label": "Seedream 5.0 🎯",                   "provider": "Topview", "speed": "fast",  "quality": "high", "note": "Shape lock. Unlimited on Business plan."},
+            # ── WaveSpeed ────────────────────────────────────────────────────────
+            {"id": "ws_pulid",           "label": "PuLID — Character Lock ⚡",     "provider": "WaveSpeed", "speed": "fast",  "quality": "high", "note": "Face-locked generation. $0.03/img."},
+            {"id": "ws_flux",            "label": "FLUX Dev ⚡",                   "provider": "WaveSpeed", "speed": "fast",  "quality": "high", "note": "$0.012/img"},
+            {"id": "ws_flux_schnell",    "label": "FLUX Schnell ⚡ (draft)",       "provider": "WaveSpeed", "speed": "turbo", "quality": "good", "note": "Fastest draft. $0.003/img"},
+            {"id": "ws_flux_uncensored", "label": "FLUX Uncensored 🌶",            "provider": "WaveSpeed", "speed": "fast",  "quality": "high", "note": "No filter — Redlight mode. $0.012/img"},
+            # ── OpenAI ───────────────────────────────────────────────────────────
+            {"id": "dalle3",             "label": "DALL-E 3",                      "provider": "OpenAI",    "speed": "medium","quality": "high", "note": "Uses OpenAI key"},
+            # ── RL only ──────────────────────────────────────────────────────────
+            {"id": "venice_flux",        "label": "Venice.ai 🔴",                  "provider": "Venice",    "speed": "medium","quality": "high", "note": "Uncensored. Pro $18/mo."},
+            {"id": "novita_photo",       "label": "Novita Photo 🔴",               "provider": "Novita",    "speed": "medium","quality": "high", "note": "Explicit photorealistic. ~$0.015/img"},
+            {"id": "novita_realism",     "label": "Novita Realism 🔴",             "provider": "Novita",    "speed": "medium","quality": "high", "note": "Explicit portrait. ~$0.015/img"},
+            {"id": "novita_anime",       "label": "Novita Anime 🔴",               "provider": "Novita",    "speed": "medium","quality": "good", "note": "Explicit anime. ~$0.015/img"},
         ],
     }
 
@@ -953,7 +1120,7 @@ async def face_swap_on_image(payload: FaceSwapPayload):
     try:
         current_path = base_path
 
-        swap_fn = _ws_face_swap if FAL_DISABLED else _face_swap
+        swap_fn = _ws_face_swap
 
         if face1:
             saved_path, swap_url = await loop.run_in_executor(

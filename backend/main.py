@@ -30,7 +30,7 @@ load_dotenv()
 
 # Strip whitespace/newlines from API keys — Railway sometimes saves keys with trailing \n
 for _k in ["FAL_KEY", "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "WAVESPEED_KEY",
-           "VENICE_API_KEY", "NOVITA_API_KEY", "MONGODB_URL"]:
+           "VENICE_API_KEY", "NOVITA_API_KEY", "TOPVIEW_API_KEY", "MONGODB_URL"]:
     _v = os.getenv(_k)
     if _v and _v != _v.strip():
         os.environ[_k] = _v.strip()

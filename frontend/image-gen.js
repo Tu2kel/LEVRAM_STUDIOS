@@ -2,6 +2,7 @@
 const IG_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 const IG_ENGINE_HINTS = {
+  full_lock:            "🔒 FULL LOCK — Seedream locks body/outfit/proportions, then face swap locks the face. Select a character that has body reference photos uploaded. Best character consistency available.",
   dalle3:               "Uses your OpenAI key — best prompt accuracy.",
   fal_flux:             "fal.ai FLUX Dev — photorealism.",
   comfy:                "Checking ComfyUI connection…",
@@ -29,6 +30,7 @@ const IG_VIDEO_ENGINE_HINTS = {
 // Default engine: Venice for RL mode, DALL-E 3 for main studio
 const _igDefaultEngine = () => (window.RL?.isActive?.()) ? "venice_flux" : "dalle3";
 const _IG_VALID_ENGINES = new Set([
+  "full_lock",
   "dalle3","fal_flux","comfy","consistent_character",
   "ws_flux","ws_pulid","venice_flux",
   "novita_pro","novita_photo","novita_realism","novita_anime",

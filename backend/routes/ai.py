@@ -2,7 +2,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from openai import OpenAI
+import asyncio
 import os
+import re
 import json
 from pathlib import Path
 
@@ -24,45 +26,50 @@ class BuildShotPayload(BaseModel):
 
 
 
-def get_character_context(character_name: str = ""):
-    if not character_name or character_name == "None":
-        return ""
-
-    file_path = Path("data/characters.json")
-
-    if not file_path.exists():
-        return ""
-
-    try:
-        data = json.loads(file_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        print("PHASE 8C CHARACTER LOAD ERROR:", e)
-        return ""
-
-    characters = data.get("characters", []) if isinstance(data, dict) else []
-
-    # PHASE 8H — case-insensitive match handles "Slipstream" vs "SlipStream"
-    for c in characters:
-        if c.get("name", "").strip().lower() == character_name.strip().lower():
-            context = f"""
-Name: {c.get("name", "")}
+def _format_char(c: dict) -> str:
+    return f"""Name: {c.get("name", "")}
 Gender: {c.get("gender", "")}
 Age: {c.get("age", "")}
 Appearance: {c.get("appearance", "")}
 Wardrobe: {c.get("wardrobe", "")}
 Voice: {c.get("voice", "")}
 Personality: {c.get("personality", "")}
-Notes: {c.get("notes", "")}
-""".strip()
+Notes: {c.get("notes", "")}""".strip()
 
-            print("PHASE 8H CHARACTER CONTEXT INJECTED:", c.get("name"))
-            return context
 
-    print("PHASE 8H CHARACTER NOT FOUND:", character_name)
+async def get_character_context(character_name: str = "") -> str:
+    if not character_name or character_name == "None":
+        return ""
+
+    from backend.db import characters_col
+
+    if characters_col is not None:
+        try:
+            doc = await characters_col.find_one(
+                {"name": {"$regex": f"^{re.escape(character_name)}$", "$options": "i"}}
+            )
+            if doc:
+                doc.pop("_id", None)
+                return _format_char(doc)
+        except Exception as e:
+            print(f"[ai] MongoDB char lookup failed: {e}")
+
+    file_path = Path("data/characters.json")
+    if not file_path.exists():
+        return ""
+    try:
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        print("CHARACTER LOAD ERROR:", e)
+        return ""
+    characters = data.get("characters", []) if isinstance(data, dict) else []
+    for c in characters:
+        if c.get("name", "").strip().lower() == character_name.strip().lower():
+            return _format_char(c)
     return ""
 
 @router.post("/ai/build-shot")
-def build_shot(payload: BuildShotPayload):
+async def build_shot(payload: BuildShotPayload):
     if not os.getenv("OPENAI_API_KEY"):
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY missing from .env")
 
@@ -77,8 +84,8 @@ JSON keys:
 shot_description, shot_prompt, negative_prompt, title, suggested_shot_type, suggested_camera_mood, suggested_color_palette
 """
 
-    primary_character_context = get_character_context(payload.character)
-    secondary_character_context = get_character_context(payload.secondary_character)
+    primary_character_context = await get_character_context(payload.character)
+    secondary_character_context = await get_character_context(payload.secondary_character)
 
     character_context = f"""
 PRIMARY CHARACTER:
@@ -102,24 +109,22 @@ Camera Mood: {payload.camera_mood}
 Color Palette: {payload.color_palette}
 """
 
+    loop = asyncio.get_event_loop()
     try:
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system.strip()},
-                {"role": "user", "content": user.strip()},
-            ],
-            temperature=0.8,
+        res = await loop.run_in_executor(
+            None,
+            lambda: client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system.strip()},
+                    {"role": "user", "content": user.strip()},
+                ],
+                temperature=0.8,
+            ),
         )
-
         text = res.choices[0].message.content.strip()
         data = json.loads(text)
-
-        return {
-            "success": True,
-            "data": data
-        }
-
+        return {"success": True, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -132,7 +137,7 @@ class ReviseShotPayload(BaseModel):
 
 
 @router.post("/ai/revise-shot")
-def revise_shot(payload: ReviseShotPayload):
+async def revise_shot(payload: ReviseShotPayload):
     if not os.getenv("OPENAI_API_KEY"):
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY missing from .env")
 
@@ -161,8 +166,8 @@ suggested_camera_mood,
 suggested_color_palette
 """
 
-    primary_character_context = get_character_context(payload.character)
-    secondary_character_context = get_character_context(payload.secondary_character)
+    primary_character_context = await get_character_context(payload.character)
+    secondary_character_context = await get_character_context(payload.secondary_character)
 
     character_context = f"""
 PRIMARY CHARACTER:
@@ -192,23 +197,21 @@ Revision Request:
 {payload.override_notes}
 """
 
+    loop = asyncio.get_event_loop()
     try:
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system.strip()},
-                {"role": "user", "content": user.strip()}
-            ],
-            temperature=0.7
+        res = await loop.run_in_executor(
+            None,
+            lambda: client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system.strip()},
+                    {"role": "user", "content": user.strip()},
+                ],
+                temperature=0.7,
+            ),
         )
-
         text = res.choices[0].message.content.strip()
         data = json.loads(text)
-
-        return {
-            "success": True,
-            "data": data
-        }
-
+        return {"success": True, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

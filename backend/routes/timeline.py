@@ -20,7 +20,7 @@ async def load_timeline():
     # MongoDB-first: load shots ordered by creation time
     if scenes_col is not None:
         try:
-            cursor = scenes_col.find({}, {"_id": 0}).sort("shot_number", 1)
+            cursor = scenes_col.find({"shot_number": {"$exists": True}}, {"_id": 0}).sort("shot_number", 1)
             shots  = await cursor.to_list(length=None)
             if shots:
                 return {"shots": shots}

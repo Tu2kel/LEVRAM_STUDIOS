@@ -116,8 +116,14 @@ async def _ensure_indexes():
         print(f"[LEVRAM] Index creation skipped (MongoDB slow/unreachable): {e}")
         return
 
-    # One-time migration: move body_reference_images_b64 out of character docs
+    # Run migration in background so it never blocks server startup
+    asyncio.ensure_future(_migrate_b64(characters_col, char_b64_col))
+
+
+async def _migrate_b64(characters_col, char_b64_col):
+    """Move body_reference_images_b64 out of character docs — runs once, safe to re-run."""
     try:
+        migrated = 0
         async for char in characters_col.find(
             {"body_reference_images_b64": {"$exists": True}},
             {"id": 1, "body_reference_images_b64": 1},
@@ -135,7 +141,9 @@ async def _ensure_indexes():
                 {"id": char_id},
                 {"$unset": {"body_reference_images_b64": ""}},
             )
-        print("[LEVRAM] body_reference_images_b64 migration complete.")
+            migrated += 1
+        if migrated:
+            print(f"[LEVRAM] b64 migration: moved {migrated} character(s) to character_b64_backups.")
     except Exception as e:
         print(f"[LEVRAM] b64 migration skipped: {e}")
 

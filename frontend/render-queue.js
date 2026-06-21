@@ -101,11 +101,21 @@ function renderRenderQueue() {
         <div class="render-status-pill render-status-${status}">${status.toUpperCase()}</div>
         <div class="render-actions">
           <button onclick="generateKeyframeForQueueItem('${item.id}')"
-                  title="Generate keyframe image via fal.ai FLUX">
+                  title="Generate keyframe image">
             ${hasKeyframe ? "Re-Keyframe" : "Keyframe"}
           </button>
+          <select id="rq-model-${item.id}"
+                  style="background:#1a1a1a;border:1px solid #333;color:#fff;font-size:11px;padding:3px 6px;border-radius:3px;width:100%;margin-bottom:4px;"
+                  ${!hasKeyframe ? "disabled" : ""}>
+            <option value="ws_wan22" selected>Wan 2.2 ⚡ WaveSpeed</option>
+            <option value="ws_wan27">Wan 2.7 ⚡ latest</option>
+            <option value="kling_26">Kling 2.6 Pro</option>
+            <option value="kling_o1">Kling O1 dual-frame</option>
+            <option value="runway_gen4_i2v">Runway Gen-4.5 ✦</option>
+            <option value="runway_turbo">Runway Turbo ✦</option>
+          </select>
           <button onclick="animateKeyframe('${item.id}')"
-                  ${!hasKeyframe ? 'disabled title="Generate keyframe first"' : 'title="Animate keyframe via Wan 2.1 I2V"'}>
+                  ${!hasKeyframe ? 'disabled title="Generate keyframe first"' : 'title="Animate keyframe"'}>
             Animate →
           </button>
           <button onclick="assembleShotVideo('${item.id}')"
@@ -281,20 +291,8 @@ async function animateKeyframe(itemId) {
     return;
   }
 
-  const model = prompt(
-    "I2V engine:\n  1 = HunyuanVideo (free — default)\n  2 = Runway Gen-4 Turbo ✦ (paid — fastest)\n  3 = Runway Gen-4.5 ✦ (paid — best quality)\n  4 = Wan 2.1 Fast (free)\n  5 = Wan 2.1 Best (free)\n\nEnter 1–5:",
-    "1"
-  );
-  const modelMap = {
-    "1": "hunyuan_i2v",
-    "2": "runway_turbo",
-    "3": "runway_gen4_i2v",
-    "4": "wan21_i2v",
-    "5": "wan21_14b_i2v",
-  };
-  const modelKey = modelMap[model?.trim()] || "hunyuan_i2v";
-
-  const motionPrompt = prompt("Motion prompt (optional — describe the movement):", "") || "";
+  const modelKey = document.getElementById(`rq-model-${itemId}`)?.value || "ws_wan22";
+  const motionPrompt = "";
 
   const statusEl = document.getElementById("ep-status");
   if (statusEl) statusEl.textContent = `Submitted I2V job via ${modelKey} — polling…`;

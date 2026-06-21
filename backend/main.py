@@ -94,6 +94,30 @@ app.add_middleware(
 app.mount("/output", StaticFiles(directory="output"), name="output")
 app.mount("/frontend", StaticFiles(directory="frontend", html=True), name="frontend")
 
+
+@app.on_event("startup")
+async def _ensure_indexes():
+    """Create indexes on first deploy — idempotent, fast to re-run."""
+    import asyncio
+    from backend.db import characters_col, scenes_col, ideas_col
+    if characters_col is None:
+        return
+    try:
+        await asyncio.wait_for(asyncio.gather(
+            # characters: roster list filters by studio; find_one by id
+            characters_col.create_index("studio"),
+            characters_col.create_index("id", unique=True, sparse=True),
+            # scenes: listed/filtered by project
+            scenes_col.create_index("project"),
+            scenes_col.create_index("id"),
+            # ideas: filtered by studio
+            ideas_col.create_index("studio"),
+        ), timeout=5.0)
+        print("[LEVRAM] MongoDB indexes ensured.")
+    except Exception as e:
+        print(f"[LEVRAM] Index creation skipped (MongoDB slow/unreachable): {e}")
+
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return Response(status_code=204)

@@ -76,6 +76,24 @@ async function ivLoadCharacters() {
   }
 }
 
+// ── Load location dropdown ────────────────────────────────────
+async function ivLoadLocations() {
+  const sel = document.getElementById("iv-dev-location");
+  if (!sel) return;
+  sel.innerHTML = `<option value="">None — AI chooses</option>`;
+  try {
+    const res  = await levFetch(`${IV_BASE}/locations`);
+    const data = await res.json();
+    (data.locations || []).forEach(loc => {
+      const o = document.createElement("option");
+      o.value = loc.name; o.textContent = loc.name;
+      sel.appendChild(o);
+    });
+  } catch (err) {
+    console.warn("[IV] ivLoadLocations failed:", err);
+  }
+}
+
 // ── List ───────────────────────────────────────────────────────
 async function ivLoadIdeas() {
   const list = document.getElementById("iv-list");
@@ -329,6 +347,7 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
   const charId    = charSel?.value || "";
   const char2Name = charSel2?.selectedOptions?.[0]?.dataset?.name || charSel2?.selectedOptions?.[0]?.textContent || "";
   const char2Id   = charSel2?.value || "";
+  const locName   = document.getElementById("iv-dev-location")?.value || "";
 
   // Use the idea's saved target_minutes if available — don't rely on form which may show wrong default
   const cachedIdea = (_ivIdeasCache || []).find(i => i.id === id);
@@ -344,6 +363,7 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
       body: JSON.stringify({
         character_name: charName, character_id: charId,
         character2_name: char2Name, character2_id: char2Id,
+        location_name: locName,
         target_minutes: minutes, scene_seconds: sceneSec,
       }),
     });
@@ -639,6 +659,7 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
   const charSel  = document.getElementById("iv-dev-character");
   const charId   = charSel?.value || "";
   const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
+  const locName  = document.getElementById("iv-dev-location")?.value || "";
   const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
   const model    = "ws_wan22";
 
@@ -726,6 +747,7 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
         character_name:  charName,
         character2_id:   char2Id,
         character2_name: char2Name,
+        location_name:   locName,
         genre,
         tone_notes:      toneNotes,
         duration:        sceneSec,
@@ -1056,6 +1078,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   ivLoadCharacters();
+  ivLoadLocations();
   ivLoadIdeas();
   ivUpdateCostEst();
 });

@@ -26,6 +26,7 @@ class DevelopRequest(BaseModel):
     character_id: str = ""
     character2_name: str = ""
     character2_id: str = ""
+    location_name: str = ""
     target_minutes: float = 8.0
     scene_seconds: int = 5
 
@@ -166,6 +167,9 @@ async def develop_idea(idea_id: str, body: DevelopRequest):
     char1_appearance = await _fetch_char_appearance(body.character_id)
     char2_appearance = await _fetch_char_appearance(body.character2_id)
 
+    from backend.routes.ai import get_location_context
+    location_context = await get_location_context(body.location_name)
+
     story = await _gpt_develop(
         concept           = idea["rawIdea"],
         genre             = idea.get("genre", "sci-fi action"),
@@ -176,6 +180,8 @@ async def develop_idea(idea_id: str, body: DevelopRequest):
         num_scenes        = num_scenes,
         scene_seconds     = body.scene_seconds,
         target_minutes    = body.target_minutes,
+        location_name     = body.location_name,
+        location_context  = location_context,
     )
 
     scenes = story.get("scenes", [])
@@ -302,6 +308,7 @@ async def _gpt_develop(
     concept: str, genre: str, character_name: str,
     num_scenes: int, scene_seconds: int, target_minutes: float,
     char2_name: str = "", char1_appearance: str = "", char2_appearance: str = "",
+    location_name: str = "", location_context: str = "",
 ) -> dict:
     from openai import OpenAI
     loop = asyncio.get_event_loop()
@@ -389,8 +396,9 @@ async def _gpt_develop(
         performers = character_name or "unnamed"
         if char2_name:
             performers += f" and {char2_name}"
+        loc_line = f"\nLocation: {location_name}" if location_name else ""
         u = (
-            f"Concept: {concept}\nGenre: {genre}\nPerformers: {performers}\n\n"
+            f"Concept: {concept}\nGenre: {genre}\nPerformers: {performers}{loc_line}\n\n"
             f"Return JSON with ONLY these fields:\n"
             f"  title (from concept), logline (1 sentence), act_structure (1 sentence 3-act summary)"
         )
@@ -477,11 +485,14 @@ async def _gpt_develop(
             angle_field = ""
             total_label = str(beat_count)
 
+        _loc_block = (f"\nLOCATION LOCK — every shot_prompt in this act MUST include these environment descriptors verbatim:\n{location_context}\n") if location_context else ""
+
         u = (
             f"Concept: {concept}\nGenre: {genre}"
             f"\nPerformer 1 — {p1 or 'unnamed'}: {char1_appearance}"
             + (f"\nPerformer 2 — {p2}: {char2_appearance}" if p2 else "")
             + _per_act_gender
+            + _loc_block
             + coverage_instruction
             + f"\nAct {act_num} focus: {act_desc}\n\n"
             f"Return a JSON array of {total_label} scene objects.\n"

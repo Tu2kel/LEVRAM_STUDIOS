@@ -391,6 +391,7 @@ async def _run_pipeline(job_id: str, payload: dict):
     char_name      = payload.get("character_name", "")
     character2_id  = payload.get("character2_id", "")
     char2_name     = payload.get("character2_name", "")
+    location_name  = payload.get("location_name", "")
     genre          = payload.get("genre", "")
     tone_notes     = payload.get("tone_notes", "")
     duration       = int(payload.get("duration", 5))
@@ -398,6 +399,15 @@ async def _run_pipeline(job_id: str, payload: dict):
     include_tts    = payload.get("include_tts", True)
     project        = payload.get("project", char_name or "Default")
     keyframes_only = payload.get("keyframes_only", False)
+
+    # Resolve location context for prompt injection
+    _location_context = ""
+    if location_name:
+        try:
+            from backend.routes.ai import get_location_context
+            _location_context = await get_location_context(location_name)
+        except Exception as _le:
+            print(f"[ORCH] location context lookup failed: {_le}")
 
     # Look up both characters' appearances for prompt injection when face lock is unavailable
     async def _fetch_appearance(char_id: str) -> str:
@@ -559,6 +569,8 @@ async def _run_pipeline(job_id: str, payload: dict):
 
                 raw_prompt   = _sanitize_img(raw_prompt)
                 image_prompt = _tone_prefix + raw_prompt if _tone_prefix else raw_prompt
+                if _location_context:
+                    image_prompt = image_prompt + f", {_location_context}"
 
                 # Autonomous QC — retry up to 3 times on failure
                 image_url = None

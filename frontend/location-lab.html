@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEVRAM Location Lab</title>
+  <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="character-lab.css" />
+  <script src="config.js"></script>
+  <script src="themes.js"></script>
+</head>
+<body>
+<main class="cl-page">
+
+  <header class="cl-header">
+    <div class="cl-header-left">
+      <div class="cl-logo-badge">📍</div>
+      <div>
+        <h1>LOCATION LAB</h1>
+        <p>LEVRAM Studios — Scene Registry</p>
+      </div>
+    </div>
+    <div class="cl-header-right">
+      <button id="ll-new-btn" onclick="newLocation()">+ New Location</button>
+      <button onclick="window.close()">Close Tab</button>
+    </div>
+  </header>
+
+  <div id="location-lab-status" class="cl-status" style="display:none;"></div>
+
+  <div class="cl-grid">
+
+    <!-- LEFT — Location Profile Form -->
+    <section class="cl-panel cl-form-panel">
+      <div class="cl-panel-header">
+        <span class="cl-panel-label">Location Profile</span>
+        <span id="ll-edit-badge" class="cl-edit-badge" style="display:none;">Editing</span>
+      </div>
+
+      <div class="cl-form-body">
+
+        <div class="cl-section">
+          <div class="cl-section-label">Identity</div>
+          <input id="loc-name" placeholder="Location Name (e.g. Dark Alley, Severus's Throne Room)" />
+        </div>
+
+        <div class="cl-divider"></div>
+
+        <div class="cl-section">
+          <div class="cl-section-label">Environment</div>
+          <textarea id="loc-description" placeholder="Brief setting description — what kind of place is this?"></textarea>
+          <div class="cl-row-2" style="margin-top:8px;">
+            <div>
+              <div class="cl-section-label" style="margin-top:0;">Time of Day</div>
+              <select id="loc-time-of-day" style="width:100%;background:#111;border:1px solid #2a2a2a;color:#fff;padding:7px 10px;border-radius:4px;font-size:13px;margin-top:4px;">
+                <option value="">— unspecified —</option>
+                <option value="night">Night</option>
+                <option value="golden hour">Golden Hour</option>
+                <option value="day">Day</option>
+                <option value="dusk">Dusk</option>
+                <option value="dawn">Dawn</option>
+                <option value="overcast midday">Overcast Midday</option>
+              </select>
+            </div>
+            <div>
+              <div class="cl-section-label" style="margin-top:0;">Weather</div>
+              <select id="loc-weather" style="width:100%;background:#111;border:1px solid #2a2a2a;color:#fff;padding:7px 10px;border-radius:4px;font-size:13px;margin-top:4px;">
+                <option value="">— unspecified —</option>
+                <option value="clear">Clear</option>
+                <option value="light rain">Light Rain</option>
+                <option value="heavy rain">Heavy Rain</option>
+                <option value="fog">Fog</option>
+                <option value="storm">Storm</option>
+                <option value="snow">Snow</option>
+                <option value="haze / smog">Haze / Smog</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="cl-divider"></div>
+
+        <div class="cl-section">
+          <div class="cl-section-label">Visual Identity</div>
+          <textarea id="loc-lighting" placeholder="Lighting — e.g. sodium vapor orange streetlights, high-contrast noir shadows, pools of cold light"></textarea>
+          <textarea id="loc-atmosphere" placeholder="Atmosphere — e.g. rain-slicked cobblestones, fog at ankle level, distant sirens, smoke rising"></textarea>
+          <textarea id="loc-color-palette" placeholder="Color Palette — e.g. deep blacks, amber orange, cold blue reflections, desaturated greens"></textarea>
+        </div>
+
+        <div class="cl-divider"></div>
+
+        <div class="cl-section">
+          <div class="cl-section-label">Director Notes</div>
+          <textarea id="loc-camera-notes" placeholder="Camera preferences — e.g. low angles preferred, tight environmental compression, dutch tilt for tension"></textarea>
+        </div>
+
+        <div class="cl-divider"></div>
+
+        <div class="cl-action-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="cl-save-btn" onclick="saveLocation()">Save Location</button>
+          <button class="cl-save-btn" onclick="generateLocationPreview()" style="background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.4);color:#c9a84c;">Generate Preview</button>
+          <button id="ll-delete-btn" onclick="deleteLocation()" style="display:none;background:rgba(180,40,40,0.15);border:1px solid rgba(180,40,40,0.4);color:#e05050;font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:1px;padding:8px 16px;border-radius:3px;cursor:pointer;text-transform:uppercase;">Delete</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- CENTER — Reference Images -->
+    <section class="cl-panel" style="display:flex;flex-direction:column;gap:0;">
+      <div class="cl-panel-header">
+        <span class="cl-panel-label">Environment References</span>
+        <span style="font-size:11px;color:#555;">Mood boards, lighting refs, concept art</span>
+      </div>
+
+      <div id="ll-ref-drop" class="cl-ref-drop" onclick="document.getElementById('ll-ref-input').click()"
+        ondragover="event.preventDefault()" ondrop="llHandleDrop(event)"
+        style="cursor:pointer;border:2px dashed #2a2a2a;border-radius:6px;padding:20px;text-align:center;color:#555;font-size:12px;margin:16px;min-height:100px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;">
+        <div style="font-size:20px;">🏙</div>
+        <div>Drop environment images here or click to upload</div>
+        <div style="font-size:11px;color:#444;">JPG/PNG — auto-compressed</div>
+      </div>
+      <input id="ll-ref-input" type="file" accept="image/*" multiple style="display:none;" onchange="llUploadRefs(this.files)" />
+
+      <div id="ll-ref-gallery" style="display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 16px;"></div>
+
+      <!-- Generated Preview -->
+      <div id="ll-preview-wrap" style="margin:0 16px 16px;display:none;">
+        <div class="cl-panel-header" style="margin-bottom:8px;"><span class="cl-panel-label">Location Preview</span></div>
+        <img id="ll-preview-img" style="width:100%;border-radius:4px;border:1px solid #2a2a2a;" />
+        <div id="ll-preview-status" style="font-size:12px;color:#888;margin-top:6px;"></div>
+      </div>
+    </section>
+
+    <!-- RIGHT — Location List -->
+    <section class="cl-panel cl-list-panel">
+      <div class="cl-panel-header">
+        <span class="cl-panel-label">Saved Locations</span>
+        <span id="ll-count" style="font-size:11px;color:#555;"></span>
+      </div>
+      <div id="ll-list" style="padding:12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:calc(100vh - 200px);">
+        <p style="color:#444;font-size:11px;letter-spacing:2px;text-transform:uppercase;">No locations yet.</p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="location-lab.js"></script>
+<script src="themes.js"></script>
+</body>
+</html>

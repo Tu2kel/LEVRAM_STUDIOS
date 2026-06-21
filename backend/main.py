@@ -24,6 +24,7 @@ from backend.routes.assets import router as assets_router
 from backend.routes.projects import router as projects_router
 from backend.routes.orchestrate import router as orchestrate_router
 from backend.routes.rl_agent import router as rl_agent_router
+from backend.routes.locations import router as locations_router
 from dotenv import load_dotenv
 from pathlib import Path
 load_dotenv()
@@ -99,7 +100,7 @@ app.mount("/frontend", StaticFiles(directory="frontend", html=True), name="front
 async def _ensure_indexes():
     """Create indexes and run one-time migrations on deploy — all idempotent."""
     import asyncio
-    from backend.db import characters_col, scenes_col, ideas_col, char_b64_col
+    from backend.db import characters_col, scenes_col, ideas_col, char_b64_col, locations_col
     if characters_col is None:
         return
     try:
@@ -110,6 +111,8 @@ async def _ensure_indexes():
             scenes_col.create_index("id"),
             ideas_col.create_index("studio"),
             char_b64_col.create_index("character_id", unique=True),
+            locations_col.create_index("studio"),
+            locations_col.create_index("id", unique=True, sparse=True),
         ), timeout=5.0)
         print("[LEVRAM] MongoDB indexes ensured.")
     except Exception as e:
@@ -172,3 +175,4 @@ app.include_router(assets_router)
 app.include_router(projects_router)
 app.include_router(orchestrate_router)
 app.include_router(rl_agent_router)
+app.include_router(locations_router)

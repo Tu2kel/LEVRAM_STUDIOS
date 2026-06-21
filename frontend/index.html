@@ -26,6 +26,7 @@
         <button class="nav-btn" data-tab="music">Music</button>
         <button class="nav-btn" data-tab="timeline">Timeline ↗</button>
         <button class="nav-btn" onclick="window.open('render-queue.html','_blank')">Render Queue ↗</button>
+        <button class="nav-btn" onclick="window.open('location-lab.html','_blank')">Location Lab ↗</button>
         <button class="nav-btn" data-tab="projects">Projects ↗</button>
         <button class="nav-btn" data-tab="settings">Settings ↗</button>
         <button class="nav-btn" onclick="window.open('manual.html','_blank')">Manual ↗</button>
@@ -523,6 +524,13 @@
                 <select id="iv-dev-character2" class="voice-char-select" style="flex:1;min-width:100px;">
                   <option value="">None</option>
                 </select>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+                <div class="field-label" style="margin:0;white-space:nowrap;">📍 Location:</div>
+                <select id="iv-dev-location" class="voice-char-select" style="flex:1;min-width:140px;">
+                  <option value="">None — AI chooses</option>
+                </select>
+                <button onclick="window.open('location-lab.html','_blank')" style="background:none;border:1px solid #2a2a2a;color:#666;font-size:11px;padding:4px 8px;border-radius:3px;cursor:pointer;white-space:nowrap;">+ New</button>
               </div>
             </div>
           </div>

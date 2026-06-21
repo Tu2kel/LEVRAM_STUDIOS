@@ -260,12 +260,35 @@ async def regen_scene_image(scene_id: str, body: RegenImageRequest):
 
 @router.post("/scene/{scene_id}/ai-regen")
 async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
-    """Hermes rewrites the shot_prompt focused on the selected character, then regenerates the image."""
+    """Hermes refines the shot prompt within the story's context, then regenerates the image."""
     import os, asyncio
     from openai import OpenAI
 
-    # Fetch character from DB
-    from backend.db import characters_col
+    # Fetch the scene so we know its project and existing prompt
+    scene_doc = None
+    if scenes_col is not None:
+        scene_doc = await scenes_col.find_one({"id": scene_id})
+    scene_project   = (scene_doc or {}).get("project", "")
+    existing_prompt = (scene_doc or {}).get("shotPrompt", "") or body.original_prompt or ""
+    scene_desc      = (scene_doc or {}).get("shotDesc", "") or body.scene_description or ""
+    shot_number     = (scene_doc or {}).get("shot_number", "")
+
+    # Pull story context from the parent idea (same project name)
+    from backend.db import characters_col, ideas_col
+    story_title   = scene_project
+    story_logline = ""
+    story_genre   = "sci-fi action"
+    if ideas_col is not None and scene_project:
+        idea_doc = await ideas_col.find_one({"title": scene_project})
+        if not idea_doc:
+            idea_doc = await ideas_col.find_one({"title": {"$regex": scene_project, "$options": "i"}})
+        if idea_doc:
+            story_title   = idea_doc.get("title", scene_project)
+            story_genre   = idea_doc.get("genre", "sci-fi action")
+            story_obj     = idea_doc.get("story", {})
+            story_logline = story_obj.get("logline", "") if isinstance(story_obj, dict) else ""
+
+    # Fetch primary character
     char_doc = None
     if characters_col is not None:
         char_doc = await characters_col.find_one({"id": body.character_id})
@@ -295,27 +318,41 @@ async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
     client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
 
     _two_char_block = (
-        f"Second character in scene: {char2_name}\n"
-        f"Their appearance: {char2_visual}\n"
+        f"Second character also present: {char2_name} — {char2_visual}\n"
     ) if char2_name else ""
 
+    _story_block = ""
+    if story_logline:
+        _story_block = (
+            f"PROJECT: {story_title} ({story_genre})\n"
+            f"STORY LOGLINE: {story_logline}\n\n"
+        )
+    elif story_title:
+        _story_block = f"PROJECT: {story_title} ({story_genre})\n\n"
+
     rewrite_prompt = (
-        f"You are a cinematographer writing image generation prompts for LEVRAM Studios.\n\n"
-        f"Scene action: {body.scene_description}\n"
-        f"Primary subject: {char_name}\n"
-        f"Their appearance: {char_visual}\n"
+        f"You are a cinematographer rewriting image generation prompts for LEVRAM Studios.\n\n"
+        f"{_story_block}"
+        f"SHOT: {shot_number}\n"
+        f"SCENE ACTION: {scene_desc}\n\n"
+        f"EXISTING PROMPT TO REFINE:\n{existing_prompt}\n\n"
+        f"PRIMARY CHARACTER: {char_name}\n"
+        f"APPEARANCE: {char_visual}\n"
         f"{_two_char_block}\n"
-        f"Write ONE dense paragraph image generation prompt. RULES:\n"
-        f"- FULL BODY SHOT — head to toe, face visible. Never cropped at the neck or waist.\n"
-        f"- {char_name} must be in a DYNAMIC POSE matching the scene action — not standing neutrally.\n"
-        f"{'- ' + char2_name + ' must also be visible in the frame, same scale and presence.' + chr(10) if char2_name else ''}"
-        f"- Include the scene ENVIRONMENT (darkness, fire, wasteland, shadows, etc.) — never a plain background.\n"
-        f"- Dramatic cinematic lighting (rim light, volumetric, low-key) — never flat or studio lighting.\n"
-        f"- Low angle or Dutch angle preferred to convey power and threat.\n"
+        f"YOUR TASK: Rewrite the existing prompt so {char_name} is the clear subject with accurate appearance. "
+        f"KEEP the same scene action, location, and emotional tone — do NOT invent a new scenario. "
+        f"The shot must still serve the story as described.\n\n"
+        f"RULES:\n"
+        f"- FULL BODY SHOT — head to toe, face visible. Never cropped.\n"
+        f"- {char_name} in a DYNAMIC POSE matching the scene action exactly.\n"
+        f"{'- ' + char2_name + ' also visible in frame.' + chr(10) if char2_name else ''}"
+        f"- Keep the same ENVIRONMENT from the original prompt — do not replace it.\n"
+        f"- Dramatic cinematic lighting (rim light, volumetric, low-key).\n"
+        f"- Low angle or Dutch angle to convey power.\n"
         f"- Open with {char_name}'s full physical description, then pose, then environment, then lighting.\n"
         f"- Photorealistic, hyperdetailed, 8K cinematic film still.\n"
         f"- No labels, no character name headers — pure visual description only.\n"
-        f"Return the prompt paragraph only. Nothing else."
+        f"Return the refined prompt paragraph only. Nothing else."
     )
 
     loop = asyncio.get_event_loop()

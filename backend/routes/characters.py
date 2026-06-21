@@ -100,8 +100,10 @@ async def get_characters(x_studio: str = Header(default="levram")):
                 query = {"$or": [{"studio": "levram"}, {"studio": {"$exists": False}}]}
             else:
                 query = {"studio": x_studio}
+            # Exclude heavy base64 backup field — roster only needs metadata, not image bytes
+            _proj = {"body_reference_images_b64": 0}
             docs = await asyncio.wait_for(
-                characters_col.find(query).to_list(None),
+                characters_col.find(query, _proj).to_list(None),
                 timeout=4.0
             )
             untagged = [d for d in docs if not d.get("studio")]

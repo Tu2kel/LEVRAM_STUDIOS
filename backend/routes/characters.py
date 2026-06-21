@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, UploadFile, File
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from backend.db import characters_col, char_b64_col
@@ -276,39 +277,55 @@ async def delete_character(character_id: str):
 
 @router.post("/characters/{character_id}/upload-reference")
 async def upload_reference(character_id: str, file: UploadFile = File(...)):
-    import base64 as _b64
-    char = await _get_character(character_id)
-    if not char:
-        raise HTTPException(status_code=404, detail="Character not found")
+    import base64 as _b64, io
+    try:
+        char = await _get_character(character_id)
+        if not char:
+            return JSONResponse(status_code=404, content={"success": False, "error": "Character not found"})
 
-    ref_dir = REFS_DIR / character_id / "refs"
-    ref_dir.mkdir(parents=True, exist_ok=True)
+        raw_bytes = await file.read()
 
-    ext      = Path(file.filename).suffix or ".png"
-    filename = f"ref_{uuid.uuid4().hex[:8]}{ext}"
-    dest     = ref_dir / filename
-    raw_bytes = await file.read()
-    dest.write_bytes(raw_bytes)
+        # Compress to keep MongoDB document size manageable (target < 800KB)
+        try:
+            from PIL import Image as _PIL
+            img = _PIL.open(io.BytesIO(raw_bytes)).convert("RGB")
+            max_dim = 1024
+            if img.width > max_dim or img.height > max_dim:
+                img.thumbnail((max_dim, max_dim), _PIL.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=82, optimize=True)
+            raw_bytes = buf.getvalue()
+        except Exception as compress_err:
+            print(f"[upload-ref] compression skipped: {compress_err}")
 
-    url  = f"/output/renders/characters/{character_id}/refs/{filename}"
-    refs = list(char.get("reference_images") or [])
-    refs.append(url)
+        ref_dir = REFS_DIR / character_id / "refs"
+        ref_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"ref_{uuid.uuid4().hex[:8]}.jpg"
+        dest     = ref_dir / filename
+        dest.write_bytes(raw_bytes)
 
-    # Store base64 in MongoDB so reference survives Railway deploys (ephemeral filesystem)
-    refs_b64 = list(char.get("reference_images_b64") or [])
-    refs_b64.append({
-        "filename": filename,
-        "url":      url,
-        "data":     _b64.b64encode(raw_bytes).decode("utf-8"),
-        "mime":     file.content_type or "image/png",
-    })
+        url  = f"/output/renders/characters/{character_id}/refs/{filename}"
+        refs = list(char.get("reference_images") or [])
+        refs.append(url)
 
-    await _patch_character(character_id, {
-        "reference_images":     refs,
-        "reference_image_url":  refs[0],
-        "reference_images_b64": refs_b64,
-    })
-    return {"success": True, "url": url, "total_refs": len(refs)}
+        refs_b64 = list(char.get("reference_images_b64") or [])
+        refs_b64.append({
+            "filename": filename,
+            "url":      url,
+            "data":     _b64.b64encode(raw_bytes).decode("utf-8"),
+            "mime":     "image/jpeg",
+        })
+
+        await _patch_character(character_id, {
+            "reference_images":     refs,
+            "reference_image_url":  refs[0],
+            "reference_images_b64": refs_b64,
+        })
+        return {"success": True, "url": url, "total_refs": len(refs)}
+
+    except Exception as e:
+        print(f"[upload-reference] ERROR: {e}")
+        return JSONResponse(status_code=500, content={"success": False, "error": str(e)[:300]})
 
 
 @router.post("/characters/{character_id}/upload-body-reference")

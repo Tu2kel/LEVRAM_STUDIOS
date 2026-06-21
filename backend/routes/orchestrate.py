@@ -132,18 +132,21 @@ async def _gen_image(prompt: str, character_id: str) -> str:
         if body_ref_url:
             from backend.routes.image_gen import _ws_seedream_edit, IMAGE_DIR, _download_url
             import datetime as _dt
-            outputs = await loop.run_in_executor(None, lambda: _ws_seedream_edit(
-                f"{prompt}, cinematic photorealistic", [body_ref_url]
-            ))
-            remote_url = outputs[0] if outputs else ""
-            if not remote_url:
-                raise RuntimeError("WaveSpeed Seedream Edit returned no image")
-            IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-            ts    = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-            fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
-            image_bytes = await loop.run_in_executor(None, lambda: _download_url(remote_url))
-            (IMAGE_DIR / fname).write_bytes(image_bytes)
-            return "/output/renders/images/" + fname
+            try:
+                outputs = await loop.run_in_executor(None, lambda: _ws_seedream_edit(
+                    f"{prompt}, cinematic photorealistic", [body_ref_url]
+                ))
+                remote_url = outputs[0] if outputs else ""
+                if not remote_url:
+                    raise RuntimeError("Seedream returned no image")
+                IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+                ts    = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+                fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
+                image_bytes = await loop.run_in_executor(None, lambda: _download_url(remote_url))
+                (IMAGE_DIR / fname).write_bytes(image_bytes)
+                return "/output/renders/images/" + fname
+            except Exception as _seedream_err:
+                print(f"[BODY_REF] Seedream failed ({_seedream_err}), falling back to PuLID/plain")
 
     # ── Face-only lock via PuLID (fallback when no full body ref) ──────────────
     print(f"[PULID] char_id={character_id} db_char={'found' if db_char else 'MISSING'} refs={refs} preview={byo_ref_url[:60] if byo_ref_url else 'none'}")

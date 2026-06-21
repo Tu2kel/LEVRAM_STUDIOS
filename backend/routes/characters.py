@@ -551,20 +551,21 @@ async def reset_lora(character_id: str):
 
 @router.post("/character-lab/generate")
 async def generate_character_preview(payload: dict):
+    from backend.routes.image_gen import (
+        _full_lock_generate, _ws_pulid, _ws_generate_image, RefImage,
+    )
+
     prompt    = payload.get("prompt") or ""
     char_data = payload.get("character") or {}
     char_id   = char_data.get("id") or ""
 
-    # Always pull lora fields from DB — form payload never includes them
     db_char = None
     if char_id:
         db_char = await _get_character(char_id)
 
-    lora_status_val = (db_char or char_data).get("lora_status") or ""
-    lora_url        = (db_char or char_data).get("lora_url") or ""
-    trigger         = (db_char or char_data).get("lora_trigger") or ""
+    char = db_char or char_data
 
-    if lora_status_val == "training":
+    if char.get("lora_status") == "training":
         return {
             "success":  False,
             "training": True,
@@ -572,109 +573,54 @@ async def generate_character_preview(payload: dict):
         }
 
     try:
-        import fal_client
-        api_key = os.getenv("FAL_KEY")
-        if not api_key:
-            raise RuntimeError("no FAL_KEY")
-        os.environ["FAL_KEY"] = api_key
-
         loop = asyncio.get_running_loop()
 
-        if lora_url:
-            # LoRA trained — most accurate likeness
-            full_prompt = f"{trigger}, {prompt}" if trigger else prompt
-            result = await loop.run_in_executor(
-                None, lambda: fal_client.run("fal-ai/flux-lora", arguments={
-                    "prompt":                full_prompt,
-                    "loras":                 [{"path": lora_url, "scale": 1.0}],
-                    "image_size":            "portrait_16_9",
-                    "num_inference_steps":   30,
-                    "guidance_scale":        3.5,
-                    "enable_safety_checker": False,
-                })
+        # Resolve best available face ref as RefImage (local path → b64 backup)
+        import base64 as _b64
+        face_ref = None
+        for ref_url in (char.get("reference_images") or []):
+            p = Path(ref_url.lstrip("/"))
+            if p.exists():
+                face_ref = RefImage(base64=_b64.b64encode(p.read_bytes()).decode(), mediaType="image/jpeg")
+                break
+        if not face_ref:
+            for entry in (char.get("reference_images_b64") or []):
+                if entry.get("data"):
+                    face_ref = RefImage(base64=entry["data"], mediaType=entry.get("mime", "image/jpeg"))
+                    break
+
+        has_body_refs = bool(
+            (char.get("body_reference_images") or []) or
+            (char.get("body_reference_images_b64") or [])
+        )
+
+        if has_body_refs and char_id:
+            # Full lock: body shape + face
+            result = await _full_lock_generate(
+                character_id=char_id,
+                prompt=prompt,
+                face_refs=[face_ref] if face_ref else [],
+                aspect="2:3",
+                style="",
+                studio="levram",
             )
-            engine = "fal_flux_lora"
-
+            engine = "full_lock"
+            local_url = result["imageUrl"]
+        elif face_ref:
+            # Face lock only via WaveSpeed PuLID
+            _fr = face_ref  # capture for lambda
+            result = await loop.run_in_executor(
+                None, lambda: _ws_pulid(prompt, [_fr], "2:3", "", "levram")
+            )
+            engine = "ws_pulid"
+            local_url = result["imageUrl"]
         else:
-            # No LoRA — resolve face reference: BYO preview_images first, then LoRA refs
-            import base64 as _b64
-            face_url  = None
-            face_bytes = None
-
-            preview_imgs  = (db_char or {}).get("preview_images") or []
-            active_idx    = int((db_char or {}).get("active_preview_index") or 0)
-            byo_entry     = preview_imgs[active_idx] if preview_imgs else None
-
-            if byo_entry:
-                byo_url = byo_entry.get("url", "")
-                if byo_url.startswith("http"):
-                    face_url = byo_url
-                else:
-                    byo_path = Path(byo_url.lstrip("/"))
-                    if byo_path.exists():
-                        face_bytes = byo_path.read_bytes()
-                        face_url   = await loop.run_in_executor(
-                            None, lambda: fal_client.upload(face_bytes, "image/jpeg")
-                        )
-
-            if not face_url:
-                refs     = (db_char or {}).get("reference_images") or []
-                ref_path = next(
-                    (Path(r.lstrip("/")) for r in refs if Path(r.lstrip("/")).exists()),
-                    None
-                )
-                if ref_path:
-                    ref_bytes = ref_path.read_bytes()
-                    face_url  = await loop.run_in_executor(
-                        None, lambda: fal_client.upload(ref_bytes, "image/jpeg")
-                    )
-
-            if face_url:
-                result = await loop.run_in_executor(
-                    None, lambda: fal_client.run("fal-ai/flux-pulid", arguments={
-                        "reference_image_url": face_url,
-                        "prompt":              prompt,
-                        "image_size":          "portrait_4_3",
-                        "num_inference_steps": 28,
-                        "guidance_scale":      4.0,
-                        "id_weight":           1.0,
-                        "negative_prompt":     "cartoon, illustration, painting, stylized, anime, unrealistic, disfigured, back turned, rear view, from behind, back to camera, silhouette",
-                        "enable_safety_checker": False,
-                    })
-                )
-                engine = "flux_pulid"
-            else:
-                # No refs at all — plain Flux
-                result = await loop.run_in_executor(
-                    None, lambda: fal_client.run("fal-ai/flux/dev", arguments={
-                        "prompt":                prompt,
-                        "image_size":            "portrait_16_9",
-                        "num_inference_steps":   28,
-                        "guidance_scale":        3.5,
-                        "num_images":            1,
-                        "enable_safety_checker": False,
-                    })
-                )
-                engine = "fal_flux"
-
-        imgs = result.get("images") or []
-        remote_url = (
-            imgs[0].get("url") if imgs else None
-        ) or result.get("image", {}).get("url") or result.get("url")
-        if not remote_url:
-            raise RuntimeError(f"No image URL in response keys: {list(result.keys())}")
-
-        out_dir  = Path("output/renders/images")
-        out_dir.mkdir(parents=True, exist_ok=True)
-        ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"character-preview_{ts}_{uuid.uuid4().hex[:8]}.png"
-        def _dl():
-            req = urllib.request.Request(remote_url, headers={"User-Agent": "LEVRAM/1.0"})
-            with urllib.request.urlopen(req, timeout=90) as r:
-                return r.read()
-        image_bytes = await loop.run_in_executor(None, _dl)
-        (out_dir / filename).write_bytes(image_bytes)
-        local_url = "/output/renders/images/" + filename
+            # No refs — plain WaveSpeed FLUX
+            result = await loop.run_in_executor(
+                None, lambda: _ws_generate_image(prompt, "2:3", "", "ws_flux", "", "", "levram")
+            )
+            engine = "ws_flux"
+            local_url = result["imageUrl"]
 
         if char_id and not char_data.get("reference_image_url"):
             await _patch_character(char_id, {"reference_image_url": local_url})
@@ -687,4 +633,4 @@ async def generate_character_preview(payload: dict):
         }
 
     except Exception as e:
-        return {"success": False, "error": str(e)[:200]}
+        return {"success": False, "error": str(e)[:300]}

@@ -2,63 +2,11 @@ from fastapi import APIRouter, Header
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
-import json
+import asyncio
+import base64 as _b64
 import uuid
 
-from backend.db import render_queue_col
-from backend.services.comfy_service import generate_comfy_keyframe
-
-def _generate_keyframe_with_fallback(item: dict) -> dict:
-    """Try ComfyUI first; fall back to fal.ai FLUX if ComfyUI is unreachable."""
-    try:
-        return generate_comfy_keyframe(item)
-    except Exception as comfy_err:
-        print(f"[LEVRAM] ComfyUI keyframe failed ({comfy_err}), falling back to fal.ai FLUX")
-        import os, uuid
-        from pathlib import Path
-        try:
-            import fal_client
-        except ImportError:
-            raise RuntimeError("fal-client not installed and ComfyUI unavailable") from comfy_err
-
-        api_key = os.getenv("FAL_KEY")
-        if not api_key:
-            raise RuntimeError("FAL_KEY not set and ComfyUI unavailable") from comfy_err
-
-        shot = item.get("shot") or item
-        prompt = (
-            shot.get("shotPrompt") or shot.get("shot_prompt") or
-            shot.get("shotDesc") or shot.get("shot_description") or
-            "cinematic scene, dramatic lighting, high detail, film still"
-        )
-        character = shot.get("character") or shot.get("voice_character") or ""
-        if character:
-            prompt = f"{character}, {prompt}"
-
-        os.environ["FAL_KEY"] = api_key
-        result = fal_client.run(
-            "fal-ai/flux/dev",
-            arguments={"prompt": prompt, "image_size": "landscape_16_9", "num_inference_steps": 28},
-        )
-        image_url = result["images"][0]["url"] if result.get("images") else None
-        if not image_url:
-            raise RuntimeError("fal.ai returned no image") from comfy_err
-
-        import urllib.request as ur
-        rid = uuid.uuid4().hex[:8]
-        out_dir = Path("output/renders/keyframes")
-        out_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"kf_fal_{rid}.png"
-        local_path = out_dir / filename
-        ur.urlretrieve(image_url, local_path)
-        out_url = f"/output/renders/keyframes/{filename}"
-        return {
-            "renderId": rid,
-            "outputPath": str(local_path),
-            "outputUrl": out_url,
-            "promptUsed": prompt,
-            "comfyPromptId": "",
-        }
+from backend.db import render_queue_col, characters_col
 
 router = APIRouter()
 
@@ -70,6 +18,7 @@ class QueuePayload(BaseModel):
     shotId: str | None = None
     project: str | None = None
     character: str | None = None
+    character_id: str | None = None
     dialogue: str | None = None
     voicePath: str | None = None
     renderStyle: str | None = "cinematic"
@@ -85,12 +34,14 @@ def _json_load() -> dict:
     QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
     if not QUEUE_FILE.exists():
         return {"queue": []}
+    import json
     with QUEUE_FILE.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def _json_save(data: dict):
     QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    import json
     with QUEUE_FILE.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
@@ -103,6 +54,129 @@ def _strip(doc: dict) -> dict:
 
 def _now() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+# ─── Character lookup ─────────────────────────────────────────
+
+async def _resolve_character(name: str = "", char_id: str = "") -> dict | None:
+    """Return character doc from MongoDB by id or name."""
+    if characters_col is None:
+        return None
+    try:
+        if char_id:
+            doc = await characters_col.find_one({"id": char_id})
+            if doc:
+                return doc
+        if name:
+            import re
+            doc = await characters_col.find_one(
+                {"name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}}
+            )
+            return doc
+    except Exception as e:
+        print(f"[render_queue] character lookup failed: {e}")
+    return None
+
+
+# ─── WaveSpeed keyframe generation ───────────────────────────
+
+async def _generate_keyframe_ws(item: dict) -> dict:
+    """Generate one keyframe using WaveSpeed, respecting character refs."""
+    from backend.routes.image_gen import (
+        _full_lock_generate, _ws_pulid, _ws_generate_image, RefImage,
+    )
+
+    shot        = item.get("shot") or item
+    studio      = item.get("studio", "levram")
+    char_name   = item.get("character") or shot.get("character") or ""
+    char_id     = item.get("character_id") or shot.get("character_id") or ""
+    render_style = item.get("renderStyle") or shot.get("renderStyle") or "cinematic photorealistic"
+
+    prompt_parts = [
+        shot.get("shotDesc") or shot.get("description") or "",
+        shot.get("shotPrompt") or shot.get("prompt") or "",
+        render_style,
+    ]
+    if item.get("dialogue"):
+        prompt_parts.append(f'dialogue context: "{item["dialogue"]}"')
+    prompt = ", ".join(p.strip() for p in prompt_parts if p and p.strip())
+    if not prompt:
+        prompt = "cinematic scene, dramatic lighting, high detail, film still"
+
+    # Resolve character
+    char = await _resolve_character(char_name, char_id) if (char_name or char_id) else None
+    if char:
+        char_id = char_id or char.get("id", "")
+
+    # Build face RefImage from character's face refs
+    loop = asyncio.get_running_loop()
+    face_ref = None
+    if char:
+        for ref_url in (char.get("reference_images") or []):
+            p = Path(ref_url.lstrip("/"))
+            if p.exists():
+                face_ref = RefImage(
+                    base64=_b64.b64encode(p.read_bytes()).decode(),
+                    mediaType="image/jpeg",
+                )
+                break
+        if not face_ref:
+            for entry in (char.get("reference_images_b64") or []):
+                if entry.get("data"):
+                    face_ref = RefImage(
+                        base64=entry["data"],
+                        mediaType=entry.get("mime", "image/jpeg"),
+                    )
+                    break
+
+    has_body_refs = char and bool(
+        (char.get("body_reference_images") or []) or
+        (char.get("body_reference_images_b64") or [])
+    )
+
+    # Route to best available engine
+    if has_body_refs and char_id:
+        result = await _full_lock_generate(
+            character_id=char_id,
+            prompt=prompt,
+            face_refs=[face_ref] if face_ref else [],
+            aspect="widescreen",
+            style=render_style,
+            studio=studio,
+        )
+        engine_used = "full_lock"
+    elif face_ref:
+        _fr = face_ref
+        result = await loop.run_in_executor(
+            None, lambda: _ws_pulid(prompt, [_fr], "widescreen", render_style, studio)
+        )
+        engine_used = "ws_pulid"
+    else:
+        result = await loop.run_in_executor(
+            None, lambda: _ws_generate_image(prompt, "widescreen", render_style, "ws_flux", "", "", studio)
+        )
+        engine_used = "ws_flux"
+
+    out_url   = result["imageUrl"]
+    out_path  = "output/renders/keyframes/" + Path(out_url).name
+    # Move file to keyframes dir so render viewer finds it
+    src = Path(out_url.lstrip("/"))
+    dst = Path(out_path)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if src.exists() and src != dst:
+        src.rename(dst)
+        out_url = "/" + out_path
+
+    rid = uuid.uuid4().hex[:8]
+    print(f"[render_queue] keyframe done via {engine_used}: {out_url}")
+    return {
+        "renderId":      rid,
+        "outputPath":    out_path,
+        "outputUrl":     out_url,
+        "promptUsed":    prompt,
+        "engineUsed":    engine_used,
+        "comfyPromptId": "",
+    }
 
 
 # ─── Routes ───────────────────────────────────────────────────
@@ -121,19 +195,20 @@ async def get_render_queue(x_studio: str = Header(default="levram")):
 async def add_to_render_queue(payload: QueuePayload, x_studio: str = Header(default="levram")):
     shot = payload.shot or {}
     item = {
-        "id":          str(uuid.uuid4()),
-        "shot":        shot,
-        "shotId":      payload.shotId or shot.get("id"),
-        "shot_number": shot.get("shot_number"),
-        "project":     payload.project or shot.get("project") or shot.get("title"),
-        "character":   payload.character or shot.get("character"),
-        "dialogue":    payload.dialogue or shot.get("dialogue") or shot.get("text"),
-        "voicePath":   payload.voicePath or shot.get("voicePath") or shot.get("voice_path"),
-        "renderStyle": payload.renderStyle or shot.get("renderStyle") or "cinematic",
-        "studio":      x_studio,
-        "status":      "pending",
-        "createdAt":   _now(),
-        "updatedAt":   _now(),
+        "id":           str(uuid.uuid4()),
+        "shot":         shot,
+        "shotId":       payload.shotId or shot.get("id"),
+        "shot_number":  shot.get("shot_number"),
+        "project":      payload.project or shot.get("project") or shot.get("title"),
+        "character":    payload.character or shot.get("character"),
+        "character_id": payload.character_id or shot.get("character_id") or "",
+        "dialogue":     payload.dialogue or shot.get("dialogue") or shot.get("text"),
+        "voicePath":    payload.voicePath or shot.get("voicePath") or shot.get("voice_path"),
+        "renderStyle":  payload.renderStyle or shot.get("renderStyle") or "cinematic",
+        "studio":       x_studio,
+        "status":       "pending",
+        "createdAt":    _now(),
+        "updatedAt":    _now(),
     }
 
     if render_queue_col is not None:
@@ -204,7 +279,8 @@ async def start_render(item_id: str):
         if not result:
             return {"success": False, "error": "Queue item not found"}
         docs = await render_queue_col.find({}).sort("createdAt", -1).to_list(None)
-        return {"success": True, "message": "Render started", "item": _strip(result), "queue": [_strip(d) for d in docs]}
+        return {"success": True, "message": "Render started", "item": _strip(result),
+                "queue": [_strip(d) for d in docs]}
 
     data = _json_load()
     for item in data["queue"]:
@@ -223,20 +299,30 @@ async def generate_keyframe(item_id: str):
         if not item_doc:
             return {"success": False, "error": "Queue item not found"}
         item = _strip(item_doc)
-        item["status"] = "rendering"
-        item["updatedAt"] = _now()
-        await render_queue_col.update_one({"id": item_id}, {"$set": {"status": "rendering", "updatedAt": _now()}})
+        await render_queue_col.update_one(
+            {"id": item_id}, {"$set": {"status": "rendering", "updatedAt": _now()}}
+        )
+        try:
+            render_result = await _generate_keyframe_ws(item)
+            updates = {
+                "status":           "complete",
+                "renderId":         render_result["renderId"],
+                "renderOutputPath": render_result["outputPath"],
+                "renderOutputUrl":  render_result["outputUrl"],
+                "promptUsed":       render_result.get("promptUsed", ""),
+                "engineUsed":       render_result.get("engineUsed", ""),
+                "comfyPromptId":    "",
+                "updatedAt":        _now(),
+            }
+        except Exception as e:
+            updates = {"status": "failed", "error": str(e)[:300], "updatedAt": _now()}
+            result = await render_queue_col.find_one_and_update(
+                {"id": item_id}, {"$set": updates}, return_document=True
+            )
+            docs = await render_queue_col.find({}).sort("createdAt", -1).to_list(None)
+            return {"success": False, "error": str(e)[:300], "item": _strip(result),
+                    "queue": [_strip(d) for d in docs]}
 
-        render_result = _generate_keyframe_with_fallback(item)
-        updates = {
-            "status":           "complete",
-            "renderId":         render_result["renderId"],
-            "renderOutputPath": render_result["outputPath"],
-            "renderOutputUrl":  render_result["outputUrl"],
-            "promptUsed":       render_result.get("promptUsed") or render_result.get("prompt") or "",
-            "comfyPromptId":    render_result.get("comfyPromptId") or "",
-            "updatedAt":        _now(),
-        }
         result = await render_queue_col.find_one_and_update(
             {"id": item_id}, {"$set": updates}, return_document=True
         )
@@ -244,21 +330,28 @@ async def generate_keyframe(item_id: str):
         return {"success": True, "message": "Keyframe image created", "item": _strip(result),
                 "render": render_result, "queue": [_strip(d) for d in docs]}
 
+    # JSON fallback
     data = _json_load()
     for item in data["queue"]:
         if item["id"] == item_id:
             item["status"] = "rendering"
             item["updatedAt"] = _now()
-            render_result = _generate_keyframe_with_fallback(item)
-            item.update({
-                "status":           "complete",
-                "renderId":         render_result["renderId"],
-                "renderOutputPath": render_result["outputPath"],
-                "renderOutputUrl":  render_result["outputUrl"],
-                "promptUsed":       render_result.get("promptUsed") or render_result.get("prompt") or "",
-                "comfyPromptId":    render_result.get("comfyPromptId") or "",
-                "updatedAt":        _now(),
-            })
+            try:
+                render_result = await _generate_keyframe_ws(item)
+                item.update({
+                    "status":           "complete",
+                    "renderId":         render_result["renderId"],
+                    "renderOutputPath": render_result["outputPath"],
+                    "renderOutputUrl":  render_result["outputUrl"],
+                    "promptUsed":       render_result.get("promptUsed", ""),
+                    "engineUsed":       render_result.get("engineUsed", ""),
+                    "comfyPromptId":    "",
+                    "updatedAt":        _now(),
+                })
+            except Exception as e:
+                item.update({"status": "failed", "error": str(e)[:300], "updatedAt": _now()})
+                _json_save(data)
+                return {"success": False, "error": str(e)[:300], "item": item, "queue": data["queue"]}
             _json_save(data)
             return {"success": True, "message": "Keyframe image created", "item": item,
                     "render": render_result, "queue": data["queue"]}

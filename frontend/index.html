@@ -576,6 +576,18 @@
               + Add Scene
             </button>
 
+            <!-- Director's Notes — Revision without re-develop -->
+            <div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.07);padding-top:12px;">
+              <div style="font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">🎬 Director's Notes — Revise in Place</div>
+              <textarea id="iv-revision-notes" rows="3" placeholder="Tell Lena what to change — e.g. 'make Act 2 more brutal', 'rewrite scene 4 so Severus wins the fight', 'add more fog in the alley scenes'..."
+                style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.25);color:var(--text);font-family:Rajdhani,sans-serif;font-size:12px;padding:8px 10px;border-radius:3px;resize:vertical;outline:none;line-height:1.5;"></textarea>
+              <button onclick="ivReviseStory()"
+                style="margin-top:6px;width:100%;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.35);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:7px;border-radius:3px;cursor:pointer;">
+                ✏ Apply Notes — Keep Title &amp; Structure
+              </button>
+              <div id="iv-revision-status" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px;min-height:14px;"></div>
+            </div>
+
             <!-- Approve bar -->
             <div style="margin-top:16px;border-top:1px solid rgba(201,168,76,0.15);padding-top:14px;">
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">

@@ -247,6 +247,111 @@ async def approve_idea(idea_id: str):
     return {"success": True, "idea_id": idea_id}
 
 
+class ReviseRequest(BaseModel):
+    revision_notes: str
+    character_name: str = ""
+    character2_name: str = ""
+    location_name: str = ""
+
+
+@router.post("/ideas/{idea_id}/revise")
+async def revise_idea(idea_id: str, body: ReviseRequest):
+    """Apply director's notes to an existing developed story — preserves title, logline, act structure."""
+    idea = await _get_idea_any(idea_id)
+    if not idea:
+        raise HTTPException(404, "Idea not found")
+    story = idea.get("story")
+    if not story:
+        raise HTTPException(400, "Story not yet developed — run /develop first")
+
+    from openai import OpenAI
+    venice_key = os.getenv("VENICE_API_KEY")
+    if venice_key:
+        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+        model  = "hermes-3-llama-3.1-405b"
+    else:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        model  = "gpt-4o-mini"
+
+    system = """You are the LEVRAM Studios Story Reviser — Hermes.
+
+Your job: apply a director's notes as TARGETED edits to an existing story breakdown.
+
+STRICT RULES:
+- PRESERVE the title, logline, and act_structure EXACTLY — do not rename, retitle, or reimagine the story
+- PRESERVE the total scene count unless the notes explicitly ask to add or remove scenes
+- ONLY change what the notes specify — everything else stays identical
+- If notes say "make Act 2 more intense", only edit Act 2 scenes
+- If notes say "rewrite scene 5", only touch scene 5
+- Never write cliché villain/hero dialogue (no "bow before me", "feel my power", "I will reign forever")
+- Return the FULL story JSON — same schema as input — with only the requested changes applied
+
+Return ONLY valid JSON. No markdown. No commentary.
+Schema: { title, logline, act_structure, num_scenes, scenes: [...], est_seconds, est_minutes, reel_60s, reel_30s, reel_15s }
+Scene fields: index, act, description, dialogue, shot_prompt, image_prompt, emotion, duration_seconds, reel_weight"""
+
+    cast_note = ""
+    if body.character_name:
+        cast_note += f"\nPrimary character: {body.character_name}"
+    if body.character2_name:
+        cast_note += f"\nSecondary character: {body.character2_name}"
+    if body.location_name:
+        cast_note += f"\nLocation: {body.location_name}"
+
+    story_json = json.dumps({
+        "title":        story.get("title", ""),
+        "logline":      story.get("logline", ""),
+        "act_structure":story.get("act_structure", ""),
+        "num_scenes":   story.get("num_scenes", 0),
+        "scenes":       story.get("scenes", []),
+        "est_seconds":  story.get("est_seconds", 0),
+        "est_minutes":  story.get("est_minutes", 0),
+        "reel_60s":     story.get("reel_60s", []),
+        "reel_30s":     story.get("reel_30s", []),
+        "reel_15s":     story.get("reel_15s", []),
+    }, ensure_ascii=False)
+
+    user_msg = f"""Existing story:
+{story_json}
+{cast_note}
+
+Director's Notes:
+{body.revision_notes}
+
+Apply these notes as targeted edits. Return the full revised story JSON."""
+
+    loop = asyncio.get_event_loop()
+    try:
+        resp = await loop.run_in_executor(
+            None,
+            lambda: client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user",   "content": user_msg},
+                ],
+                temperature=0.7,
+            ),
+        )
+        text = resp.choices[0].message.content.strip()
+        # Strip markdown fences if model adds them
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        revised = json.loads(text)
+    except Exception as e:
+        raise HTTPException(500, f"Hermes revision failed: {e}")
+
+    # Ensure title is preserved even if model disobeys
+    revised["title"]        = story.get("title", revised.get("title", ""))
+    revised["logline"]      = revised.get("logline") or story.get("logline", "")
+    revised["act_structure"]= revised.get("act_structure") or story.get("act_structure", "")
+    revised["target_minutes"] = story.get("target_minutes", 0)
+    revised["num_scenes"]   = len(revised.get("scenes", story.get("scenes", [])))
+
+    await _patch_idea_any(idea_id, {"story": revised, "status": "developed"})
+    return {"success": True, "story": revised}
+
+
 def _count_lyric_lines(concept: str) -> int:
     """Count numbered lyric lines in concept (lines after a LYRICS: marker)."""
     lines = concept.splitlines()

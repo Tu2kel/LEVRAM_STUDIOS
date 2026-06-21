@@ -1085,3 +1085,52 @@ document.addEventListener("DOMContentLoaded", () => {
 
 window.ivDeleteIdea  = ivDeleteIdea;
 window.ivCancelEdit  = ivCancelEdit;
+
+// ── Director's Notes — Revise in Place ───────────────────────
+window.ivReviseStory = async function ivReviseStory() {
+  if (!ivCurrentIdeaId) {
+    const el = document.getElementById("iv-revision-status");
+    if (el) { el.style.color = "#f55"; el.textContent = "Open a story first."; }
+    return;
+  }
+  const notes   = document.getElementById("iv-revision-notes")?.value?.trim();
+  const statusEl = document.getElementById("iv-revision-status");
+  const btn     = document.querySelector("[onclick='ivReviseStory()']");
+
+  if (!notes) {
+    if (statusEl) { statusEl.style.color = "#f55"; statusEl.textContent = "Write your notes first."; }
+    return;
+  }
+
+  const charSel  = document.getElementById("iv-dev-character");
+  const char2Sel = document.getElementById("iv-dev-character2");
+  const charName  = charSel?.selectedOptions?.[0]?.dataset?.name  || charSel?.selectedOptions?.[0]?.textContent  || "";
+  const char2Name = char2Sel?.selectedOptions?.[0]?.dataset?.name || char2Sel?.selectedOptions?.[0]?.textContent || "";
+  const locName   = document.getElementById("iv-dev-location")?.value || "";
+
+  if (btn) { btn.disabled = true; btn.textContent = "Revising…"; }
+  if (statusEl) { statusEl.style.color = "#aaa"; statusEl.textContent = "Hermes is applying your notes…"; }
+
+  try {
+    const res  = await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/revise`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        revision_notes: notes,
+        character_name:  charName,
+        character2_name: char2Name,
+        location_name:   locName,
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || data.error || "Revision failed");
+
+    ivRenderStory(data.story);
+    document.getElementById("iv-revision-notes").value = "";
+    if (statusEl) { statusEl.style.color = "#4caf50"; statusEl.textContent = "Story revised — title and structure preserved."; }
+  } catch (e) {
+    if (statusEl) { statusEl.style.color = "#f55"; statusEl.textContent = "Error: " + e.message; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "✏ Apply Notes — Keep Title & Structure"; }
+  }
+};

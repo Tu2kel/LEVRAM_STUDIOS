@@ -109,7 +109,7 @@ window.BC = (() => {
   async function _heartbeat() {
     try {
       const r = await fetch(`${_base()}/settings/status`, {
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(8000),
       });
       if (r.ok) {
         if (_offlineSince) {

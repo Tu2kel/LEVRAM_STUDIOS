@@ -17,11 +17,19 @@ async def _ping(url: str, timeout: float = 0.8) -> bool:
         return False
 
 
+async def _ping_db_safe() -> bool:
+    """MongoDB ping with hard cap — prevents slow Atlas reconnects from blocking heartbeat."""
+    try:
+        return await asyncio.wait_for(ping_db(), timeout=1.5)
+    except Exception:
+        return False
+
+
 @router.get("/settings/status")
 async def get_settings_status():
     comfy_url = os.environ.get("COMFY_URL", "http://127.0.0.1:8188")
     mongo_ok, comfy_ok = await asyncio.gather(
-        ping_db(),
+        _ping_db_safe(),
         _ping(f"{comfy_url}/system_stats", timeout=0.5),
     )
     return {

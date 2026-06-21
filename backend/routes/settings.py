@@ -8,7 +8,7 @@ from backend.db import ping_db, MONGODB_URL
 router = APIRouter()
 
 
-async def _ping(url: str, timeout: float = 3.0) -> bool:
+async def _ping(url: str, timeout: float = 0.8) -> bool:
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             r = await client.get(url)
@@ -22,7 +22,7 @@ async def get_settings_status():
     comfy_url = os.environ.get("COMFY_URL", "http://127.0.0.1:8188")
     mongo_ok, comfy_ok = await asyncio.gather(
         ping_db(),
-        _ping(f"{comfy_url}/system_stats"),
+        _ping(f"{comfy_url}/system_stats", timeout=0.5),
     )
     return {
         "backend":         True,

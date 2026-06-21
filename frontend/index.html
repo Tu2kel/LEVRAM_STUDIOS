@@ -1306,55 +1306,6 @@
     <div class="bottom-bar"></div>
 
     <!-- drag-drop styles -->
-    <style>
-      .ws-ctrl-btn {
-        background: transparent;
-        border: 1px solid var(--border);
-        color: var(--text-muted);
-        font-family: Rajdhani, sans-serif;
-        font-size: 17px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        padding: 3px 10px;
-        border-radius: 2px;
-        cursor: pointer;
-        clip-path: none;
-        box-shadow: none;
-        transform: none;
-      }
-      .ws-ctrl-btn.gold {
-        color: var(--gold);
-        border-color: rgba(201, 168, 76, 0.4);
-      }
-      .ws-ctrl-btn:hover {
-        border-color: var(--gold);
-        color: var(--gold);
-      }
-
-      .tl-shot-card.dragging {
-        opacity: 0.55 !important;
-        transform: scale(0.985) !important;
-        box-shadow: 0 0 18px rgba(201, 168, 76, 0.45) !important;
-        border: 1px solid var(--gold) !important;
-      }
-      .tl-shot-card.drop-target {
-        border: 1px dashed var(--gold) !important;
-        box-shadow: inset 0 0 18px rgba(201, 168, 76, 0.25) !important;
-        position: relative;
-      }
-      .tl-shot-card.drop-target::before {
-        content: "DROP HERE";
-        position: absolute;
-        top: -10px;
-        left: 14px;
-        background: var(--surface);
-        color: var(--gold);
-        font-size: 15px;
-        letter-spacing: 2px;
-        padding: 1px 6px;
-      }
-    </style>
-
     <script src="app.js"></script>
     <script src="backend-console.js"></script>
     <script src="project-battery.js"></script>

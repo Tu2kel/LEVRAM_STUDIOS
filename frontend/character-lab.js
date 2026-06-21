@@ -3,6 +3,26 @@ const CL_CL_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 // PHASE 8F.4 — track which character is being edited (null = new)
 let editingCharacterId = null;
 
+// ── Panel bootstrap ───────────────────────────────────────────
+// Fetches character-lab-panel.html and injects it into #character-lab-content.
+// Guard: if static HTML already populated the panel (legacy index.html path),
+// #character-list-panel will already exist and we skip the fetch entirely.
+// Remove the static block from index.html → guard clears → inject activates.
+async function clInitPanel() {
+  const target = document.getElementById("character-lab-content");
+  if (!target) return;                                  // standalone page — not embedded
+  if (document.getElementById("character-list-panel")) return; // static HTML still present
+
+  try {
+    const base = (window.LEVRAM_CONFIG?.api || "").replace(/\/api$/, "");
+    const res  = await fetch(`${base}/frontend/character-lab-panel.html`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`${res.status}`);
+    target.innerHTML = await res.text();
+  } catch (err) {
+    console.error("[CL] Panel inject failed:", err);
+  }
+}
+
 function getCharacterFormData() {
   const activeSourceBtn = document.querySelector(".cl-vtoggle-btn.active");
   const voiceSource = activeSourceBtn?.dataset.source || "edge_tts";
@@ -895,7 +915,10 @@ window.clDeleteBodyReference = async function clDeleteBodyReference(filename) {
   }
 };
 
-document.addEventListener("DOMContentLoaded", loadCharacters);
+document.addEventListener("DOMContentLoaded", async () => {
+  await clInitPanel();   // no-op while static HTML is in index.html; activates after strip
+  loadCharacters();
+});
 window.generateCharacterPreview = generateCharacterPreview;
 
 function saveCharacterDraftLocal() {

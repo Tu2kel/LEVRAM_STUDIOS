@@ -1,0 +1,97 @@
+<div id="character-lab-status" class="character-lab-status" style="display:none;"></div>
+
+<div class="character-lab-grid">
+
+  <!-- Col 1: roster -->
+  <div class="cl-roster">
+    <div id="character-list-panel"></div>
+    <button type="button" onclick="newCharacter()"
+      style="margin-top:8px;width:100%;background:transparent;border:1px dashed rgba(201,168,76,0.25);color:rgba(201,168,76,0.5);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:6px;border-radius:3px;cursor:pointer;">
+      + New Character
+    </button>
+  </div>
+
+  <!-- Col 2: form -->
+  <div class="character-form">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;">
+      <input id="character-name" placeholder="Character Name" />
+      <input id="character-gender" placeholder="Gender" />
+      <input id="character-age" placeholder="Age" />
+    </div>
+    <textarea id="character-appearance" placeholder="Appearance"></textarea>
+    <textarea id="character-wardrobe" placeholder="Wardrobe"></textarea>
+    <textarea id="character-voice" placeholder="Voice Description"></textarea>
+    <div class="field-label" style="margin-top:8px;">Default Voice Profile</div>
+    <select id="character-default-voice">
+      <option value="">No Default Voice</option>
+    </select>
+    <div class="field-hint">Used when this character is assigned to generated dialogue.</div>
+    <textarea id="character-personality" placeholder="Personality"></textarea>
+    <textarea id="character-notes" placeholder="Notes"></textarea>
+    <button id="save-character-btn" type="button" onclick="saveCharacter()">Save Character</button>
+  </div>
+
+  <!-- Col 3: active photo preview -->
+  <div class="cl-preview-col" id="cl-preview-col">
+    <div id="cl-preview-empty" style="display:flex;align-items:center;justify-content:center;height:300px;border:1px dashed rgba(201,168,76,0.15);border-radius:6px;color:rgba(255,255,255,0.15);font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;">
+      Select a character
+    </div>
+    <div id="cl-preview-active" style="display:none;">
+
+      <!-- Active photo -->
+      <div style="position:relative;">
+        <img id="cl-active-img" src="" alt=""
+          style="width:100%;max-height:420px;object-fit:cover;border-radius:6px;border:1px solid rgba(201,168,76,0.2);display:block;cursor:zoom-in;"
+          onclick="const i=this;const isCover=i.style.objectFit==='cover';i.style.objectFit=isCover?'contain':'cover';i.style.maxHeight=isCover?'none':'420px';i.style.cursor=isCover?'zoom-out':'zoom-in';i.style.background=isCover?'rgba(0,0,0,0.6)':'transparent';" />
+        <div id="cl-active-label" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.7);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:3px 8px;border-radius:2px;">Active Reference</div>
+      </div>
+
+      <!-- Thumbnail strip -->
+      <div id="cl-ref-thumbs" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;"></div>
+
+      <!-- Upload + Face Lock + Body Lock -->
+      <div style="margin-top:10px;border-top:1px solid rgba(201,168,76,0.12);padding-top:10px;">
+        <input type="file" id="cl-ref-upload" multiple accept="image/*" style="display:none;" onchange="clUploadReferences()" />
+        <div style="display:flex;gap:5px;margin-bottom:8px;">
+          <button type="button" onclick="clUploadPhotosGuarded()"
+            style="flex:1;background:rgba(0,0,0,0.3);border:1px dashed rgba(201,168,76,0.3);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:7px 4px;border-radius:2px;cursor:pointer;">
+            + Upload
+          </button>
+          <button type="button" onclick="clOpenGenPicker()"
+            style="flex:1;background:rgba(0,0,0,0.3);border:1px dashed rgba(100,160,255,0.4);color:#7eb3f5;font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:7px 4px;border-radius:2px;cursor:pointer;">
+            ← Image Gen
+          </button>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+          <span id="cl-ref-count" style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">0 images</span>
+          <div id="cl-pulid-badge" style="display:none;flex:1;background:rgba(20,80,30,0.3);border:1px solid rgba(46,204,113,0.35);color:#2ecc71;font-family:Rajdhani,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;text-align:center;">
+            ⚡ PuLID Active
+          </div>
+        </div>
+
+        <!-- hidden stubs so JS doesn't throw on missing IDs -->
+        <div id="cl-lora-status" style="display:none;"></div>
+        <div id="cl-train-btn" style="display:none;"></div>
+        <div id="cl-lora-reset-btn" style="display:none;"></div>
+
+        <!-- Full Body Reference — Shape Lock -->
+        <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(93,232,154,0.2),transparent);margin:8px 0;"></div>
+        <div style="font-size:9px;color:#5de89a;letter-spacing:3px;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Full Body — Shape Lock</div>
+        <input type="file" id="cl-body-ref-upload" multiple accept="image/*" style="display:none;" onchange="clUploadBodyReferences()" />
+        <button type="button" onclick="document.getElementById('cl-body-ref-upload').click()"
+          style="width:100%;background:rgba(0,0,0,0.3);border:1px dashed rgba(93,232,154,0.35);color:#5de89a;font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:7px 4px;border-radius:2px;cursor:pointer;margin-bottom:6px;">
+          + Full Body Photo
+        </button>
+        <div id="cl-body-ref-thumbs" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span id="cl-body-ref-count" style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">0 images</span>
+          <div id="cl-body-ref-badge" style="display:none;flex:1;background:rgba(10,60,30,0.3);border:1px solid rgba(93,232,154,0.35);color:#5de89a;font-family:Rajdhani,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;text-align:center;">
+            ⚡ Seedream Active
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>

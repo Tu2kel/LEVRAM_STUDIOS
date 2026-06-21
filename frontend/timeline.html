@@ -791,23 +791,23 @@
       const opts=chars.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
       const p=document.createElement("div");
       p.id="regen-panel-"+id;
-      p.style.cssText="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#0b0a16;border:1px solid rgba(76,175,80,0.35);border-radius:5px;padding:18px;z-index:9999;width:380px;box-shadow:0 0 60px rgba(0,0,0,0.9);font-family:Rajdhani,sans-serif;";
+      p.style.cssText="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a1a;border:1px solid rgba(76,175,80,0.4);border-radius:8px;padding:28px;z-index:9999;width:560px;box-shadow:0 0 80px rgba(0,0,0,0.95);font-family:Rajdhani,sans-serif;";
       p.innerHTML=`
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <div style="color:#81c784;font-size:10px;letter-spacing:3px;text-transform:uppercase;">⟳ Regen — ${shot.shot_number||id}</div>
-          <button onclick="document.getElementById('regen-panel-${id}').remove()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:16px;cursor:pointer;">✕</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+          <div style="color:#81c784;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">⟳ Regen — ${shot.shot_number||id}</div>
+          <button onclick="document.getElementById('regen-panel-${id}').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1;">✕</button>
         </div>
-        <div style="font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:1px;margin-bottom:10px;line-height:1.5;">${shot.shotDesc||"No description"}</div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.2);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Character</div>
-        <select id="regen-char-sel" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:7px;border-radius:3px;margin-bottom:8px;font-family:Rajdhani,sans-serif;font-size:12px;">
+        <div style="font-size:14px;color:#888;margin-bottom:18px;line-height:1.6;">${shot.shotDesc||"No description"}</div>
+        <div style="font-size:13px;font-weight:700;color:#666;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Character</div>
+        <select id="regen-char-sel" style="width:100%;background:#111;border:1px solid #333;color:#ddd;padding:12px;border-radius:5px;margin-bottom:16px;font-family:Rajdhani,sans-serif;font-size:17px;font-weight:600;outline:none;">
           <option value="">— Pick character —</option>${opts}
         </select>
-        <div style="font-size:8px;color:rgba(255,255,255,0.15);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Second Character (optional)</div>
-        <select id="regen-char-sel-2" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.07);color:rgba(255,255,255,0.38);padding:7px;border-radius:3px;margin-bottom:11px;font-family:Rajdhani,sans-serif;font-size:12px;">
+        <div style="font-size:13px;font-weight:700;color:#555;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Second Character (optional)</div>
+        <select id="regen-char-sel-2" style="width:100%;background:#111;border:1px solid #2a2a2a;color:#888;padding:12px;border-radius:5px;margin-bottom:20px;font-family:Rajdhani,sans-serif;font-size:17px;font-weight:600;outline:none;">
           <option value="">— None —</option>${opts}
         </select>
-        <div id="regen-status" style="font-size:9px;color:rgba(255,255,255,0.3);min-height:14px;margin-bottom:9px;letter-spacing:1px;"></div>
-        <button onclick="runAiRegen('${id}')" style="width:100%;background:rgba(76,175,80,0.12);border:1px solid rgba(76,175,80,0.35);color:#81c784;font-family:Rajdhani,sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;padding:8px;border-radius:3px;cursor:pointer;">
+        <div id="regen-status" style="font-size:14px;color:#666;min-height:20px;margin-bottom:14px;"></div>
+        <button onclick="runAiRegen('${id}')" style="width:100%;background:rgba(76,175,80,0.14);border:1px solid rgba(76,175,80,0.45);color:#81c784;font-family:Rajdhani,sans-serif;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px;border-radius:5px;cursor:pointer;">
           Hermes Rewrites → Generate
         </button>`;
       document.body.appendChild(p); _regenPanel=p;

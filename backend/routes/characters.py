@@ -160,6 +160,28 @@ async def get_characters(x_studio: str = Header(default="levram")):
     return {"success": True, "characters": chars}
 
 
+@router.get("/characters/count")
+@router.get("/api/characters/count")
+async def get_characters_count(x_studio: str = Header(default="levram")):
+    """Lightweight count — used by dashboard stats, avoids loading full character docs."""
+    if characters_col is not None:
+        try:
+            if x_studio == "levram":
+                query = {"$or": [{"studio": "levram"}, {"studio": {"$exists": False}}]}
+            else:
+                query = {"studio": x_studio}
+            count = await asyncio.wait_for(
+                characters_col.count_documents(query),
+                timeout=4.0,
+            )
+            return {"count": count}
+        except Exception:
+            pass
+    data = _json_load()
+    count = sum(1 for c in data.get("characters", []) if c.get("studio", "levram") == x_studio)
+    return {"count": count}
+
+
 @router.post("/characters")
 async def create_character(payload: CharacterPayload, x_studio: str = Header(default="levram")):
     if not payload.name.strip():

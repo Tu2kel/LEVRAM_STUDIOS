@@ -9,7 +9,11 @@
     clearTimeout(_refreshTimer);
     _startClock();
     _fetchAll();
-    _refreshTimer = setTimeout(dbLoad, 30_000);
+    // Only reschedule while dashboard panel is visible — stops polling when user switches tabs
+    const panel = document.getElementById("tab-dashboard");
+    if (!panel || panel.style.display !== "none") {
+      _refreshTimer = setTimeout(dbLoad, 30_000);
+    }
   };
 
   let _clockInterval = null;
@@ -29,17 +33,18 @@
   // ── Parallel fetch everything ─────────────────────────────────
   async function _fetchAll() {
     const el = id => document.getElementById(id);
+    const lf = typeof levFetch === "function" ? levFetch : fetch;
 
-    const [ideas, chars, shots, vids, jobs] = await Promise.allSettled([
-      fetch(`${API}/ideas`).then(r => r.json()),
-      fetch(`${API}/characters`).then(r => r.json()),
-      fetch(`${API}/timeline/load`).then(r => r.json()),
-      fetch(`${API}/video/library`).then(r => r.json()),
-      fetch(`${API}/orchestrate/jobs`).then(r => r.json()),
+    const [ideas, charCount, shots, vids, jobs] = await Promise.allSettled([
+      lf(`${API}/ideas`).then(r => r.json()),
+      lf(`${API}/characters/count`).then(r => r.json()),
+      lf(`${API}/timeline/load`).then(r => r.json()),
+      lf(`${API}/video/library`).then(r => r.json()),
+      lf(`${API}/orchestrate/jobs`).then(r => r.json()),
     ]);
 
     const ideaList  = ideas.value?.ideas  || [];
-    const charList  = chars.value?.characters || [];
+    const charList  = { length: charCount.value?.count ?? 0 };
     const shotList  = shots.value?.shots  || [];
     const vidList   = vids.value?.videos  || [];
     const jobList   = jobs.value?.jobs    || [];
@@ -92,7 +97,8 @@
     // Keep polling while something is active
     clearTimeout(_pollTimer);
     _pollTimer = setTimeout(async () => {
-      const r = await fetch(`${API}/orchestrate/jobs`).then(x => x.json()).catch(() => ({ jobs: [] }));
+      const lf = typeof levFetch === "function" ? levFetch : fetch;
+      const r = await lf(`${API}/orchestrate/jobs`).then(x => x.json()).catch(() => ({ jobs: [] }));
       _renderActiveJob(r.jobs || []);
     }, 5000);
   }

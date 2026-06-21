@@ -70,7 +70,10 @@ async function ivLoadCharacters() {
     // Restore last-used character
     const saved = LEVRAM_CHAR.getId();
     if (saved && [...sel.options].some(o => o.value === saved)) sel.value = saved;
-  } catch (_) {}
+  } catch (err) {
+    console.warn("[IV] ivLoadCharacters failed:", err);
+    if (sel) sel.innerHTML = `<option value="">Could not load characters</option>`;
+  }
 }
 
 // ── List ───────────────────────────────────────────────────────

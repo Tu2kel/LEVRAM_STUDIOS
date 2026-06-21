@@ -48,8 +48,9 @@ if MONGODB_URL:
     asset_tags_col   = db["asset_tags"]
     videos_col       = db["videos"]       # generated video metadata (project, filename, url, created)
     timelines_col    = db["timelines"]    # timeline shot order per project
+    char_b64_col     = db["character_b64_backups"]  # body ref base64 backups — separated for perf
 else:
     # Stub objects so import statements don't break
     characters_col = scenes_col = ideas_col = projects_col = None
     episodes_col = render_queue_col = music_col = asset_tags_col = None
-    videos_col = timelines_col = None
+    videos_col = timelines_col = char_b64_col = None

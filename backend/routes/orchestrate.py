@@ -117,7 +117,14 @@ async def _gen_image(prompt: str, character_id: str) -> str:
         if domain:
             body_ref_url = f"https://{domain}/{body_refs[0].lstrip('/')}"
         if not body_ref_url and domain:
-            body_refs_b64 = (db_char or {}).get("body_reference_images_b64") or []
+            # Fetch b64 from dedicated collection (new path), fall back to legacy field
+            from backend.db import char_b64_col as _b64_col
+            body_refs_b64 = []
+            if _b64_col is not None:
+                _b64doc = await _b64_col.find_one({"character_id": character_id})
+                body_refs_b64 = _b64doc.get("refs", []) if _b64doc else []
+            if not body_refs_b64:
+                body_refs_b64 = (db_char or {}).get("body_reference_images_b64") or []
             if body_refs_b64:
                 import base64 as _b64body
                 entry = body_refs_b64[0]

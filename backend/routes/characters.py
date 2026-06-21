@@ -12,12 +12,13 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, UploadFile, File
 from pydantic import BaseModel
 
-from backend.db import characters_col
+from backend.db import characters_col, char_b64_col
 
 router = APIRouter()
 
-DATA_FILE = Path("data/characters.json")
-REFS_DIR  = Path("output/renders/characters")
+DATA_FILE    = Path("data/characters.json")
+B64_DATA_FILE = Path("data/character_b64.json")
+REFS_DIR     = Path("output/renders/characters")
 
 
 # ── Data model ────────────────────────────────────────────────
@@ -67,6 +68,45 @@ def _strip(doc: dict) -> dict:
     d = dict(doc)
     d.pop("_id", None)
     return d
+
+
+# ── Body-ref b64 helpers (separate collection to keep character docs small) ───
+
+def _b64_json_load() -> dict:
+    if not B64_DATA_FILE.exists():
+        B64_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+        B64_DATA_FILE.write_text(json.dumps({}, indent=2))
+    return json.loads(B64_DATA_FILE.read_text())
+
+
+def _b64_json_save(data: dict):
+    B64_DATA_FILE.write_text(json.dumps(data, indent=2))
+
+
+async def _get_b64_refs(character_id: str) -> list:
+    if char_b64_col is not None:
+        doc = await char_b64_col.find_one({"character_id": character_id})
+        return doc.get("refs", []) if doc else []
+    return _b64_json_load().get(character_id, [])
+
+
+async def _set_b64_refs(character_id: str, refs: list):
+    if char_b64_col is not None:
+        if refs:
+            await char_b64_col.update_one(
+                {"character_id": character_id},
+                {"$set": {"character_id": character_id, "refs": refs}},
+                upsert=True,
+            )
+        else:
+            await char_b64_col.delete_one({"character_id": character_id})
+    else:
+        data = _b64_json_load()
+        if refs:
+            data[character_id] = refs
+        else:
+            data.pop(character_id, None)
+        _b64_json_save(data)
 
 
 async def _get_character(character_id: str) -> dict | None:
@@ -269,18 +309,16 @@ async def upload_body_reference(character_id: str, file: UploadFile = File(...))
     refs  = list(char.get("body_reference_images") or [])
     refs.append(url)
 
-    refs_b64 = list(char.get("body_reference_images_b64") or [])
+    refs_b64 = await _get_b64_refs(character_id)
     refs_b64.append({
         "filename": filename,
         "url":      url,
         "data":     _b64.b64encode(raw_bytes).decode("utf-8"),
         "mime":     file.content_type or "image/png",
     })
+    await _set_b64_refs(character_id, refs_b64)
 
-    await _patch_character(character_id, {
-        "body_reference_images":     refs,
-        "body_reference_images_b64": refs_b64,
-    })
+    await _patch_character(character_id, {"body_reference_images": refs})
     return {"success": True, "url": url, "total_body_refs": len(refs)}
 
 
@@ -292,12 +330,10 @@ async def delete_body_reference(character_id: str, filename: str):
     file_path = REFS_DIR / character_id / "body-refs" / filename
     if file_path.exists():
         file_path.unlink()
-    refs     = [r for r in (char.get("body_reference_images") or [])     if filename not in r]
-    refs_b64 = [e for e in (char.get("body_reference_images_b64") or []) if e.get("filename") != filename]
-    await _patch_character(character_id, {
-        "body_reference_images":     refs,
-        "body_reference_images_b64": refs_b64,
-    })
+    refs     = [r for r in (char.get("body_reference_images") or []) if filename not in r]
+    refs_b64 = [e for e in await _get_b64_refs(character_id) if e.get("filename") != filename]
+    await _set_b64_refs(character_id, refs_b64)
+    await _patch_character(character_id, {"body_reference_images": refs})
     return {"success": True, "remaining": len(refs)}
 
 

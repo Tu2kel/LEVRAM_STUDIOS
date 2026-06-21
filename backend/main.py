@@ -97,25 +97,47 @@ app.mount("/frontend", StaticFiles(directory="frontend", html=True), name="front
 
 @app.on_event("startup")
 async def _ensure_indexes():
-    """Create indexes on first deploy — idempotent, fast to re-run."""
+    """Create indexes and run one-time migrations on deploy — all idempotent."""
     import asyncio
-    from backend.db import characters_col, scenes_col, ideas_col
+    from backend.db import characters_col, scenes_col, ideas_col, char_b64_col
     if characters_col is None:
         return
     try:
         await asyncio.wait_for(asyncio.gather(
-            # characters: roster list filters by studio; find_one by id
             characters_col.create_index("studio"),
             characters_col.create_index("id", unique=True, sparse=True),
-            # scenes: listed/filtered by project
             scenes_col.create_index("project"),
             scenes_col.create_index("id"),
-            # ideas: filtered by studio
             ideas_col.create_index("studio"),
+            char_b64_col.create_index("character_id", unique=True),
         ), timeout=5.0)
         print("[LEVRAM] MongoDB indexes ensured.")
     except Exception as e:
         print(f"[LEVRAM] Index creation skipped (MongoDB slow/unreachable): {e}")
+        return
+
+    # One-time migration: move body_reference_images_b64 out of character docs
+    try:
+        async for char in characters_col.find(
+            {"body_reference_images_b64": {"$exists": True}},
+            {"id": 1, "body_reference_images_b64": 1},
+        ):
+            char_id  = char.get("id")
+            b64_data = char.get("body_reference_images_b64") or []
+            if not char_id or not b64_data:
+                continue
+            await char_b64_col.update_one(
+                {"character_id": char_id},
+                {"$setOnInsert": {"character_id": char_id, "refs": b64_data}},
+                upsert=True,
+            )
+            await characters_col.update_one(
+                {"id": char_id},
+                {"$unset": {"body_reference_images_b64": ""}},
+            )
+        print("[LEVRAM] body_reference_images_b64 migration complete.")
+    except Exception as e:
+        print(f"[LEVRAM] b64 migration skipped: {e}")
 
 
 @app.get("/favicon.ico", include_in_schema=False)

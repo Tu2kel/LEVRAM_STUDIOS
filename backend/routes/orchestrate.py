@@ -655,8 +655,46 @@ async def _run_pipeline(job_id: str, payload: dict):
             _update(job_id, status="keyframes_ready", progress=len(shots),
                     step=f"✔ {total_done} keyframes ready — review and approve to animate")
         else:
-            _update(job_id, status="complete", progress=len(shots),
-                    step=f"✔ Done — {total_done}/{len(shots)} shots in Timeline. Open Timeline ↗")
+            # ── 7. Auto-export: pick music + assemble final episode ────────────
+            _update(job_id, status="exporting", progress=len(shots),
+                    step=f"✔ {total_done} shots done — Assembling film…")
+            episode_url = ""
+            auto_music_url = ""
+            try:
+                # Pick first available music track from library
+                try:
+                    from backend.db import music_col as _mc
+                    if _mc is not None:
+                        _mtracks = await _mc.find({}).sort("createdAt", -1).to_list(5)
+                        if _mtracks:
+                            auto_music_url = _mtracks[0].get("url", "")
+                    else:
+                        _mpath = Path("data/music_library.json")
+                        if _mpath.exists():
+                            _mlib = json.loads(_mpath.read_text())
+                            _tracks = _mlib if isinstance(_mlib, list) else _mlib.get("tracks", [])
+                            if _tracks:
+                                auto_music_url = _tracks[0].get("url", "")
+                except Exception as _me:
+                    print(f"[ORCH] music pick failed: {_me}")
+
+                from backend.routes.video import ExportTimelinePayload, export_timeline
+                _ep_result = await export_timeline(ExportTimelinePayload(
+                    title=project or "LEVRAM_Film",
+                    music_url=auto_music_url,
+                    music_volume=0.20,
+                    include_voice=True,
+                    transition="fade",
+                    color_grade="cinematic",
+                ))
+                episode_url = _ep_result.get("episodeUrl", "") if isinstance(_ep_result, dict) else ""
+                _update(job_id, status="complete", progress=len(shots),
+                        episode_url=episode_url, music_url=auto_music_url,
+                        step=f"✔ Film ready — {total_done} shots · Open Timeline ↗")
+            except Exception as _exp_err:
+                print(f"[ORCH] auto-export failed: {_exp_err}")
+                _update(job_id, status="complete", progress=len(shots),
+                        step=f"✔ Done — {total_done}/{len(shots)} shots in Timeline. Open Timeline ↗")
 
     except Exception as e:
         import traceback

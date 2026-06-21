@@ -783,12 +783,18 @@ async function ivPollJob(jobId, totalScenes, statusEl) {
     try {
       const res  = await levFetch(`${IV_BASE}/orchestrate/status/${jobId}`);
       const data = await res.json();
-      const done    = data.progress || 0;
-      const total   = data.total   || totalScenes;
-      const pct     = total > 0 ? Math.round((done / total) * 100) : 0;
-      const step    = data.step    || "Running…";
-      const isDone  = data.status === "complete";
-      const isFail  = data.status === "failed";
+      const done       = data.progress || 0;
+      const total      = data.total   || totalScenes;
+      const pct        = total > 0 ? Math.round((done / total) * 100) : 0;
+      const step       = data.step    || "Running…";
+      const isDone     = data.status === "complete";
+      const isExport   = data.status === "exporting";
+      const isFail     = data.status === "failed";
+      const episodeUrl = data.episode_url || "";
+      const musicUrl   = data.music_url   || "";
+
+      const _p     = localStorage.getItem("levram_active_project") || "";
+      const _tlUrl = "timeline.html" + (_p ? `?project=${encodeURIComponent(_p)}` : "");
 
       statusEl.innerHTML = `
         <div style="margin-bottom:6px;">
@@ -799,21 +805,35 @@ async function ivPollJob(jobId, totalScenes, statusEl) {
             <div style="background:var(--gold);border-radius:2px;height:4px;width:${pct}%;transition:width 0.5s;"></div>
           </div>
         </div>
-        <div style="font-size:11px;letter-spacing:1px;color:${isFail ? "var(--imperial-red)" : isDone ? "#4caf50" : "var(--text-dim)"};">
+        <div style="font-size:11px;letter-spacing:1px;color:${isFail ? "var(--imperial-red)" : (isDone || isExport) ? "#4caf50" : "var(--text-dim)"};">
           ${step}
         </div>
-        ${isDone ? (() => { const _p = localStorage.getItem("levram_active_project") || ""; const _tlUrl = "timeline.html" + (_p ? `?project=${encodeURIComponent(_p)}` : ""); return `<div style="margin-top:8px;font-size:11px;color:#4caf50;letter-spacing:1px;">✔ Film ready — <a href="${_tlUrl}" target="_blank" style="color:var(--gold);text-decoration:none;">Open Timeline ↗</a></div>`; })() : ""}
+        ${(isDone || isExport) ? `<div style="margin-top:8px;font-size:11px;color:#4caf50;letter-spacing:1px;">
+          ✔ Film ready — <a href="${_tlUrl}" target="_blank" style="color:var(--gold);text-decoration:none;">Open Timeline ↗</a>
+          ${episodeUrl ? `&nbsp;·&nbsp;<a href="${IV_BASE}${episodeUrl}" download style="color:var(--gold);text-decoration:none;">⬇ Download Film</a>` : ""}
+        </div>` : ""}
         ${isFail ? `<div style="margin-top:4px;font-size:10px;color:var(--imperial-red);">${data.error || ""}</div>` : ""}
       `;
 
       if (isDone) {
         if (typeof loadScenes === "function") loadScenes();
-        setTimeout(() => { if (typeof window.tlOpenExportModal === "function") window.tlOpenExportModal(); }, 800);
+        setTimeout(() => {
+          if (typeof window.tlOpenExportModal === "function") {
+            window.tlOpenExportModal();
+            if (musicUrl) {
+              const sel = document.getElementById("tl-export-music-sel");
+              if (sel) {
+                const opt = [...sel.options].find(o => o.value === musicUrl || o.value.includes(musicUrl.split("/").pop()));
+                if (opt) opt.selected = true;
+              }
+            }
+          }
+        }, 800);
       }
 
       if (!isDone && !isFail && polls < 360) {
         polls++;
-        setTimeout(poll, 5000);
+        setTimeout(poll, isExport ? 3000 : 5000);
       }
     } catch (_) {
       if (polls < 360) { polls++; setTimeout(poll, 8000); }

@@ -353,20 +353,48 @@ Apply these notes as targeted edits. Return the full revised story JSON."""
 
 
 def _count_lyric_lines(concept: str) -> int:
-    """Count numbered lyric lines in concept (lines after a LYRICS: marker)."""
+    """Count lyric lines in concept (after LYRICS: marker or VOICE PROMPTS marker)."""
+    return len(_extract_lyric_lines(concept))
+
+
+def _extract_lyric_lines(concept: str) -> list:
+    """Return the actual lyric lines in order from the concept text."""
     lines = concept.splitlines()
     in_lyrics = False
-    count = 0
+    result = []
     for line in lines:
         stripped = line.strip()
         if not stripped:
             continue
-        if "LYRICS" in stripped.upper() and stripped.upper().endswith(":"):
+        upper = stripped.upper()
+        if ("LYRICS" in upper or "VOICE PROMPT" in upper) and upper.endswith(":"):
             in_lyrics = True
             continue
         if in_lyrics and stripped:
-            count += 1
-    return count
+            result.append(stripped)
+    return result
+
+
+def _extract_escalation_arc(concept: str) -> str:
+    """Pull the ESCALATION ARC block from the concept if present."""
+    lines = concept.splitlines()
+    in_arc = False
+    arc_lines = []
+    for line in lines:
+        stripped = line.strip()
+        upper = stripped.upper()
+        if "ESCALATION ARC" in upper:
+            in_arc = True
+            continue
+        if in_arc:
+            # Stop at next ALL-CAPS section header or LYRICS marker
+            if stripped and (upper == stripped) and len(stripped) > 10 and ":" in stripped:
+                break
+            if "LYRICS" in upper and upper.endswith(":"):
+                break
+            if stripped:
+                arc_lines.append(stripped)
+    return " ".join(arc_lines).strip()
 
 
 # ── Story developer ─────────────────────────────────────────────
@@ -440,6 +468,8 @@ async def _gpt_develop(
         model  = "gpt-4o-mini"
 
     lyric_lines = _count_lyric_lines(concept)
+    all_lyrics  = _extract_lyric_lines(concept) if lyric_lines else []
+    arc_text    = _extract_escalation_arc(concept) if lyric_lines else ""
 
     # Build performer reference block — goes into every scene prompt
     p1 = character_name or ""
@@ -541,9 +571,16 @@ async def _gpt_develop(
     shot_prompt_prefix = _build_shot_prompt_prefix()
 
     # ── Step 2: Scenes per act (3 separate small calls) ──────────
-    def _call_act(act_num: int, beat_count: int, start_index: int, act_desc: str):
-        if lyric_lines:
-            dialogue_rule = "VERBATIM lyric line for this scene"
+    def _call_act(act_num: int, beat_count: int, start_index: int, act_desc: str, act_lyrics: list = None):
+        if lyric_lines and act_lyrics:
+            numbered = "\n".join(f"  {i+1}. {l}" for i, l in enumerate(act_lyrics))
+            dialogue_rule = (
+                f"dialogue — MUST be the EXACT lyric line assigned to this scene (in order). "
+                f"Lyrics for this act in order:\n{numbered}\n"
+                f"Scene {start_index+1} uses lyric 1, scene {start_index+2} uses lyric 2, etc. Copy verbatim."
+            )
+        elif lyric_lines:
+            dialogue_rule = "VERBATIM lyric line for this scene (in order from the concept)"
         elif is_adult:
             dialogue_rule = "one explicit in-character raw line, max 10 words"
         else:
@@ -583,10 +620,22 @@ async def _gpt_develop(
             f"NO penises. NO male anatomy. Penetration = fingers or strap-on only."
         ) if is_lesbian and p1 and p2 else ""
 
-        # LS (non-adult) — cinematic multi-angle coverage per beat
-        # Each dramatic beat outputs 3 consecutive shot objects: CU char1, CU char2, wide
-        # RL stays 1 shot per beat — continuous explicit action doesn't need cross-cutting
-        if not is_adult and p1 and p2:
+        # Lyric mode: 1 scene per lyric line — NO multi-angle coverage
+        # Standard mode with 2 chars: 3 shots per dramatic beat (CU1, CU2, wide)
+        if lyric_lines:
+            # Each lyric = exactly 1 scene. No multi-shot coverage.
+            arc_instruction = ""
+            if arc_text:
+                arc_instruction = f"\nESCALATION ARC — follow this exactly, do not invent new structure:\n{arc_text}\n"
+            coverage_instruction = (
+                f"\nLYRIC MODE — output EXACTLY {beat_count} scene objects, one per lyric line.\n"
+                f"Do NOT add intro scenes. Scene 1 starts at the first lyric, in the middle of the action.\n"
+                f"Each scene's physical action must match the escalation arc described in the concept.\n"
+                + arc_instruction
+            )
+            angle_field = ""
+            total_label = str(beat_count)
+        elif not is_adult and p1 and p2:
             expected_total = beat_count * 3
             coverage_instruction = (
                 f"\nCAMERA COVERAGE — for every dramatic beat output EXACTLY 3 consecutive scene objects:\n"
@@ -641,28 +690,56 @@ async def _gpt_develop(
             a1 = max(1, lyric_lines // 3)
             a2 = max(1, lyric_lines // 3)
             a3 = lyric_lines - a1 - a2
+            # Split actual lyrics across acts so each act gets its assigned lines
+            lyrics_a1 = all_lyrics[:a1]
+            lyrics_a2 = all_lyrics[a1:a1 + a2]
+            lyrics_a3 = all_lyrics[a1 + a2:]
+            # Act descriptions derived from escalation arc in concept (not generic templates)
+            if arc_text:
+                # Split arc text into 3 roughly equal parts for each act
+                arc_parts = [s.strip() for s in arc_text.replace("Lines", "\nLines").split("\n") if s.strip()]
+                act_descs = [
+                    arc_parts[0] if len(arc_parts) > 0 else f"Opening — action already in progress. Genre: {genre}.",
+                    arc_parts[1] if len(arc_parts) > 1 else f"Escalation. Genre: {genre}.",
+                    arc_parts[2] if len(arc_parts) > 2 else f"Climax and resolution. Genre: {genre}.",
+                ]
+            else:
+                act_descs = [
+                    f"Act 1 — opening confrontation, action already in progress. Genre: {genre}.",
+                    f"Act 2 — escalation, tension rising. Genre: {genre}.",
+                    f"Act 3 — climax, decisive moment. Genre: {genre}.",
+                ]
+            lyric_sets = [lyrics_a1, lyrics_a2, lyrics_a3]
         elif not is_adult:
             # LS: beats per act (each beat → 3 shots). Cap at 8 beats/act → 24 shots/act → 72 total
             beats_per_act = max(6, min(8, num_scenes // 9))
             a1 = beats_per_act
             a2 = beats_per_act
             a3 = beats_per_act - 1  # act 3 slightly shorter — avoids ending bloat
+            act_descs = [
+                f"Setup — establish the world, the characters, the stakes. Specific to: {genre}. Show don't tell.",
+                f"Confrontation and rising tension. Physical action, conflict escalation. Genre: {genre}. Visceral and specific.",
+                f"Climax and aftermath. The decisive moment and its consequences. Genre: {genre}. Earned, not generic.",
+            ]
+            lyric_sets = [None, None, None]
         else:
             a1 = num_scenes // 3
             a2 = num_scenes // 3
             a3 = num_scenes - a1 - a2
-
-        act_descs = [
-            "Introduction — they meet and immediately begin removing each other's clothing and touching each other's bodies. No flirting banter — direct physical contact from scene 1." if is_adult else f"Setup — establish the world, the characters, the stakes. Specific to: {genre}. Show don't tell.",
-            "Escalation — explicit oral sex begins. Describe exactly who is performing oral on whom, mouth and tongue on genitals, moaning, body arching." if is_adult else f"Confrontation and rising tension. Physical action, conflict escalation. Genre: {genre}. Visceral and specific.",
-            "Climax — penetrative acts (fingers, strap-on), multiple positions, building to orgasm. Explicit and direct throughout." if is_adult else f"Climax and aftermath. The decisive moment and its consequences. Genre: {genre}. Earned, not generic.",
-        ]
+            act_descs = [
+                "Introduction — they meet and immediately begin removing each other's clothing and touching each other's bodies. No flirting banter — direct physical contact from scene 1.",
+                "Escalation — explicit oral sex begins. Describe exactly who is performing oral on whom, mouth and tongue on genitals, moaning, body arching.",
+                "Climax — penetrative acts (fingers, strap-on), multiple positions, building to orgasm. Explicit and direct throughout.",
+            ]
+            lyric_sets = [None, None, None]
 
         all_scenes = []
         idx = 0
-        for act_num, count, desc in [(1, a1, act_descs[0]), (2, a2, act_descs[1]), (3, a3, act_descs[2])]:
+        for act_num, count, desc, act_lyr in [(1, a1, act_descs[0], lyric_sets[0]),
+                                               (2, a2, act_descs[1], lyric_sets[1]),
+                                               (3, a3, act_descs[2], lyric_sets[2])]:
             try:
-                scenes = _call_act(act_num, count, idx, desc)
+                scenes = _call_act(act_num, count, idx, desc, act_lyrics=act_lyr)
                 if not isinstance(scenes, list):
                     scenes = scenes.get("scenes", [])
                 all_scenes.extend(scenes)

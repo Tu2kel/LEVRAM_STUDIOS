@@ -89,6 +89,7 @@
             panel.style.height        = "calc(100vh - 73px)";
             panel.style.overflow      = "hidden";
           }
+          if (typeof loadCharacters === "function") loadCharacters();
           return;
         }
 

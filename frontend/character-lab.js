@@ -14,12 +14,12 @@ async function clInitPanel() {
   if (document.getElementById("character-list-panel")) return; // static HTML still present
 
   try {
-    const base = (window.LEVRAM_CONFIG?.api || "").replace(/\/api$/, "");
-    const res  = await fetch(`${base}/frontend/character-lab-panel.html`, { cache: "no-store" });
+    const res = await fetch(`/frontend/character-lab-panel.html`, { cache: "no-store" });
     if (!res.ok) throw new Error(`${res.status}`);
     target.innerHTML = await res.text();
   } catch (err) {
     console.error("[CL] Panel inject failed:", err);
+    target.innerHTML = `<div style="color:#e74c3c;padding:24px;font-family:Rajdhani,sans-serif;letter-spacing:2px;">CHARACTER LAB FAILED TO LOAD — CHECK CONSOLE</div>`;
   }
 }
 

@@ -95,18 +95,24 @@ async def _patch_character(character_id: str, fields: dict):
 @router.get("/api/characters")
 async def get_characters(x_studio: str = Header(default="levram")):
     if characters_col is not None:
-        if x_studio == "levram":
-            # Main studio: include untagged characters (backwards compat) and backfill them to levram
-            docs = await characters_col.find({
-                "$or": [{"studio": "levram"}, {"studio": {"$exists": False}}]
-            }).to_list(None)
-            for doc in docs:
-                if not doc.get("studio"):
-                    await characters_col.update_one({"id": doc["id"]}, {"$set": {"studio": "levram"}})
-        else:
-            # Other studios (redlight etc): only return characters explicitly tagged for this studio
-            docs = await characters_col.find({"studio": x_studio}).to_list(None)
-        return {"success": True, "characters": [_strip(d) for d in docs]}
+        try:
+            if x_studio == "levram":
+                query = {"$or": [{"studio": "levram"}, {"studio": {"$exists": False}}]}
+            else:
+                query = {"studio": x_studio}
+            docs = await asyncio.wait_for(
+                characters_col.find(query).to_list(None),
+                timeout=4.0
+            )
+            untagged = [d for d in docs if not d.get("studio")]
+            if untagged:
+                ids = [d["id"] for d in untagged]
+                asyncio.ensure_future(
+                    characters_col.update_many({"id": {"$in": ids}}, {"$set": {"studio": "levram"}})
+                )
+            return {"success": True, "characters": [_strip(d) for d in docs]}
+        except Exception:
+            pass  # MongoDB slow/unreachable — fall through to JSON
     data = _json_load()
     chars = [c for c in data.get("characters", []) if c.get("studio", "levram") == x_studio]
     return {"success": True, "characters": chars}

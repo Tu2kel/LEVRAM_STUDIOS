@@ -273,7 +273,30 @@ async def revise_idea(idea_id: str, body: ReviseRequest):
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model  = "gpt-4o-mini"
 
-    system = """You are the LEVRAM Studios Story Reviser — Hermes.
+    # Pull structural directives from the original idea so Lena knows the intent
+    idea_concept = idea.get("source", "") or idea.get("rawIdea", "")
+    lena_director_rule = ""
+    if idea_concept:
+        idea_structure = _extract_user_structure(idea_concept)
+        idea_arc       = _extract_escalation_arc(idea_concept)
+        idea_lyrics    = _extract_lyric_lines(idea_concept)
+        lena_parts     = []
+        if idea_structure:
+            lena_parts.append(f"ORIGINAL DIRECTOR'S STRUCTURE:\n{idea_structure}")
+        if idea_arc:
+            lena_parts.append(f"ESCALATION ARC:\n{idea_arc}")
+        if idea_lyrics:
+            lena_parts.append(f"VOICE/LYRIC SEQUENCE ({len(idea_lyrics)} lines):\n" +
+                              "\n".join(f"  {i+1}. {l}" for i, l in enumerate(idea_lyrics)))
+        if lena_parts:
+            lena_director_rule = (
+                "\n\nDIRECTOR'S ORIGINAL INTENT — preserve across all revisions:\n"
+                + "\n\n".join(lena_parts)
+                + "\n\nDo NOT alter the escalation arc, lyric sequence, or scene start point "
+                  "unless the director's notes explicitly ask for it."
+            )
+
+    system = f"""You are the LEVRAM Studios Story Reviser — Lena.
 
 Your job: apply a director's notes as TARGETED edits to an existing story breakdown.
 
@@ -283,11 +306,13 @@ STRICT RULES:
 - ONLY change what the notes specify — everything else stays identical
 - If notes say "make Act 2 more intense", only edit Act 2 scenes
 - If notes say "rewrite scene 5", only touch scene 5
+- If the story has verbatim lyric dialogue, preserve those lyrics exactly — only change description/shot_prompt
 - Never write cliché villain/hero dialogue (no "bow before me", "feel my power", "I will reign forever")
 - Return the FULL story JSON — same schema as input — with only the requested changes applied
+{lena_director_rule}
 
 Return ONLY valid JSON. No markdown. No commentary.
-Schema: { title, logline, act_structure, num_scenes, scenes: [...], est_seconds, est_minutes, reel_60s, reel_30s, reel_15s }
+Schema: {{ title, logline, act_structure, num_scenes, scenes: [...], est_seconds, est_minutes, reel_60s, reel_30s, reel_15s }}
 Scene fields: index, act, description, dialogue, shot_prompt, image_prompt, emotion, duration_seconds, reel_weight"""
 
     cast_note = ""
@@ -376,25 +401,72 @@ def _extract_lyric_lines(concept: str) -> list:
 
 
 def _extract_escalation_arc(concept: str) -> str:
-    """Pull the ESCALATION ARC block from the concept if present."""
+    """Pull the ESCALATION ARC block (or any ARC/STRUCTURE/NOTES block) from the concept."""
+    arc_markers = {"ESCALATION ARC", "ARC", "SCENE STRUCTURE", "STORY NOTES",
+                   "DIRECTOR NOTES", "STRUCTURE", "SCENE ARC", "PROGRESSION"}
     lines = concept.splitlines()
     in_arc = False
     arc_lines = []
     for line in lines:
         stripped = line.strip()
-        upper = stripped.upper()
-        if "ESCALATION ARC" in upper:
+        upper = stripped.upper().rstrip(":")
+        if any(m in upper for m in arc_markers):
             in_arc = True
             continue
         if in_arc:
-            # Stop at next ALL-CAPS section header or LYRICS marker
-            if stripped and (upper == stripped) and len(stripped) > 10 and ":" in stripped:
+            if stripped and stripped.endswith(":") and stripped.isupper():
                 break
-            if "LYRICS" in upper and upper.endswith(":"):
+            if any(k in stripped.upper() for k in ("LYRICS", "VOICE PROMPT", "DIALOGUE PROMPT")):
                 break
             if stripped:
                 arc_lines.append(stripped)
-    return " ".join(arc_lines).strip()
+    return "\n".join(arc_lines).strip()
+
+
+def _extract_user_structure(concept: str) -> str:
+    """
+    Pull ALL structural instructions the user embedded in the concept:
+    escalation arc, start instructions, no-intro flags, scene notes, etc.
+    Returns a block to inject into Hermes so it follows the director's intent.
+    """
+    section_markers = {
+        "ESCALATION ARC", "ARC", "SCENE STRUCTURE", "STORY NOTES",
+        "DIRECTOR NOTES", "STRUCTURE", "SCENE ARC", "PROGRESSION",
+        "START AT", "NO INTRO", "SCENE SETUP", "SETUP",
+    }
+    # Also grab any sentence containing strong directive language
+    directive_phrases = [
+        "no intro", "start immediately", "start at lyric", "start at scene",
+        "do not add", "skip the intro", "don't add intro", "action already",
+        "entire song", "entire chorus", "backs up", "escalation happens",
+        "progressively", "by the last lyric", "by the end",
+    ]
+    lines = concept.splitlines()
+    in_section = False
+    collected = []
+    for line in lines:
+        stripped = line.strip()
+        upper = stripped.upper().rstrip(":")
+        # Detect section headers
+        if any(m in upper for m in section_markers) and (stripped.endswith(":") or stripped.isupper()):
+            in_section = True
+            collected.append(f"[{stripped}]")
+            continue
+        if in_section:
+            # Stop at next section header or lyrics block
+            if stripped.endswith(":") and stripped.isupper():
+                in_section = False
+            elif any(k in stripped.upper() for k in ("LYRICS:", "VOICE PROMPT", "DIALOGUE PROMPT")):
+                in_section = False
+            else:
+                if stripped:
+                    collected.append(stripped)
+            continue
+        # Grab individual directive sentences anywhere in concept
+        lower = stripped.lower()
+        if any(p in lower for p in directive_phrases):
+            collected.append(stripped)
+    return "\n".join(collected).strip()
 
 
 # ── Story developer ─────────────────────────────────────────────
@@ -467,9 +539,27 @@ async def _gpt_develop(
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model  = "gpt-4o-mini"
 
-    lyric_lines = _count_lyric_lines(concept)
-    all_lyrics  = _extract_lyric_lines(concept) if lyric_lines else []
-    arc_text    = _extract_escalation_arc(concept) if lyric_lines else ""
+    lyric_lines    = _count_lyric_lines(concept)
+    all_lyrics     = _extract_lyric_lines(concept) if lyric_lines else []
+    arc_text       = _extract_escalation_arc(concept)
+    user_structure = _extract_user_structure(concept)
+
+    # Universal director rule — injected into every system prompt
+    _director_rule = ""
+    if user_structure or arc_text or lyric_lines:
+        _director_rule = (
+            "\n\nDIRECTOR'S INSTRUCTIONS — MANDATORY:\n"
+            "The concept below contains explicit structural instructions from the director. "
+            "Follow them EXACTLY. Do NOT:\n"
+            "- Add intro or setup scenes not requested\n"
+            "- Substitute your own story structure\n"
+            "- Reinterpret the concept into a generic format\n"
+            "- Ignore start-point, escalation arc, or scene-by-scene choreography the director provided\n"
+            "If the director says 'start at lyric 1' or 'no intro', scene 1 IS lyric 1 or action beat 1.\n"
+            "If an escalation arc is provided, each scene's physical action must match that arc beat-for-beat."
+        )
+        if user_structure:
+            _director_rule += f"\n\nDIRECTOR'S STRUCTURE:\n{user_structure}"
 
     # Build performer reference block — goes into every scene prompt
     p1 = character_name or ""
@@ -514,6 +604,7 @@ async def _gpt_develop(
         "Dialogue is ENCOURAGED in comedy — snappy, character-specific, max 10 words. Natural and funny, not theatrical. NO profanity — dialogue must be clean (YouTube-safe). "
         "BANNED DIALOGUE: villain clichés, dramatic proclamations, anything dark or threatening. "
         "Write what a real person actually says in that exact comedic moment."
+        + _director_rule
     ) if is_comedy and not is_adult else ""
 
     cinematic_sys = (
@@ -530,6 +621,7 @@ async def _gpt_develop(
         "'this is only the beginning', 'your time is up', 'tremble before me', 'I am inevitable', "
         "'dawn of a new era', 'this storm hides', 'the world will know'. "
         "Write what a real person says in that exact moment — specific, earned, human."
+        + _director_rule
     ) if not is_adult and not is_comedy else ""
 
     base_system = (
@@ -537,6 +629,7 @@ async def _gpt_develop(
         cinematic_sys if not is_adult else
         "You are a scene breakdown writer for LEVRAM Studios. "
         "Write compact JSON only — no markdown, no commentary. "
+        + _director_rule
     ) + adult_sys
 
     # ── Step 1: Header (title, logline, act_structure) ──────────

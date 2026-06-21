@@ -361,9 +361,9 @@ VENICE_KEY      = os.getenv("VENICE_API_KEY", "")
 VENICE_IMG_BASE = "https://api.venice.ai/api/v1"
 
 VENICE_IMG_SIZES = {
-    "widescreen": (1344, 768),
-    "cinematic":  (1344, 576),
-    "portrait":   (768,  1344),
+    "widescreen": (1280, 720),
+    "cinematic":  (1280, 544),
+    "portrait":   (720,  1280),
     "square":     (1024, 1024),
 }
 

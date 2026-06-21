@@ -213,24 +213,21 @@
           <div id="cl-lora-reset-btn" style="display:none;"></div>
           <div id="cl-lora-progress" style="display:none;"><div id="cl-lora-progress-fill"></div></div>
           <div id="cl-train-btn" style="display:none;"></div>
-        </div>
 
-        <!-- ── Full Body Reference ── -->
-        <div class="cl-panel-header" style="margin-top:16px;">
-          <span class="cl-panel-label">Full Body Reference — Shape Lock</span>
-        </div>
-        <div class="cl-preview-body" id="cl-body-ref-section">
-          <div style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">
+          <!-- ── Full Body Reference (inside same scrollable body) ── -->
+          <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(93,232,154,0.25),transparent);margin:4px 0;"></div>
+          <div style="font-size:9px;color:#5de89a;letter-spacing:4px;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Full Body Reference — Shape Lock</div>
+          <div style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">
             Upload a full body shot. Seedream locks complete appearance — body, outfit, hair, face.
           </div>
 
           <input type="file" id="cl-body-ref-upload" multiple accept="image/*" style="display:none;" onchange="clUploadBodyReferences()" />
           <button type="button" onclick="document.getElementById('cl-body-ref-upload').click()"
-                  style="width:100%;background:rgba(0,0,0,0.4);border:1px dashed rgba(93,232,154,0.4);color:#5de89a;font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:10px;border-radius:3px;cursor:pointer;margin-bottom:8px;">
+                  style="width:100%;background:rgba(0,0,0,0.4);border:1px dashed rgba(93,232,154,0.4);color:#5de89a;font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:10px;border-radius:3px;cursor:pointer;">
             + Upload Full Body Photo
           </button>
 
-          <div id="cl-body-ref-thumbs" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;"></div>
+          <div id="cl-body-ref-thumbs" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
 
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span id="cl-body-ref-count" style="font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">0 images</span>

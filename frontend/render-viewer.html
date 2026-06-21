@@ -26,6 +26,19 @@
   <script>
     const BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
+    function _engineCost(engine) {
+      const costs = {
+        full_lock:   "~$0.05 (Seedream + face swap)",
+        ws_pulid:    "~$0.03 (WaveSpeed PuLID)",
+        ws_flux:     "~$0.012 (WaveSpeed FLUX)",
+        ws_seedream: "~$0.025 (WaveSpeed Seedream)",
+        dalle3:      "~$0.04 (DALL-E 3)",
+        venice_flux: "Free tier / $0.01 Pro",
+        novita_photo:"~$0.015 (Novita)",
+      };
+      return costs[engine] || "unknown";
+    }
+
     async function loadRenderViewer(){
       const params = new URLSearchParams(window.location.search);
       const id = params.get("id");
@@ -67,8 +80,9 @@
               <div class="rv-meta-title">${item.shot?.id || item.shotId || "Render"}</div>
 
               <div class="rv-row"><strong>Status:</strong> ${item.status || "unknown"}</div>
+              <div class="rv-row"><strong>Engine:</strong> <span style="color:#c9a84c;font-weight:700;">${item.engineUsed || "unknown"}</span></div>
+              <div class="rv-row"><strong>Est. Cost:</strong> <span style="color:#aaa;">${_engineCost(item.engineUsed)}</span></div>
               <div class="rv-row"><strong>Render ID:</strong> ${item.renderId || "N/A"}</div>
-              <div class="rv-row"><strong>Comfy Prompt ID:</strong> ${item.comfyPromptId || "N/A"}</div>
               <div class="rv-row"><strong>Created:</strong> ${item.createdAt || "N/A"}</div>
               <div class="rv-row"><strong>Updated:</strong> ${item.updatedAt || "N/A"}</div>
 

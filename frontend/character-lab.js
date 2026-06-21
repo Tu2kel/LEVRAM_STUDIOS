@@ -241,26 +241,24 @@ window.saveCharacter = async function saveCharacter() {
 };
 
 async function loadCharacters() {
-  // PHASE 8F.4 — works in both index.html ("character-list-panel") and standalone character-lab.html ("character-list")
   const list = document.getElementById("character-list-panel") || document.getElementById("character-list");
-  if (!list) return;
+  if (!list) {
+    console.warn("[CL] loadCharacters: #character-list-panel not in DOM — panel inject may have failed");
+    return;
+  }
+
+  list.innerHTML = `<div class="character-empty" style="opacity:0.5;">Loading…</div>`;
 
   try {
     const res = await levFetch(`${CL_CL_BASE}/characters`);
+    if (!res.ok) {
+      list.innerHTML = `<div class="character-empty">Error ${res.status} loading characters.<br>Check Settings for auth.</div>`;
+      return;
+    }
     const data = await res.json();
     const characters = data.characters || [];
 
-    // PHASE 8F.4 — cache for edit lookups
     window.LEVRAM_CHARACTERS_CACHE = characters;
-
-    // PHASE 8F.4 — flag case-insensitive name duplicates in console
-    const nameCounts = {};
-    characters.forEach(c => {
-      const key = (c.name || "").toLowerCase().trim();
-      nameCounts[key] = (nameCounts[key] || 0) + 1;
-    });
-    Object.entries(nameCounts).forEach(([key, count]) => {
-    });
 
     if (!characters.length) {
       list.innerHTML = `<div class="character-empty">No saved characters yet.</div>`;

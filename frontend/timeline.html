@@ -461,6 +461,7 @@
         const res  = await levFetch(url);
         const data = await res.json();
         if (!data.success) throw new Error("Failed to load scenes");
+        const toAbs = (u) => u && u.startsWith("/") ? BASE + u : (u || "");
         shots = data.scenes.map(s => ({
           id:           s.id || String(Date.now()),
           shot_number:  s.shot_number || s.scene_number || s.id || "UNKNOWN",
@@ -469,10 +470,11 @@
           shotDesc:     s.shotDesc || s.shot_description || "",
           shotPrompt:   s.shotPrompt || s.shot_prompt || "",
           preset:       s.voice_preset || "",
-          rawUrl:       s.rawUrl || "",
-          fxUrl:        s.fxUrl || "",
-          videoUrl:     s.videoUrl || "",
-          imageUrl:     s.imageUrl || s.renderOutputUrl || "",
+          rawUrl:       toAbs(s.rawUrl || ""),
+          fxUrl:        toAbs(s.fxUrl || s.rawUrl || ""),
+          videoUrl:     toAbs(s.videoUrl || ""),
+          imageUrl:     toAbs(s.imageUrl || s.renderOutputUrl || ""),
+          clipUrl:      toAbs(s.clipUrl || ""),
           duration:     parseFloat(s.duration) || 5,
           createdAt:    s.createdAt || s.saved_at || "",
         }));

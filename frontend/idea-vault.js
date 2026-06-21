@@ -661,7 +661,7 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
   const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
   const locName  = document.getElementById("iv-dev-location")?.value || "";
   const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
-  const model    = "ws_wan22";
+  const model    = document.getElementById("iv-model")?.value || "ws_wan22";
 
   if (btn) { btn.disabled = true; btn.classList.add("lora-scanning"); }
   if (statusEl) statusEl.textContent = "Approving…";
@@ -805,6 +805,11 @@ async function ivPollJob(jobId, totalScenes, statusEl) {
         ${isDone ? (() => { const _p = localStorage.getItem("levram_active_project") || ""; const _tlUrl = "timeline.html" + (_p ? `?project=${encodeURIComponent(_p)}` : ""); return `<div style="margin-top:8px;font-size:11px;color:#4caf50;letter-spacing:1px;">✔ Film ready — <a href="${_tlUrl}" target="_blank" style="color:var(--gold);text-decoration:none;">Open Timeline ↗</a></div>`; })() : ""}
         ${isFail ? `<div style="margin-top:4px;font-size:10px;color:var(--imperial-red);">${data.error || ""}</div>` : ""}
       `;
+
+      if (isDone) {
+        if (typeof loadScenes === "function") loadScenes();
+        setTimeout(() => { if (typeof window.tlOpenExportModal === "function") window.tlOpenExportModal(); }, 800);
+      }
 
       if (!isDone && !isFail && polls < 360) {
         polls++;

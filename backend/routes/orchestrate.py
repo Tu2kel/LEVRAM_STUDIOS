@@ -574,7 +574,14 @@ async def _run_pipeline(job_id: str, payload: dict):
 
                 # Autonomous QC — retry up to 3 times on failure
                 image_url = None
-                _qc_suffixes = ["", ", photorealistic cinematic 8K", ", high detail film still sharp focus"]
+                _genre_lower = genre.lower() if genre else ""
+                _comedy_words = {"comedy", "comedic", "skit", "sitcom", "parody", "spoof", "funny"}
+                _is_comedy_run = bool(_comedy_words.intersection(_genre_lower.replace(",", " ").split()))
+                _qc_suffixes = (
+                    ["", ", photorealistic 8K warm natural lighting", ", high detail sharp focus bright"]
+                    if _is_comedy_run else
+                    ["", ", photorealistic cinematic 8K", ", high detail film still sharp focus"]
+                )
                 for _attempt, _suffix in enumerate(_qc_suffixes):
                     try:
                         image_url = await _gen_image(image_prompt + _suffix, shot_char_id)

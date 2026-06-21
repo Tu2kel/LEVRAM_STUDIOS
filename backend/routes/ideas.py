@@ -420,9 +420,11 @@ async def _gpt_develop(
 
     _ADULT_KEYWORDS = {"adult", "erotic", "explicit", "xxx", "nsfw"}
     _LESBIAN_KEYWORDS = {"lesbian", "sapphic", "female", "women", "girls", "femme", "wlw"}
-    genre_words = set(genre.lower().replace(",", " ").split())
+    _COMEDY_KEYWORDS = {"comedy", "comedic", "skit", "sitcom", "parody", "spoof", "funny", "humor", "humour", "lighthearted", "light-hearted", "rom-com", "romcom", "farce", "satire"}
+    genre_words = set(genre.lower().replace(",", " ").replace("-", " ").split())
     is_adult   = bool(_ADULT_KEYWORDS.intersection(genre_words)) or bool(_LESBIAN_KEYWORDS.intersection(genre_words))
     is_lesbian = bool(_LESBIAN_KEYWORDS.intersection(genre_words))
+    is_comedy  = bool(_COMEDY_KEYWORDS.intersection(genre_words))
 
     venice_key = os.getenv("VENICE_API_KEY")
     if is_adult and venice_key:
@@ -474,6 +476,16 @@ async def _gpt_develop(
         + _gender_rule
     ) if is_adult else ""
 
+    comedy_sys = (
+        "You are a comedy scene writer for LEVRAM Studios. Original IP. "
+        "Write compact JSON only — no markdown, no commentary. "
+        "Description: 1 vivid specific sentence — exactly what the camera sees. Focus on comedic body language, facial expressions, timing, and physical humor. "
+        "Tone: light, warm, expressive — think sitcom or sketch comedy. NO violence, gore, or dark imagery. "
+        "Dialogue is ENCOURAGED in comedy — snappy, character-specific, max 10 words. Natural and funny, not theatrical. NO profanity — dialogue must be clean (YouTube-safe). "
+        "BANNED DIALOGUE: villain clichés, dramatic proclamations, anything dark or threatening. "
+        "Write what a real person actually says in that exact comedic moment."
+    ) if is_comedy and not is_adult else ""
+
     cinematic_sys = (
         "You are a cinematic scene writer for LEVRAM Studios. Original IP. Prestige quality. "
         "Write compact JSON only — no markdown, no commentary. "
@@ -488,9 +500,10 @@ async def _gpt_develop(
         "'this is only the beginning', 'your time is up', 'tremble before me', 'I am inevitable', "
         "'dawn of a new era', 'this storm hides', 'the world will know'. "
         "Write what a real person says in that exact moment — specific, earned, human."
-    ) if not is_adult else ""
+    ) if not is_adult and not is_comedy else ""
 
     base_system = (
+        comedy_sys if is_comedy and not is_adult else
         cinematic_sys if not is_adult else
         "You are a scene breakdown writer for LEVRAM Studios. "
         "Write compact JSON only — no markdown, no commentary. "
@@ -560,7 +573,9 @@ async def _gpt_develop(
             f"Use photographic terms: 'medium shot', 'close-up', 'boudoir lighting', 'unclothed'. "
             f"DO NOT write anatomical slang — describe visually. 1 dense paragraph. No labels.)"
         ) if is_adult else (
-            f"shot_prompt (image gen prompt — subject by name, action, setting, lighting, camera angle; 1 dense paragraph)"
+            f"shot_prompt (image gen prompt — subject by name, comedic expression and body language, setting with warm bright natural lighting, camera angle; NO darkness, NO dramatic rim lighting, NO monsters or creatures — this is a COMEDY; 1 dense paragraph)"
+        ) if is_comedy else (
+            f"shot_prompt (image gen prompt — subject by name, action, setting, dramatic cinematic lighting, camera angle; 1 dense paragraph)"
         )
 
         _per_act_gender = (

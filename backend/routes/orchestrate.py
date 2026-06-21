@@ -155,8 +155,8 @@ async def _gen_image(prompt: str, character_id: str) -> str:
                 if _body_bytes:
                     _body_prompt = f"{prompt}, cinematic photorealistic"
                     for _provider, _fn in [
-                        ("Venice",  lambda: __import__('backend.routes.image_gen', fromlist=['_venice_body_ref'])._venice_body_ref(_body_prompt, _body_bytes, "cinematic")),
                         ("Novita",  lambda: __import__('backend.routes.image_gen', fromlist=['_novita_body_ref'])._novita_body_ref(_body_prompt, _body_bytes, "cinematic")),
+                        ("Venice",  lambda: __import__('backend.routes.image_gen', fromlist=['_venice_body_ref'])._venice_body_ref(_body_prompt, _body_bytes, "cinematic")),
                     ]:
                         try:
                             _r = await loop.run_in_executor(None, _fn)

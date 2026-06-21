@@ -818,7 +818,6 @@
       const cId=document.getElementById("regen-char-sel")?.value;
       const cId2=document.getElementById("regen-char-sel-2")?.value||"";
       const st=document.getElementById("regen-status");
-      if(!cId){st.textContent="Pick a character first.";return;}
       st.textContent="Hermes rewriting…";
       try {
         const res=await levFetch(`${BASE}/scene/${id}/ai-regen`,{method:"POST",headers:{"Content-Type":"application/json"},

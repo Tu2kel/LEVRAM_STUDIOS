@@ -174,7 +174,7 @@ class RegenImageRequest(BaseModel):
 
 
 class AiRegenRequest(BaseModel):
-    character_id:   str
+    character_id:   str = ""
     character_id_2: str = ""
     scene_description: Optional[str] = ""
     original_prompt: Optional[str] = ""
@@ -288,25 +288,22 @@ async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
             story_obj     = idea_doc.get("story", {})
             story_logline = story_obj.get("logline", "") if isinstance(story_obj, dict) else ""
 
-    # Fetch primary character
-    char_doc = None
-    if characters_col is not None:
+    # Fetch primary character (optional)
+    char_doc     = None
+    char_name    = ""
+    char_visual  = ""
+    if body.character_id and characters_col is not None:
         char_doc = await characters_col.find_one({"id": body.character_id})
-    if not char_doc:
-        raise HTTPException(status_code=404, detail="Character not found")
-
-    char_name   = char_doc.get("name", "Character")
-    appearance  = char_doc.get("appearance", "")
-    wardrobe    = char_doc.get("wardrobe", "")
-    char_visual = " ".join(filter(None, [appearance, wardrobe]))
+        if char_doc:
+            char_name   = char_doc.get("name", "")
+            char_visual = " ".join(filter(None, [char_doc.get("appearance", ""), char_doc.get("wardrobe", "")]))
 
     # Optional second character
     char2_doc    = None
     char2_name   = ""
     char2_visual = ""
-    if body.character_id_2:
-        if characters_col is not None:
-            char2_doc = await characters_col.find_one({"id": body.character_id_2})
+    if body.character_id_2 and characters_col is not None:
+        char2_doc = await characters_col.find_one({"id": body.character_id_2})
         if char2_doc:
             char2_name   = char2_doc.get("name", "")
             char2_visual = " ".join(filter(None, [char2_doc.get("appearance", ""), char2_doc.get("wardrobe", "")]))
@@ -317,43 +314,52 @@ async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
 
     client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
 
-    _two_char_block = (
-        f"Second character also present: {char2_name} — {char2_visual}\n"
-    ) if char2_name else ""
-
     _story_block = ""
     if story_logline:
-        _story_block = (
-            f"PROJECT: {story_title} ({story_genre})\n"
-            f"STORY LOGLINE: {story_logline}\n\n"
-        )
+        _story_block = f"PROJECT: {story_title} ({story_genre})\nSTORY LOGLINE: {story_logline}\n\n"
     elif story_title:
         _story_block = f"PROJECT: {story_title} ({story_genre})\n\n"
 
-    rewrite_prompt = (
-        f"You are a cinematographer rewriting image generation prompts for LEVRAM Studios.\n\n"
-        f"{_story_block}"
-        f"SHOT: {shot_number}\n"
-        f"SCENE ACTION: {scene_desc}\n\n"
-        f"EXISTING PROMPT TO REFINE:\n{existing_prompt}\n\n"
-        f"PRIMARY CHARACTER: {char_name}\n"
-        f"APPEARANCE: {char_visual}\n"
-        f"{_two_char_block}\n"
-        f"YOUR TASK: Rewrite the existing prompt so {char_name} is the clear subject with accurate appearance. "
-        f"KEEP the same scene action, location, and emotional tone — do NOT invent a new scenario. "
-        f"The shot must still serve the story as described.\n\n"
-        f"RULES:\n"
-        f"- FULL BODY SHOT — head to toe, face visible. Never cropped.\n"
-        f"- {char_name} in a DYNAMIC POSE matching the scene action exactly.\n"
-        f"{'- ' + char2_name + ' also visible in frame.' + chr(10) if char2_name else ''}"
-        f"- Keep the same ENVIRONMENT from the original prompt — do not replace it.\n"
-        f"- Dramatic cinematic lighting (rim light, volumetric, low-key).\n"
-        f"- Low angle or Dutch angle to convey power.\n"
-        f"- Open with {char_name}'s full physical description, then pose, then environment, then lighting.\n"
-        f"- Photorealistic, hyperdetailed, 8K cinematic film still.\n"
-        f"- No labels, no character name headers — pure visual description only.\n"
-        f"Return the refined prompt paragraph only. Nothing else."
-    )
+    if char_name:
+        _two_char_block = f"Second character also present: {char2_name} — {char2_visual}\n" if char2_name else ""
+        rewrite_prompt = (
+            f"You are a cinematographer rewriting image generation prompts for LEVRAM Studios.\n\n"
+            f"{_story_block}"
+            f"SHOT: {shot_number}\n"
+            f"SCENE ACTION: {scene_desc}\n\n"
+            f"EXISTING PROMPT TO REFINE:\n{existing_prompt}\n\n"
+            f"PRIMARY CHARACTER: {char_name}\n"
+            f"APPEARANCE: {char_visual}\n"
+            f"{_two_char_block}\n"
+            f"YOUR TASK: Rewrite so {char_name} is the clear subject with accurate appearance. "
+            f"KEEP the same scene action, location, and emotional tone — do NOT invent a new scenario.\n\n"
+            f"RULES:\n"
+            f"- FULL BODY SHOT — head to toe, face visible. Never cropped.\n"
+            f"- {char_name} in a DYNAMIC POSE matching the scene action exactly.\n"
+            f"{'- ' + char2_name + ' also visible in frame.' + chr(10) if char2_name else ''}"
+            f"- Keep the same ENVIRONMENT from the original prompt — do not replace it.\n"
+            f"- Dramatic cinematic lighting (rim light, volumetric, low-key).\n"
+            f"- Photorealistic, hyperdetailed, 8K cinematic film still.\n"
+            f"- No labels, no character name headers — pure visual description only.\n"
+            f"Return the refined prompt paragraph only. Nothing else."
+        )
+    else:
+        # No character — pure scene/environment regen
+        rewrite_prompt = (
+            f"You are a cinematographer rewriting image generation prompts for LEVRAM Studios.\n\n"
+            f"{_story_block}"
+            f"SHOT: {shot_number}\n"
+            f"SCENE ACTION: {scene_desc}\n\n"
+            f"EXISTING PROMPT TO REFINE:\n{existing_prompt}\n\n"
+            f"YOUR TASK: Improve the visual quality and cinematic feel of this prompt. "
+            f"KEEP the same scene action, location, and emotional tone — do NOT invent a new scenario.\n\n"
+            f"RULES:\n"
+            f"- Keep the same ENVIRONMENT and mood from the original prompt.\n"
+            f"- Enhance lighting description (rim light, volumetric, atmospheric).\n"
+            f"- Photorealistic, hyperdetailed, 8K cinematic film still.\n"
+            f"- No labels, no character name headers — pure visual description only.\n"
+            f"Return the refined prompt paragraph only. Nothing else."
+        )
 
     loop = asyncio.get_event_loop()
 
@@ -370,13 +376,28 @@ async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
 
     new_prompt = await loop.run_in_executor(None, _call_hermes)
 
-    # Generate image with new prompt + character face lock
+    # Generate image — with face lock if character provided, plain if not
     try:
         from backend.routes.orchestrate import _gen_image, _apply_char2_swap, _sanitize_img
         new_prompt_clean = _sanitize_img(new_prompt)
-        image_url = await _gen_image(new_prompt_clean, body.character_id)
-        if body.character_id_2:
-            image_url = await _apply_char2_swap(image_url, body.character_id_2)
+        if body.character_id:
+            image_url = await _gen_image(new_prompt_clean, body.character_id)
+            if body.character_id_2:
+                image_url = await _apply_char2_swap(image_url, body.character_id_2)
+        else:
+            from backend.routes.image_gen import _venice_generate_image, _novita_generate_image
+            for _fn in [
+                lambda: _venice_generate_image(new_prompt_clean, "cinematic", "cinematic photorealistic"),
+                lambda: _novita_generate_image(new_prompt_clean, "cinematic", "cinematic photorealistic", "novita_photo"),
+            ]:
+                try:
+                    result = await loop.run_in_executor(None, _fn)
+                    image_url = result["imageUrl"]
+                    break
+                except Exception:
+                    continue
+            else:
+                raise Exception("All providers failed for characterless regen")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image gen failed: {str(e)[:200]}")
 

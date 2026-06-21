@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>LEVRAM Timeline</title>
+  <title>LEVRAM Studio</title>
   <link rel="stylesheet" href="app.css" />
   <style>
     body {
@@ -11,718 +11,930 @@
       flex-direction: column;
       height: 100vh;
       overflow: hidden;
-      background: #111228;
+      background: #080810;
+      color: #e8e6e0;
+      font-family: Rajdhani, sans-serif;
     }
-    .tl-page { display: flex; flex-direction: column; height: 100%; }
 
-    /* ── Header ── */
-    .tl-header-bar {
+    /* ── Header ─────────────────────────────────── */
+    .studio-header {
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 14px 28px;
-      background: linear-gradient(90deg, #09080f 0%, #141430 100%);
-      border-bottom: 2px solid rgba(201, 168, 76, 0.35);
+      height: 44px;
+      background: #0b0a16;
+      border-bottom: 1px solid rgba(201,168,76,0.18);
       flex-shrink: 0;
+      padding: 0 14px;
+      gap: 12px;
     }
-    .tl-logo {
-      font-family: Rajdhani, sans-serif;
-      font-size: 27px;
-      font-weight: 700;
+    .studio-logo {
+      font-family: "Bebas Neue", Rajdhani, sans-serif;
+      font-size: 19px;
       letter-spacing: 7px;
-      background: linear-gradient(90deg, #8b6914, #c9a84c, #f5d98b, #c9a84c);
+      background: linear-gradient(90deg, #8b6914, #c9a84c, #f5d98b);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      padding-right: 14px;
+      border-right: 1px solid rgba(255,255,255,0.06);
     }
-    .tl-subtitle {
-      font-size: 15px;
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      margin-top: 2px;
-    }
-    .tl-header-actions { margin-left: auto; display: flex; gap: 8px; }
-    .tl-header-actions button {
-      background: transparent;
-      border: 1px solid rgba(201, 168, 76, 0.25);
-      color: var(--text-muted);
-      font-family: Rajdhani, sans-serif;
-      font-size: 17px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      padding: 6px 16px;
-      border-radius: 2px;
-      cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
-    }
-    .tl-header-actions button.gold {
-      color: var(--gold);
-      border-color: rgba(201, 168, 76, 0.5);
-    }
-    .tl-header-actions button:hover {
-      border-color: var(--gold);
-      color: var(--gold);
-    }
-
-    /* ── Status bar ── */
-    .tl-status-bar {
-      padding: 5px 28px;
-      font-size: 15px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: rgba(201, 168, 76, 0.55);
-      background: #0d0c1e;
-      border-bottom: 1px solid rgba(201, 168, 76, 0.06);
-      flex-shrink: 0;
-    }
-
-    /* ── Timeline ruler + tracks ── */
-    .tl-tracks-section {
-      background: #141430;
-      border-bottom: 1px solid rgba(201, 168, 76, 0.12);
-      flex-shrink: 0;
-      overflow-x: auto;
-      padding-bottom: 8px;
-    }
-    .tl-tracks-section::-webkit-scrollbar { height: 4px; }
-    .tl-tracks-section::-webkit-scrollbar-thumb { background: rgba(201,168,76,.2); border-radius: 2px; }
-
-    .tl-ruler-row {
+    .studio-mode-pill {
       display: flex;
-      align-items: flex-end;
-      padding: 6px 10px 0 72px;
-      position: relative;
-      min-width: 600px;
+      align-items: center;
+      gap: 6px;
+      background: rgba(201,168,76,0.07);
+      border: 1px solid rgba(201,168,76,0.18);
+      border-radius: 3px;
+      padding: 3px 10px;
+      font-size: 10px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: rgba(201,168,76,0.7);
     }
-    .tl-ruler-tick {
-      position: absolute;
-      bottom: 0;
+    .studio-mode-pill::before {
+      content: "";
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #4caf50;
+      box-shadow: 0 0 5px #4caf50;
+    }
+    .proj-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.22);
+    }
+    .proj-row select {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.6);
+      font-family: Rajdhani, sans-serif;
+      font-size: 11px;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .hdr-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 5px;
+    }
+    .hbtn {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      color: rgba(255,255,255,0.45);
+      font-family: Rajdhani, sans-serif;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 11px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.12s;
+      white-space: nowrap;
+    }
+    .hbtn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .hbtn.gold { background: rgba(201,168,76,0.1); border-color: rgba(201,168,76,0.35); color: var(--gold); }
+    .hbtn.gold:hover { background: rgba(201,168,76,0.18); }
+    .hbtn.danger { color: rgba(255,80,80,0.6); border-color: rgba(255,80,80,0.18); }
+    .hbtn.danger:hover { background: rgba(255,80,80,0.07); }
+
+    /* ── Status + live banner ───────────────── */
+    .studio-status {
+      height: 24px;
+      line-height: 24px;
+      padding: 0 18px;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(201,168,76,0.4);
+      background: #08080e;
+      border-bottom: 1px solid rgba(201,168,76,0.06);
+      flex-shrink: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .live-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 18px;
+      background: rgba(201,168,76,0.05);
+      border-bottom: 1px solid rgba(201,168,76,0.12);
+      font-size: 10px;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+
+    /* ── Three-panel workspace ──────────────── */
+    .studio-workspace {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 192px 1fr 232px;
+      overflow: hidden;
+    }
+
+    /* LEFT: media bin */
+    .media-bin {
+      background: #0b0a16;
+      border-right: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .bin-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 11px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      flex-shrink: 0;
+    }
+    .bin-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+    .bin-count { font-size: 9px; color: rgba(201,168,76,0.45); letter-spacing: 1px; }
+    .bin-grid {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .bin-grid::-webkit-scrollbar { width: 3px; }
+    .bin-grid::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.18); border-radius: 2px; }
+
+    .shot-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 0.1s, border-color 0.1s;
+    }
+    .shot-item:hover { background: rgba(255,255,255,0.04); }
+    .shot-item.active { background: rgba(201,168,76,0.09); border-color: rgba(201,168,76,0.28); }
+    .shot-thumb {
+      width: 50px; height: 32px;
+      border-radius: 3px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.03);
+    }
+    .shot-thumb-blank {
+      width: 50px; height: 32px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; color: rgba(255,255,255,0.12);
+      flex-shrink: 0;
+    }
+    .shot-meta { flex: 1; min-width: 0; }
+    .shot-num { font-size: 9px; letter-spacing: 1.5px; color: rgba(201,168,76,0.65); text-transform: uppercase; }
+    .shot-char { font-size: 9px; color: rgba(255,255,255,0.3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .shot-dots { display: flex; gap: 3px; margin-top: 3px; }
+    .dot { width: 5px; height: 5px; border-radius: 50%; }
+    .dot-on  { }
+    .dot-img  { background: var(--gold); }
+    .dot-vid  { background: #4caf50; }
+    .dot-aud  { background: #42a5f5; }
+    .dot-off  { background: rgba(255,255,255,0.12); }
+
+    /* CENTER: player */
+    .studio-player {
+      background: #050508;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: 1px solid rgba(255,255,255,0.05);
+    }
+    .player-screen {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      background: #000;
+    }
+    .player-screen video,
+    .player-screen img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .player-empty {
       display: flex;
       flex-direction: column;
       align-items: center;
+      gap: 10px;
+      color: rgba(255,255,255,0.06);
     }
-    .tl-ruler-tick-line {
-      width: 1px;
-      background: rgba(201,168,76,.2);
-      height: 8px;
+    .player-empty-icon { font-size: 44px; }
+    .player-empty-text { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; }
+    .player-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 14px;
+      background: rgba(0,0,0,0.55);
+      border-top: 1px solid rgba(255,255,255,0.05);
+      flex-shrink: 0;
     }
-    .tl-ruler-tick-label {
-      font-size: 14px;
-      letter-spacing: 1px;
-      color: rgba(201,168,76,.4);
-      transform: translateX(-50%);
-      white-space: nowrap;
+    .player-shot-id {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(201,168,76,0.55);
+    }
+    .player-tc {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      margin-left: auto;
     }
 
-    .tl-tracks-bar {
+    /* RIGHT: inspector */
+    .studio-inspector {
+      background: #0b0a16;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .insp-header {
+      padding: 9px 13px 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      flex-shrink: 0;
+    }
+    .insp-eyebrow { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.18); }
+    .insp-shot-id { font-size: 20px; font-weight: 700; letter-spacing: 4px; color: var(--gold); margin-top: 1px; }
+    .insp-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 11px 13px;
+    }
+    .insp-scroll::-webkit-scrollbar { width: 3px; }
+    .insp-scroll::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.18); border-radius: 2px; }
+
+    .insp-block {
+      margin-bottom: 13px;
+      padding-bottom: 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .insp-block:last-child { border-bottom: none; margin-bottom: 0; }
+    .insp-lbl { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,0.18); margin-bottom: 5px; }
+    .insp-val { font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.5; }
+
+    .asset-row { display: flex; align-items: center; justify-content: space-between; font-size: 10px; margin-bottom: 4px; }
+    .asset-name { color: rgba(255,255,255,0.3); letter-spacing: 1px; }
+    .asset-pill {
+      font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 2px 7px; border-radius: 10px;
+    }
+    .pill-done { background: rgba(76,175,80,0.18); color: #81c784; border: 1px solid rgba(76,175,80,0.3); }
+    .pill-wait { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.08); }
+
+    .dur-row { display: flex; align-items: center; gap: 6px; }
+    .dur-input {
+      width: 46px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(201,168,76,0.22);
+      color: var(--gold);
+      font-family: Rajdhani, sans-serif;
+      font-size: 14px;
+      padding: 3px 5px;
+      border-radius: 3px;
+      text-align: center;
+    }
+    .insp-dialogue {
+      font-size: 11px;
+      color: rgba(255,255,255,0.55);
+      font-style: italic;
+      line-height: 1.55;
+      padding: 7px 9px;
+      background: rgba(255,255,255,0.025);
+      border-left: 2px solid rgba(201,168,76,0.28);
+      border-radius: 0 3px 3px 0;
+    }
+    .insp-prompt {
+      font-size: 9px;
+      color: rgba(255,255,255,0.25);
+      line-height: 1.55;
+      max-height: 72px;
+      overflow: hidden;
+    }
+
+    .insp-action-row {
+      padding: 9px 13px;
+      border-top: 1px solid rgba(255,255,255,0.05);
       display: flex;
       flex-direction: column;
       gap: 4px;
-      padding: 4px 10px 8px;
-      min-width: 600px;
+      flex-shrink: 0;
     }
-    .tl-track { display: flex; align-items: center; gap: 10px; height: 28px; }
-    .tl-track-label {
+    .ibtn {
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.42);
       font-family: Rajdhani, sans-serif;
-      font-size: 14px;
+      font-size: 10px;
       letter-spacing: 2px;
       text-transform: uppercase;
-      color: rgba(201, 168, 76, 0.35);
-      width: 54px;
+      padding: 6px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      text-decoration: none;
+      display: block;
+      transition: all 0.1s;
+    }
+    .ibtn:hover { background: rgba(255,255,255,0.07); color: #fff; }
+    .ibtn.green { color: rgba(129,199,132,0.8); border-color: rgba(76,175,80,0.25); }
+    .ibtn.green:hover { background: rgba(76,175,80,0.07); }
+    .ibtn.red { color: rgba(255,90,90,0.6); border-color: rgba(255,90,90,0.18); }
+    .ibtn.red:hover { background: rgba(255,90,90,0.05); }
+    .ibtn-row { display: flex; gap: 4px; }
+    .ibtn-row .ibtn { flex: 1; text-align: center; }
+
+    /* ── Timeline ───────────────────────────── */
+    .studio-timeline {
       flex-shrink: 0;
-      text-align: right;
+      background: #090910;
+      border-top: 2px solid rgba(201,168,76,0.15);
     }
-    .tl-track-body {
-      flex: 1;
-      height: 100%;
+    .tl-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 14px;
+      background: rgba(0,0,0,0.25);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .tl-toolbar-lbl { font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.18); }
+    .tl-runtime { font-family: "Share Tech Mono", monospace; font-size: 11px; color: rgba(201,168,76,0.45); margin-left: auto; }
+    .tl-tracks-wrap { overflow-x: auto; }
+    .tl-tracks-wrap::-webkit-scrollbar { height: 3px; }
+    .tl-tracks-wrap::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.18); border-radius: 2px; }
+    .tl-ruler-row {
+      display: flex;
+      height: 18px;
+      background: rgba(0,0,0,0.18);
       position: relative;
-      background: rgba(255, 255, 255, 0.025);
-      border: 1px solid rgba(201, 168, 76, 0.07);
-      border-radius: 2px;
-      overflow: hidden;
+      padding-left: 68px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      min-width: 600px;
     }
+    .tl-ruler-tick { position: absolute; bottom: 0; display: flex; flex-direction: column; align-items: center; }
+    .tl-ruler-tick-line { width: 1px; background: rgba(201,168,76,0.18); height: 5px; }
+    .tl-ruler-tick-label {
+      font-size: 8px; letter-spacing: 1px;
+      color: rgba(201,168,76,0.35);
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-family: "Share Tech Mono", monospace;
+    }
+    .tl-tracks { display: flex; flex-direction: column; min-width: 600px; }
+    .tl-track { display: flex; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .tl-track.vid { height: 40px; }
+    .tl-track.aud { height: 24px; }
+    .tl-track-lbl {
+      width: 66px; flex-shrink: 0;
+      font-size: 8px; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(255,255,255,0.18); text-align: right; padding-right: 8px;
+    }
+    .tl-track-body { flex: 1; height: 100%; position: relative; background: rgba(255,255,255,0.015); }
     .tl-clip {
       position: absolute;
-      top: 2px; bottom: 2px;
-      border-radius: 2px;
+      top: 3px; bottom: 3px;
+      border-radius: 3px;
       display: flex; align-items: center;
       padding: 0 5px;
-      font-size: 14px; letter-spacing: 1px;
+      font-size: 8px; letter-spacing: 1px; text-transform: uppercase;
       white-space: nowrap; overflow: hidden;
-      transition: opacity .1s;
+      cursor: pointer;
+      transition: filter 0.1s;
     }
-    .tl-clip:hover { filter: brightness(1.2); }
-    .clip-video { background: rgba(156,39,176,.35); border: 1px solid rgba(156,39,176,.5); color: #ce93d8; }
-    .clip-audio { background: rgba(76,175,80,.3);  border: 1px solid rgba(76,175,80,.5);  color: #a5d6a7; }
-    .clip-music { background: rgba(255,152,0,.2);  border: 1px solid rgba(255,152,0,.4);  color: #ffcc80; }
+    .tl-clip:hover { filter: brightness(1.35); }
+    .clip-vid { background: rgba(103,58,183,0.4); border: 1px solid rgba(103,58,183,0.65); color: #ce93d8; }
+    .clip-aud { background: rgba(0,150,136,0.3); border: 1px solid rgba(0,150,136,0.55); color: #80cbc4; }
+    .clip-mus { background: rgba(230,126,34,0.22); border: 1px solid rgba(230,126,34,0.4); color: #f0a050; }
 
-    /* ── Shot list scroll area ── */
-    .tl-shots-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 18px 28px 48px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: #0e0d20;
-    }
-    .tl-shots-list::-webkit-scrollbar { width: 4px; }
-    .tl-shots-list::-webkit-scrollbar-track { background: transparent; }
-    .tl-shots-list::-webkit-scrollbar-thumb { background: rgba(201, 168, 76, 0.2); border-radius: 2px; }
-
-    /* ── Drag states ── */
-    .tl-shot-card.dragging {
-      opacity: 0.55 !important;
-      transform: scale(0.985) !important;
-      box-shadow: 0 0 18px rgba(201, 168, 76, 0.45) !important;
-      border: 1px solid var(--gold) !important;
-    }
-    .tl-shot-card.drop-target {
-      border: 1px dashed var(--gold) !important;
-      box-shadow: inset 0 0 18px rgba(201, 168, 76, 0.25) !important;
-      position: relative;
-    }
-    .tl-shot-card.drop-target::before {
-      content: "DROP HERE";
-      position: absolute;
-      top: -10px;
-      left: 14px;
-      background: #141430;
-      color: var(--gold);
-      font-size: 15px;
-      letter-spacing: 2px;
-      padding: 1px 6px;
-    }
+    /* drag */
+    .shot-item.dragging { opacity: 0.45; }
+    .shot-item.drop-target { border-color: var(--gold) !important; background: rgba(201,168,76,0.07) !important; }
   </style>
   <script src="config.js"></script>
   <script src="themes.js"></script>
 </head>
 <body>
-  <div class="tl-page">
 
-    <div class="tl-header-bar">
-      <div>
-        <div class="tl-logo">LEVRAM</div>
-        <div class="tl-subtitle">Shot Timeline</div>
+  <!-- ── Header ── -->
+  <div class="studio-header">
+    <div class="studio-logo">LEVRAM</div>
+    <div class="studio-mode-pill">Studio</div>
+    <div class="proj-row">
+      <span>Project</span>
+      <select id="tl-project-sel"><option value="">All Projects</option></select>
+    </div>
+    <div class="hdr-actions">
+      <button class="hbtn" onclick="shots.reverse();renumberShots();renderTimeline();setStatus('Order reversed.')">⇅ Reverse</button>
+      <button class="hbtn" onclick="saveTimelineOrder()">Save Order</button>
+      <button class="hbtn gold" onclick="exportTimeline()">⬇ Export</button>
+      <button class="hbtn danger" onclick="eraseTimeline()">Erase</button>
+      <button class="hbtn" onclick="window.location.href='index.html'">← Studio</button>
+    </div>
+  </div>
+
+  <!-- ── Status ── -->
+  <div class="studio-status" id="tl-status">Loading…</div>
+  <div class="live-banner" id="tl-live-banner"></div>
+
+  <!-- ── Three-panel workspace ── -->
+  <div class="studio-workspace">
+
+    <!-- LEFT: Media Bin -->
+    <div class="media-bin">
+      <div class="bin-header">
+        <span class="bin-label">Media</span>
+        <span class="bin-count" id="bin-count">0 shots</span>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-left:18px;">
-        <span style="font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.5);">Project</span>
-        <select id="tl-project-sel" style="background:#0d0c1e;border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:15px;letter-spacing:1px;padding:4px 10px;border-radius:3px;cursor:pointer;min-width:160px;">
-          <option value="">All Projects</option>
-        </select>
+      <div class="bin-grid" id="bin-grid"></div>
+    </div>
+
+    <!-- CENTER: Player -->
+    <div class="studio-player">
+      <div class="player-screen" id="player-screen">
+        <div class="player-empty" id="player-empty">
+          <div class="player-empty-icon">▶</div>
+          <div class="player-empty-text">Select a shot</div>
+        </div>
       </div>
-      <div class="tl-header-actions">
-        <button onclick="shots.reverse(); renumberShots(); renderTimeline(); setStatus('Order reversed — click Save Order to keep.')">⇅ Reverse</button>
-        <button class="gold" onclick="saveTimelineOrder()">Save Order</button>
-        <button class="gold" onclick="exportTimeline()">⬇ Export Video</button>
-        <button onclick="eraseTimeline()" style="color:#ff4444;border-color:rgba(255,68,68,0.4);">🗑 Erase All</button>
-        <button onclick="window.close()">Close</button>
+      <div class="player-bar">
+        <span class="player-shot-id" id="player-shot-id">—</span>
+        <span class="player-tc" id="player-tc">—</span>
       </div>
     </div>
 
-    <div class="tl-status-bar" id="tl-status">Loading shots...</div>
+    <!-- RIGHT: Inspector -->
+    <div class="studio-inspector">
+      <div class="insp-header">
+        <div class="insp-eyebrow">Inspector</div>
+        <div class="insp-shot-id" id="insp-shot-id">—</div>
+      </div>
+      <div class="insp-scroll" id="insp-scroll">
+        <div class="insp-val" style="color:rgba(255,255,255,0.15);font-size:10px;letter-spacing:1px;">Select a shot from the media bin.</div>
+      </div>
+      <div class="insp-action-row" id="insp-actions" style="display:none;">
+        <button class="ibtn green" onclick="openRegenPanel(window._sel)">⟳ AI Rewrite &amp; Regen</button>
+        <div class="ibtn-row">
+          <button class="ibtn" onclick="moveShot(window._sel,-1);selectShot(window._sel)">↑ Up</button>
+          <button class="ibtn" onclick="moveShot(window._sel,1);selectShot(window._sel)">↓ Down</button>
+        </div>
+        <button class="ibtn red" onclick="deleteShot(window._sel)">🗑 Delete Shot</button>
+      </div>
+    </div>
 
-    <!-- Live orchestrator banner -->
-    <div id="tl-live-banner" style="display:none;align-items:center;gap:10px;padding:6px 16px;background:rgba(201,168,76,0.08);border-bottom:1px solid rgba(201,168,76,0.2);font-family:Rajdhani,sans-serif;"></div>
+  </div>
 
-    <!-- Time ruler + multi-track view -->
-    <div class="tl-tracks-section" id="tl-tracks-section">
+  <!-- ── Timeline ── -->
+  <div class="studio-timeline">
+    <div class="tl-toolbar">
+      <span class="tl-toolbar-lbl">Timeline</span>
+      <span class="tl-runtime" id="tl-runtime">0:00 total</span>
+    </div>
+    <div class="tl-tracks-wrap">
       <div class="tl-ruler-row" id="tl-ruler"></div>
-      <div class="tl-tracks-bar" id="tl-tracks-bar">
-        <div class="tl-track">
-          <span class="tl-track-label">Video</span>
+      <div class="tl-tracks">
+        <div class="tl-track vid">
+          <span class="tl-track-lbl">Video</span>
           <div class="tl-track-body" id="track-video"></div>
         </div>
-        <div class="tl-track">
-          <span class="tl-track-label">Voice</span>
+        <div class="tl-track aud">
+          <span class="tl-track-lbl">Voice</span>
           <div class="tl-track-body" id="track-audio"></div>
         </div>
-        <div class="tl-track">
-          <span class="tl-track-label">Music</span>
+        <div class="tl-track aud">
+          <span class="tl-track-lbl">Music</span>
           <div class="tl-track-body" id="track-music"></div>
         </div>
       </div>
     </div>
-
-    <div class="tl-shots-list" id="timeline-shots"></div>
-
   </div>
 
   <script>
     const BASE = window.LEVRAM_CONFIG?.api || "http://localhost:8000";
-    const _urlParams     = new URLSearchParams(window.location.search);
-    let _activeProject   = _urlParams.get("project") || "";
+    const _urlParams   = new URLSearchParams(window.location.search);
+    let _activeProject = _urlParams.get("project") || "";
     let shots = [];
     let draggedShotId = null;
+    window._sel = null;
 
-    const shotsList  = document.getElementById("timeline-shots");
-    const statusEl   = document.getElementById("tl-status");
-    const projSel    = document.getElementById("tl-project-sel");
+    const statusEl = document.getElementById("tl-status");
+    const projSel  = document.getElementById("tl-project-sel");
 
-    // Populate project dropdown from all scenes, then load filtered view
+    // ── Project filter ──────────────────────────────
     async function initProjectFilter() {
       try {
         const res  = await levFetch(`${BASE}/scenes`);
         const data = await res.json();
-        const allScenes = data.scenes || [];
-        const projects  = [...new Set(allScenes.map(s => (s.project || s.saga || "").trim()).filter(Boolean))].sort();
-        projects.forEach(p => {
+        const all  = data.scenes || [];
+        const projs = [...new Set(all.map(s => (s.project || "").trim()).filter(Boolean))].sort();
+        projs.forEach(p => {
           const o = document.createElement("option");
-          o.value = p; o.textContent = p;
-          projSel.appendChild(o);
+          o.value = p; o.textContent = p; projSel.appendChild(o);
         });
         if (_activeProject) projSel.value = _activeProject;
-        const sub = document.querySelector(".tl-subtitle");
-        if (sub) sub.textContent = _activeProject ? _activeProject.toUpperCase() : "Shot Timeline";
       } catch (_) {}
       loadScenes();
     }
+    projSel.addEventListener("change", () => { _activeProject = projSel.value; loadScenes(); });
 
-    projSel.addEventListener("change", () => {
-      _activeProject = projSel.value;
-      const sub = document.querySelector(".tl-subtitle");
-      if (sub) sub.textContent = _activeProject ? _activeProject.toUpperCase() : "Shot Timeline";
-      loadScenes();
-    });
-
-    function setStatus(msg, isErr = false) {
-      statusEl.style.color = isErr ? "var(--imperial-red)" : "var(--text-dim)";
+    function setStatus(msg, err = false) {
+      statusEl.style.color = err ? "var(--imperial-red)" : "";
       statusEl.textContent = msg;
     }
+    function getShotNumber(i) { return `SC-${String(i+1).padStart(3,"0")}`; }
+    function renumberShots() { shots = shots.map((s,i) => ({...s, shot_number: getShotNumber(i)})); }
+    function getTotalDuration() { return shots.reduce((a,s) => a+(parseFloat(s.duration)||5), 0); }
 
-    function getShotNumber(index) {
-      return `SC-${String(index + 1).padStart(3, "0")}`;
+    function moveShot(id, dir) {
+      const idx = shots.findIndex(s => s.id === id);
+      if (idx === -1) return;
+      const n = idx + dir;
+      if (n < 0 || n >= shots.length) return;
+      [shots[idx], shots[n]] = [shots[n], shots[idx]];
+      renumberShots(); renderTimeline();
     }
 
-    function renumberShots() {
-      shots = shots.map((shot, i) => ({ ...shot, shot_number: getShotNumber(i) }));
+    // ── Select shot → player + inspector ────────────
+    function selectShot(id) {
+      window._sel = id;
+      const shot = shots.find(s => s.id === id);
+      document.querySelectorAll(".shot-item").forEach(el =>
+        el.classList.toggle("active", el.dataset.id === id));
+
+      const screen = document.getElementById("player-screen");
+      const empty  = document.getElementById("player-empty");
+      screen.querySelectorAll("video,img").forEach(el => el.remove());
+      if (shot?.videoUrl) {
+        const v = document.createElement("video");
+        v.src = shot.videoUrl; v.controls = true;
+        v.style.cssText = "max-width:100%;max-height:100%;object-fit:contain;";
+        screen.appendChild(v);
+        if (empty) empty.style.display = "none";
+      } else if (shot?.imageUrl) {
+        const img = document.createElement("img");
+        img.src = shot.imageUrl;
+        img.style.cssText = "max-width:100%;max-height:100%;object-fit:contain;";
+        screen.appendChild(img);
+        if (empty) empty.style.display = "none";
+      } else {
+        if (empty) empty.style.display = "flex";
+      }
+
+      document.getElementById("player-shot-id").textContent =
+        shot ? `${shot.shot_number || id}  ·  ${shot.character || "—"}` : "—";
+      document.getElementById("player-tc").textContent =
+        shot ? `${parseFloat(shot.duration)||5}s` : "—";
+      document.getElementById("insp-shot-id").textContent = shot?.shot_number || id;
+
+      const acts = document.getElementById("insp-actions");
+      if (acts) acts.style.display = "flex";
+
+      if (!shot) return;
+      document.getElementById("insp-scroll").innerHTML = `
+        <div class="insp-block">
+          <div class="insp-lbl">Character</div>
+          <div class="insp-val">${shot.character || "—"}</div>
+        </div>
+        <div class="insp-block">
+          <div class="insp-lbl">Duration</div>
+          <div class="dur-row">
+            <input class="dur-input" type="number" min="1" max="120" value="${parseFloat(shot.duration)||5}"
+              onchange="updateDuration('${shot.id}',this.value)" />
+            <span style="font-size:11px;color:rgba(255,255,255,0.25);">sec</span>
+          </div>
+        </div>
+        <div class="insp-block">
+          <div class="insp-lbl">Assets</div>
+          <div class="asset-row"><span class="asset-name">Keyframe</span><span class="asset-pill ${shot.imageUrl?'pill-done':'pill-wait'}">${shot.imageUrl?'✔ Done':'Pending'}</span></div>
+          <div class="asset-row"><span class="asset-name">Animated</span><span class="asset-pill ${shot.videoUrl?'pill-done':'pill-wait'}">${shot.videoUrl?'✔ Done':'Pending'}</span></div>
+          <div class="asset-row"><span class="asset-name">Voice</span><span class="asset-pill ${shot.fxUrl||shot.rawUrl?'pill-done':'pill-wait'}">${shot.fxUrl||shot.rawUrl?'✔ Done':'Pending'}</span></div>
+        </div>
+        ${shot.dialogue?`<div class="insp-block"><div class="insp-lbl">Dialogue</div><div class="insp-dialogue">"${shot.dialogue}"</div></div>`:""}
+        ${shot.shotDesc?`<div class="insp-block"><div class="insp-lbl">Scene</div><div class="insp-val" style="font-size:11px;">${shot.shotDesc}</div></div>`:""}
+        ${shot.shotPrompt?`<div class="insp-block"><div class="insp-lbl">Image Prompt</div><div class="insp-prompt">${shot.shotPrompt}</div></div>`:""}
+        ${shot.videoUrl||shot.imageUrl?`
+        <div class="insp-block">
+          <div class="insp-lbl">Downloads</div>
+          ${shot.videoUrl?`<a href="${shot.videoUrl}" download class="ibtn" style="margin-bottom:3px;">⬇ Download Clip</a>`:""}
+          ${shot.imageUrl?`<a href="${shot.imageUrl}" download class="ibtn">⬇ Keyframe</a>`:""}
+        </div>`:""}
+        ${shot.fxUrl||shot.rawUrl?`<div class="insp-block"><div class="insp-lbl">Voice</div><audio controls src="${shot.fxUrl||shot.rawUrl}" style="width:100%;"></audio></div>`:""}
+        ${shot.createdAt?`<div class="insp-block"><div class="insp-lbl">Created</div><div class="insp-val" style="font-size:9px;color:rgba(255,255,255,0.2);">${shot.createdAt}</div></div>`:""}
+      `;
     }
 
-    function moveShot(id, direction) {
-      const index = shots.findIndex(s => s.id === id);
-      if (index === -1) return;
-      const newIndex = index + direction;
-      if (newIndex < 0 || newIndex >= shots.length) return;
-      [shots[index], shots[newIndex]] = [shots[newIndex], shots[index]];
-      renumberShots();
-      renderTimeline();
-    }
+    // ── Render media bin + tracks ────────────────────
+    function renderTimeline() {
+      const grid  = document.getElementById("bin-grid");
+      const count = document.getElementById("bin-count");
+      if (count) count.textContent = `${shots.length} shot${shots.length!==1?"s":""}`;
 
-    function handleDragStart(e, id) {
-      draggedShotId = id;
-      e.currentTarget.classList.add("dragging");
-      e.dataTransfer.effectAllowed = "move";
-    }
+      if (!shots.length) {
+        if (grid) grid.innerHTML = `<div style="padding:24px 10px;text-align:center;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,0.12);text-transform:uppercase;">No shots yet</div>`;
+        renderTracks();
+        return;
+      }
 
-    function handleDragEnd(e) {
-      e.currentTarget.classList.remove("dragging");
-      document.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
-      draggedShotId = null;
-    }
+      if (grid) grid.innerHTML = shots.map((s,i) => `
+        <div class="shot-item" data-id="${s.id}"
+          onclick="selectShot('${s.id}')"
+          draggable="true"
+          ondragstart="handleDragStart(event,'${s.id}')"
+          ondragend="handleDragEnd(event)"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)"
+          ondrop="handleDrop(event,'${s.id}')">
+          ${s.imageUrl
+            ? `<img class="shot-thumb" src="${s.imageUrl}" alt="${s.shot_number}" />`
+            : `<div class="shot-thumb-blank">IMG</div>`}
+          <div class="shot-meta">
+            <div class="shot-num">${s.shot_number||getShotNumber(i)}</div>
+            <div class="shot-char">${s.character||"—"}</div>
+            <div class="shot-dots">
+              <div class="dot ${s.imageUrl?'dot-img':'dot-off'}" title="Keyframe"></div>
+              <div class="dot ${s.videoUrl?'dot-vid':'dot-off'}" title="Animated"></div>
+              <div class="dot ${s.fxUrl||s.rawUrl?'dot-aud':'dot-off'}" title="Voice"></div>
+            </div>
+          </div>
+        </div>`).join("");
 
-    function handleDragOver(e) {
-      e.preventDefault();
-      e.currentTarget.classList.add("drop-target");
-    }
+      renderTracks();
 
-    function handleDragLeave(e) {
-      e.currentTarget.classList.remove("drop-target");
-    }
-
-    function handleDrop(e, targetId) {
-      e.preventDefault();
-      if (!draggedShotId || draggedShotId === targetId) return;
-      const fromIdx = shots.findIndex(s => s.id === draggedShotId);
-      const toIdx   = shots.findIndex(s => s.id === targetId);
-      if (fromIdx === -1 || toIdx === -1) return;
-      const [moved] = shots.splice(fromIdx, 1);
-      shots.splice(toIdx, 0, moved);
-      document.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
-      draggedShotId = null;
-      renumberShots();
-      renderTimeline();
-    }
-
-    function getTotalDuration() {
-      return shots.reduce((sum, s) => sum + (parseFloat(s.duration) || 5), 0);
+      if (window._sel && shots.find(s => s.id === window._sel)) {
+        document.querySelectorAll(".shot-item").forEach(el =>
+          el.classList.toggle("active", el.dataset.id === window._sel));
+      }
     }
 
     function renderRuler(totalSec) {
       const ruler = document.getElementById("tl-ruler");
       if (!ruler) return;
-      const trackBody = document.getElementById("track-video");
-      const trackW    = trackBody ? trackBody.offsetWidth : 500;
-      const pxPerSec  = trackW / (totalSec || 1);
-      const step = totalSec <= 30 ? 5 : totalSec <= 120 ? 10 : totalSec <= 300 ? 30 : 60;
+      const step = totalSec<=30?5:totalSec<=120?10:totalSec<=300?30:60;
       let html = "";
-      for (let t = 0; t <= totalSec; t += step) {
-        const pct = (t / totalSec) * 100;
-        const label = t >= 60 ? `${Math.floor(t/60)}m${t%60>0?t%60+'s':""}` : `${t}s`;
-        html += `<div class="tl-ruler-tick" style="left:calc(${pct}% + 54px)">
+      for (let t=0; t<=totalSec; t+=step) {
+        const pct = (t/totalSec)*100;
+        const lbl = t>=60?`${Math.floor(t/60)}:${String(t%60).padStart(2,"0")}`:t+"s";
+        html += `<div class="tl-ruler-tick" style="left:calc(${pct}% + 66px)">
           <div class="tl-ruler-tick-line"></div>
-          <div class="tl-ruler-tick-label">${label}</div>
-        </div>`;
+          <div class="tl-ruler-tick-label">${lbl}</div></div>`;
       }
-      ruler.style.height = "22px";
       ruler.innerHTML = html;
+      const rt = document.getElementById("tl-runtime");
+      if (rt) {
+        const m=Math.floor(totalSec/60), s=Math.round(totalSec%60);
+        rt.textContent = `${m}:${String(s).padStart(2,"0")} total`;
+      }
     }
 
     function renderTracks() {
-      const totalSec  = getTotalDuration();
-      const videoEl   = document.getElementById("track-video");
-      const audioEl   = document.getElementById("track-audio");
-      const musicEl   = document.getElementById("track-music");
-      if (!videoEl) return;
-
-      videoEl.innerHTML = "";
-      audioEl.innerHTML = "";
-      if (musicEl) musicEl.innerHTML = `<div class="tl-clip clip-music" style="left:0%;width:100%;opacity:.35">Score Track</div>`;
-
-      let cumSec = 0;
-      shots.forEach((s, i) => {
-        const dur = parseFloat(s.duration) || 5;
-        const leftPct  = (cumSec / totalSec) * 100;
-        const widthPct = (dur    / totalSec) * 100;
-        const label    = `${s.shot_number || ("SC-"+String(i+1).padStart(3,"0"))} (${dur}s)`;
-
-        videoEl.innerHTML += `<div class="tl-clip clip-video" style="left:${leftPct.toFixed(2)}%;width:${(widthPct - 0.3).toFixed(2)}%;" title="${s.shotDesc||label}">${label}</div>`;
-        if (s.fxUrl || s.rawUrl) {
-          audioEl.innerHTML += `<div class="tl-clip clip-audio" style="left:${leftPct.toFixed(2)}%;width:${(widthPct - 0.3).toFixed(2)}%;" title="${s.character||"voice"}">${s.character||"VO"}</div>`;
-        }
-        cumSec += dur;
+      const total = getTotalDuration();
+      const vEl = document.getElementById("track-video");
+      const aEl = document.getElementById("track-audio");
+      const mEl = document.getElementById("track-music");
+      if (!vEl) return;
+      vEl.innerHTML = ""; if(aEl) aEl.innerHTML = "";
+      if (mEl) mEl.innerHTML = shots.some(s=>s.fxUrl||s.rawUrl)
+        ? `<div class="tl-clip clip-mus" style="left:0;width:100%;opacity:.28;font-size:7px;">Score</div>` : "";
+      let cum = 0;
+      shots.forEach((s,i) => {
+        const dur = parseFloat(s.duration)||5;
+        const l   = ((cum/(total||1))*100).toFixed(2);
+        const w   = ((dur/(total||1))*100).toFixed(2);
+        const lbl = s.shot_number||getShotNumber(i);
+        vEl.innerHTML += `<div class="tl-clip clip-vid" style="left:${l}%;width:${w}%;" title="${s.shotDesc||lbl}" onclick="selectShot('${s.id}')">${lbl}</div>`;
+        if (aEl && (s.fxUrl||s.rawUrl))
+          aEl.innerHTML += `<div class="tl-clip clip-aud" style="left:${l}%;width:${w}%;" onclick="selectShot('${s.id}')">${s.character||"VO"}</div>`;
+        cum += dur;
       });
-
-      renderRuler(totalSec);
+      renderRuler(total);
     }
 
-    function renderTimeline() {
-      if (!shots.length) {
-        document.getElementById("track-video").innerHTML = "";
-        document.getElementById("track-audio").innerHTML = "";
-        shotsList.innerHTML = `<p style="color:var(--text-dim);font-size: 16px;letter-spacing:2px;text-transform:uppercase;">No shots saved yet.</p>`;
-        return;
-      }
-
-      renderTracks();
-
-      // Shot cards
-      shotsList.innerHTML = shots.map((s, index) => `
-        <div class="tl-shot-card"
-          draggable="true"
-          data-id="${s.id}"
-          ondragstart="handleDragStart(event, '${s.id}')"
-          ondragend="handleDragEnd(event)"
-          ondragover="handleDragOver(event)"
-          ondragleave="handleDragLeave(event)"
-          ondrop="handleDrop(event, '${s.id}')">
-          <div class="tl-shot-top">
-            <span class="tl-scene-badge" style="cursor:grab;">☰ ${s.shot_number || s.id || "UNKNOWN"}</span>
-            <span class="tl-char-tag">${s.character || "Unknown"}</span>
-            <span class="tl-preset-tag">${s.preset || s.voice_preset || "No FX"}</span>
-            <span class="tl-date">${s.createdAt || ""}</span>
-            <label style="font-size: 14px;color:rgba(201,168,76,.4);letter-spacing:1px;margin:0 4px 0 8px;">DUR</label>
-            <input type="number" min="1" max="120" step="1" value="${parseFloat(s.duration)||5}"
-              style="width:46px;background:rgba(0,0,0,.5);border:1px solid rgba(201,168,76,.2);color:#c9a84c;font-size: 15px;padding:2px 4px;border-radius:2px;font-family:Rajdhani,sans-serif;"
-              onchange="updateDuration('${s.id}', this.value)" title="Duration in seconds" />
-            <span style="font-size: 14px;color:rgba(201,168,76,.3);margin-left:2px;">s</span>
-            <button class="tl-del-btn" title="Move Up"   onclick="moveShot('${s.id}', -1)">↑</button>
-            <button class="tl-del-btn" title="Move Down" onclick="moveShot('${s.id}', 1)">↓</button>
-            <button class="tl-del-btn" title="Regenerate keyframe" onclick="openRegenPanel('${s.id}')" style="color:#4caf50;border-color:rgba(76,175,80,0.4);">⟳</button>
-            <button class="tl-del-btn" title="Delete"    onclick="deleteShot('${s.id}')">✕</button>
-          </div>
-          <div style="display:flex;gap:12px;align-items:flex-start;margin-top:6px;">
-            <div style="display:flex;flex-direction:column;gap:6px;min-width:220px;width:220px;">
-              ${s.videoUrl
-                ? `<video controls src="${s.videoUrl}" style="width:100%;border-radius:4px;background:#000;" preload="metadata"></video>`
-                : s.imageUrl
-                ? `<img src="${s.imageUrl}" style="width:100%;border-radius:4px;object-fit:cover;" />`
-                : `<div style="width:100%;height:120px;border-radius:4px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:12px;letter-spacing:1px;">NO MEDIA</div>`}
-              <div style="display:flex;gap:6px;">
-                ${s.videoUrl ? `<a href="${s.videoUrl}" download style="flex:1;text-align:center;padding:4px 0;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:1px;border-radius:3px;text-decoration:none;">⬇ VIDEO</a>` : ""}
-                ${s.imageUrl ? `<a href="${s.imageUrl}" download style="flex:1;text-align:center;padding:4px 0;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:1px;border-radius:3px;text-decoration:none;">⬇ IMG</a>` : ""}
-              </div>
-            </div>
-            <div style="flex:1;min-width:0;">
-              ${s.dialogue   ? `<div class="tl-dialogue">"${s.dialogue}"</div>` : ""}
-              ${s.shotDesc   ? `<div class="tl-desc">${s.shotDesc}</div>` : ""}
-              ${s.shotPrompt ? `<div class="tl-prompt">${s.shotPrompt}</div>` : ""}
-              ${s.fxUrl  ? `<audio controls src="${s.fxUrl}"  style="width:100%;margin-top:6px;"></audio>` :
-                s.rawUrl ? `<audio controls src="${s.rawUrl}" style="width:100%;margin-top:6px;"></audio>` : ""}
-            </div>
-          </div>
-        </div>
-      `).join("");
+    // ── Drag & drop ─────────────────────────────────
+    function handleDragStart(e,id){ draggedShotId=id; e.currentTarget.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; }
+    function handleDragEnd(e){ e.currentTarget.classList.remove("dragging"); document.querySelectorAll(".drop-target").forEach(el=>el.classList.remove("drop-target")); draggedShotId=null; }
+    function handleDragOver(e){ e.preventDefault(); e.currentTarget.classList.add("drop-target"); }
+    function handleDragLeave(e){ e.currentTarget.classList.remove("drop-target"); }
+    function handleDrop(e,targetId){
+      e.preventDefault();
+      if(!draggedShotId||draggedShotId===targetId) return;
+      const fi=shots.findIndex(s=>s.id===draggedShotId), ti=shots.findIndex(s=>s.id===targetId);
+      if(fi===-1||ti===-1) return;
+      const [m]=shots.splice(fi,1); shots.splice(ti,0,m);
+      document.querySelectorAll(".drop-target").forEach(el=>el.classList.remove("drop-target"));
+      draggedShotId=null; renumberShots(); renderTimeline();
     }
 
+    // ── Data ────────────────────────────────────────
     async function loadScenes() {
       try {
         const url  = _activeProject ? `${BASE}/scenes?project=${encodeURIComponent(_activeProject)}` : `${BASE}/scenes`;
         const res  = await levFetch(url);
         const data = await res.json();
-        if (!data.success) throw new Error("Failed to load scenes");
-        const toAbs = (u) => u && u.startsWith("/") ? BASE + u : (u || "");
+        if (!data.success) throw new Error("Failed");
+        const toAbs = u => u&&u.startsWith("/")?BASE+u:(u||"");
         shots = data.scenes.map(s => ({
-          id:           s.id || String(Date.now()),
-          shot_number:  s.shot_number || s.scene_number || s.id || "UNKNOWN",
-          character:    s.character || s.voice_character || "None",
-          dialogue:     s.dialogue || "",
-          shotDesc:     s.shotDesc || s.shot_description || "",
-          shotPrompt:   s.shotPrompt || s.shot_prompt || "",
-          preset:       s.voice_preset || "",
-          rawUrl:       toAbs(s.rawUrl || ""),
-          fxUrl:        toAbs(s.fxUrl || s.rawUrl || ""),
-          videoUrl:     toAbs(s.videoUrl || ""),
-          imageUrl:     toAbs(s.imageUrl || s.renderOutputUrl || ""),
-          clipUrl:      toAbs(s.clipUrl || ""),
-          duration:     parseFloat(s.duration) || 5,
-          createdAt:    s.createdAt || s.saved_at || "",
+          id:          s.id||String(Date.now()),
+          shot_number: s.shot_number||s.scene_number||s.id||"UNKNOWN",
+          character:   s.character||s.voice_character||"None",
+          dialogue:    s.dialogue||"",
+          shotDesc:    s.shotDesc||s.shot_description||"",
+          shotPrompt:  s.shotPrompt||s.shot_prompt||"",
+          preset:      s.voice_preset||"",
+          rawUrl:      toAbs(s.rawUrl||""),
+          fxUrl:       toAbs(s.fxUrl||s.rawUrl||""),
+          videoUrl:    toAbs(s.videoUrl||""),
+          imageUrl:    toAbs(s.imageUrl||s.renderOutputUrl||""),
+          clipUrl:     toAbs(s.clipUrl||""),
+          duration:    parseFloat(s.duration)||5,
+          createdAt:   s.createdAt||s.saved_at||"",
         }));
         renderTimeline();
         const total = getTotalDuration();
-        const totalStr = total >= 60 ? `${Math.floor(total/60)}m ${Math.round(total%60)}s` : `${Math.round(total)}s`;
-        setStatus(`${shots.length} shot${shots.length !== 1 ? "s" : ""} loaded · Estimated runtime: ${totalStr}`);
-      } catch (e) {
-        console.error(e);
-        setStatus("Could not load shots.", true);
-        renderTimeline();
+        const m=Math.floor(total/60), s=Math.round(total%60);
+        setStatus(`${shots.length} shot${shots.length!==1?"s":""}  ·  ${m}:${String(s).padStart(2,"0")} estimated runtime`);
+      } catch(e) {
+        setStatus("Could not load shots.", true); renderTimeline();
       }
     }
 
     async function deleteShot(id) {
       try {
-        const res  = await levFetch(`${BASE}/scene/${id}`, { method: "DELETE" });
+        const res  = await levFetch(`${BASE}/scene/${id}`, {method:"DELETE"});
         const data = await res.json();
         if (!data.success) throw new Error("Delete failed");
-        shots = shots.filter(s => s.id !== id);
-        renumberShots();
-        renderTimeline();
-        setStatus("Shot deleted.");
-      } catch (e) {
-        setStatus("Failed to delete shot.", true);
-      }
+        shots = shots.filter(s=>s.id!==id);
+        renumberShots(); window._sel=null;
+        document.getElementById("insp-shot-id").textContent = "—";
+        document.getElementById("insp-scroll").innerHTML = `<div class="insp-val" style="color:rgba(255,255,255,0.15);font-size:10px;letter-spacing:1px;">Select a shot.</div>`;
+        const acts=document.getElementById("insp-actions"); if(acts) acts.style.display="none";
+        const empty=document.getElementById("player-empty"); if(empty) empty.style.display="flex";
+        document.getElementById("player-screen").querySelectorAll("video,img").forEach(el=>el.remove());
+        renderTimeline(); setStatus("Shot deleted.");
+      } catch(e) { setStatus("Failed to delete shot.",true); }
     }
 
-    function updateDuration(id, val) {
-      const shot = shots.find(s => s.id === id);
-      if (!shot) return;
-      shot.duration = parseFloat(val) || 5;
-      const total = getTotalDuration();
-      const totalStr = total >= 60 ? `${Math.floor(total/60)}m ${Math.round(total%60)}s` : `${Math.round(total)}s`;
-      setStatus(`${shots.length} shot${shots.length !== 1 ? "s" : ""} · Total runtime: ${totalStr}`);
-      renderTracks();
+    function updateDuration(id,val) {
+      const shot=shots.find(s=>s.id===id); if(!shot) return;
+      shot.duration=parseFloat(val)||5; renderTracks();
+      const total=getTotalDuration(), m=Math.floor(total/60), s=Math.round(total%60);
+      setStatus(`${shots.length} shots  ·  ${m}:${String(s).padStart(2,"0")} total`);
     }
 
     async function saveTimelineOrder() {
       try {
         renumberShots();
-        const res  = await levFetch(`${BASE}/timeline/save-order`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ shots })
-        });
-        if (!res.ok) throw new Error(`Server ${res.status}`);
-        const data = await res.json();
-        shots = data.shots || shots;
-        renderTimeline();
-        setStatus(`Order saved. ${shots.length} shots sequenced.`);
-      } catch (e) {
-        setStatus("Failed to save order.", true);
-      }
+        const res=await levFetch(`${BASE}/timeline/save-order`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shots})});
+        if(!res.ok) throw new Error(`${res.status}`);
+        const data=await res.json(); shots=data.shots||shots;
+        renderTimeline(); setStatus(`Order saved — ${shots.length} shots sequenced.`);
+      } catch(e) { setStatus("Failed to save order.",true); }
     }
 
     async function exportTimeline() {
-      const btn = document.querySelector("button.gold[onclick='exportTimeline()']");
-      if (btn) { btn.disabled = true; btn.textContent = "Exporting…"; }
-      setStatus("Exporting — this may take a minute…");
+      const btn=document.querySelector(".hbtn.gold[onclick='exportTimeline()']");
+      if(btn){btn.disabled=true;btn.textContent="Exporting…";}
+      setStatus("Exporting — may take a minute…");
       try {
-        const res  = await levFetch(`${BASE}/video/export-timeline`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ shots, title: "LEVRAM Export", transition: "cut",
-                                 transition_dur: 0.3, include_voice: true }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) throw new Error(data.detail || "Export failed");
-        const url = (window.LEVRAM_CONFIG?.api || "http://localhost:8000") + data.exportUrl;
+        const res=await levFetch(`${BASE}/video/export-timeline`,{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({shots,title:"LEVRAM_Export",transition:"fade",transition_dur:0.3,include_voice:true})});
+        const data=await res.json();
+        if(!res.ok||!data.success) throw new Error(data.detail||"Export failed");
+        const url=BASE+data.exportUrl;
         setStatus(`✔ Export done — ${data.clips} clips`);
-        const a = document.createElement("a");
-        a.href = url; a.download = data.exportUrl.split("/").pop();
-        a.click();
-      } catch (e) {
-        setStatus("Export failed: " + e.message, true);
-      } finally {
-        if (btn) { btn.disabled = false; btn.textContent = "⬇ Export Video"; }
-      }
-    }
-
-    let _regenPanel = null;
-    let _allCharacters = [];
-
-    async function _loadCharacters() {
-      if (_allCharacters.length) return _allCharacters;
-      try {
-        const r = await levFetch(`${BASE}/characters`);
-        const d = await r.json();
-        _allCharacters = d.characters || [];
-      } catch { _allCharacters = []; }
-      return _allCharacters;
-    }
-
-    async function openRegenPanel(id) {
-      const shot = shots.find(s => s.id === id);
-      if (!shot) return;
-
-      // Remove existing panel
-      if (_regenPanel) _regenPanel.remove();
-
-      const chars = await _loadCharacters();
-      const charOptions = chars.map(c =>
-        `<option value="${c.id}">${c.name}</option>`
-      ).join("");
-
-      const panel = document.createElement("div");
-      panel.id = "regen-panel-" + id;
-      panel.style.cssText = `
-        position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-        background:#0d0d1a; border:1px solid rgba(76,175,80,0.5);
-        border-radius:6px; padding:20px; z-index:9999; width:420px;
-        box-shadow:0 0 40px rgba(0,0,0,0.8); font-family:Rajdhani,sans-serif;
-      `;
-      panel.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-          <div style="color:#4caf50;font-size:13px;letter-spacing:2px;text-transform:uppercase;">
-            ⟳ AI Rewrite & Regen — ${shot.shot_number || id}
-          </div>
-          <button onclick="document.getElementById('regen-panel-${id}').remove()"
-            style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:18px;cursor:pointer;">✕</button>
-        </div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:12px;line-height:1.5;">
-          ${shot.shotDesc || shot.shot_description || "No description"}
-        </div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:1px;margin-bottom:6px;">WHO OWNS THIS FRAME?</div>
-        <select id="regen-char-sel" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:8px;border-radius:3px;margin-bottom:10px;font-family:Rajdhani,sans-serif;font-size:13px;">
-          <option value="">— Pick camera subject —</option>
-          ${charOptions}
-        </select>
-        <div style="font-size:10px;color:rgba(255,255,255,0.2);letter-spacing:1px;margin-bottom:6px;">SECOND CHARACTER? <span style="color:rgba(255,255,255,0.15);">OPTIONAL — for two-character scenes</span></div>
-        <select id="regen-char-sel-2" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);padding:8px;border-radius:3px;margin-bottom:14px;font-family:Rajdhani,sans-serif;font-size:13px;">
-          <option value="">— None —</option>
-          ${charOptions}
-        </select>
-        <div id="regen-status" style="font-size:11px;color:rgba(255,255,255,0.4);min-height:18px;margin-bottom:10px;"></div>
-        <button onclick="runAiRegen('${id}')"
-          style="width:100%;background:linear-gradient(90deg,rgba(76,175,80,0.4),rgba(129,199,132,0.4));border:1px solid rgba(76,175,80,0.6);color:#a5d6a7;font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:10px;border-radius:3px;cursor:pointer;">
-          Hermes Rewrites → Generate
-        </button>
-      `;
-      document.body.appendChild(panel);
-      _regenPanel = panel;
-    }
-
-    async function runAiRegen(id) {
-      const shot = shots.find(s => s.id === id);
-      if (!shot) return;
-      const charId  = document.getElementById("regen-char-sel")?.value;
-      const charId2 = document.getElementById("regen-char-sel-2")?.value || "";
-      if (!charId) { document.getElementById("regen-status").textContent = "Pick a character first."; return; }
-      const statusEl = document.getElementById("regen-status");
-      statusEl.textContent = "Hermes rewriting prompt…";
-
-      try {
-        const res  = await levFetch(`${BASE}/scene/${id}/ai-regen`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            character_id:   charId,
-            character_id_2: charId2,
-            scene_description: shot.shotDesc || shot.shot_description || "",
-            original_prompt:   shot.shotPrompt || "",
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) throw new Error(data.detail || "Failed");
-        statusEl.textContent = "Generating image…";
-        const local = shots.find(s => s.id === id);
-        if (local) {
-          local.imageUrl   = data.imageUrl;
-          local.shotPrompt = data.new_prompt;
-        }
-        renderTimeline();
-        setStatus(`${shot.shot_number || id} rewritten & regenerated.`);
-        if (_regenPanel) _regenPanel.remove();
-      } catch (e) {
-        statusEl.textContent = "Failed: " + e.message;
-      }
+        const a=document.createElement("a"); a.href=url; a.download=data.exportUrl.split("/").pop(); a.click();
+      } catch(e){ setStatus("Export failed: "+e.message,true); }
+      finally { if(btn){btn.disabled=false;btn.textContent="⬇ Export";} }
     }
 
     async function eraseTimeline() {
-      const project = _activeProject;
-      if (!project) {
-        alert("Select a project first — Erase clears the active project only.");
-        return;
-      }
-      if (!confirm(`Erase all scenes for "${project}"? This cannot be undone.`)) return;
+      if(!_activeProject){alert("Select a project first.");return;}
+      if(!confirm(`Erase all scenes for "${_activeProject}"?`)) return;
       try {
-        setStatus(`Erasing "${project}"…`);
-        const res  = await levFetch(`${BASE}/scenes/clear?project=${encodeURIComponent(project)}`, { method: "DELETE" });
-        const data = await res.json();
-        shots = [];
-        renderTimeline();
-        setStatus(`"${project}" erased — ${data.deleted || 0} scenes removed.`);
-      } catch (e) {
-        setStatus("Erase failed: " + e.message, true);
-      }
+        setStatus(`Erasing "${_activeProject}"…`);
+        const res=await levFetch(`${BASE}/scenes/clear?project=${encodeURIComponent(_activeProject)}`,{method:"DELETE"});
+        const data=await res.json(); shots=[];
+        renderTimeline(); setStatus(`"${_activeProject}" erased — ${data.deleted||0} scenes removed.`);
+      } catch(e){ setStatus("Erase failed: "+e.message,true); }
     }
 
+    // ── Regen panel ─────────────────────────────────
+    let _regenPanel=null, _allChars=[];
+    async function _loadChars(){
+      if(_allChars.length) return _allChars;
+      try{ const r=await levFetch(`${BASE}/characters`); const d=await r.json(); _allChars=d.characters||[]; }catch{ _allChars=[]; }
+      return _allChars;
+    }
+
+    async function openRegenPanel(id) {
+      const shot=shots.find(s=>s.id===id); if(!shot) return;
+      if(_regenPanel) _regenPanel.remove();
+      const chars=await _loadChars();
+      const opts=chars.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+      const p=document.createElement("div");
+      p.id="regen-panel-"+id;
+      p.style.cssText="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#0b0a16;border:1px solid rgba(76,175,80,0.35);border-radius:5px;padding:18px;z-index:9999;width:380px;box-shadow:0 0 60px rgba(0,0,0,0.9);font-family:Rajdhani,sans-serif;";
+      p.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="color:#81c784;font-size:10px;letter-spacing:3px;text-transform:uppercase;">⟳ Regen — ${shot.shot_number||id}</div>
+          <button onclick="document.getElementById('regen-panel-${id}').remove()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:16px;cursor:pointer;">✕</button>
+        </div>
+        <div style="font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:1px;margin-bottom:10px;line-height:1.5;">${shot.shotDesc||"No description"}</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.2);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Character</div>
+        <select id="regen-char-sel" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:7px;border-radius:3px;margin-bottom:8px;font-family:Rajdhani,sans-serif;font-size:12px;">
+          <option value="">— Pick character —</option>${opts}
+        </select>
+        <div style="font-size:8px;color:rgba(255,255,255,0.15);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Second Character (optional)</div>
+        <select id="regen-char-sel-2" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.07);color:rgba(255,255,255,0.38);padding:7px;border-radius:3px;margin-bottom:11px;font-family:Rajdhani,sans-serif;font-size:12px;">
+          <option value="">— None —</option>${opts}
+        </select>
+        <div id="regen-status" style="font-size:9px;color:rgba(255,255,255,0.3);min-height:14px;margin-bottom:9px;letter-spacing:1px;"></div>
+        <button onclick="runAiRegen('${id}')" style="width:100%;background:rgba(76,175,80,0.12);border:1px solid rgba(76,175,80,0.35);color:#81c784;font-family:Rajdhani,sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;padding:8px;border-radius:3px;cursor:pointer;">
+          Hermes Rewrites → Generate
+        </button>`;
+      document.body.appendChild(p); _regenPanel=p;
+    }
+
+    async function runAiRegen(id) {
+      const shot=shots.find(s=>s.id===id); if(!shot) return;
+      const cId=document.getElementById("regen-char-sel")?.value;
+      const cId2=document.getElementById("regen-char-sel-2")?.value||"";
+      const st=document.getElementById("regen-status");
+      if(!cId){st.textContent="Pick a character first.";return;}
+      st.textContent="Hermes rewriting…";
+      try {
+        const res=await levFetch(`${BASE}/scene/${id}/ai-regen`,{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({character_id:cId,character_id_2:cId2,scene_description:shot.shotDesc||"",original_prompt:shot.shotPrompt||""})});
+        const data=await res.json();
+        if(!res.ok||!data.success) throw new Error(data.detail||"Failed");
+        const local=shots.find(s=>s.id===id);
+        if(local){local.imageUrl=data.imageUrl;local.shotPrompt=data.new_prompt;}
+        renderTimeline(); selectShot(id);
+        setStatus(`${shot.shot_number||id} rewritten & regenerated.`);
+        if(_regenPanel) _regenPanel.remove();
+      } catch(e){st.textContent="Failed: "+e.message;}
+    }
+
+    // ── Init + live poll ─────────────────────────────
     document.addEventListener("DOMContentLoaded", initProjectFilter);
 
-    // ── Auto-refresh when orchestrator is running ─────────────
-    let _orchPollActive = false;
-
-    async function checkOrchJobs() {
-      try {
-        const res  = await levFetch(`${BASE}/orchestrate/jobs`);
-        const data = await res.json();
-        const active = (data.jobs || []).filter(j =>
-          j.status === "running" || j.status === "planning" || j.status === "starting"
-        );
-        const banner = document.getElementById("tl-live-banner");
-        if (active.length > 0) {
-          if (banner) {
-            const job = active[0];
-            const done  = job.progress || 0;
-            const total = job.total    || "?";
-            const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
-            banner.style.display = "flex";
-            banner.innerHTML = `
+    let _orchPollActive=false;
+    async function checkOrchJobs(){
+      try{
+        const res=await levFetch(`${BASE}/orchestrate/jobs`);
+        const data=await res.json();
+        const active=(data.jobs||[]).filter(j=>["running","planning","starting","exporting"].includes(j.status));
+        const banner=document.getElementById("tl-live-banner");
+        if(active.length>0){
+          const job=active[0], done=job.progress||0, total=job.total||"?";
+          const pct=total>0?Math.round((done/total)*100):0;
+          if(banner){
+            banner.style.display="flex";
+            banner.innerHTML=`
               <div style="flex:1;">
-                <span style="color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-size:11px;">● Live — shots arriving</span>
-                <span style="color:rgba(255,255,255,0.4);font-size:10px;margin-left:10px;">${job.step || ""}</span>
+                <span style="color:var(--gold);font-size:9px;letter-spacing:2px;text-transform:uppercase;">● ${job.status==="exporting"?"Assembling film…":"Live — shots arriving"}</span>
+                <span style="color:rgba(255,255,255,0.3);font-size:9px;margin-left:10px;">${job.step||""}</span>
               </div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <div style="background:rgba(255,255,255,0.1);border-radius:2px;height:3px;width:80px;">
+              <div style="display:flex;align-items:center;gap:7px;">
+                <div style="background:rgba(255,255,255,0.08);border-radius:2px;height:3px;width:72px;">
                   <div style="background:var(--gold);height:3px;border-radius:2px;width:${pct}%;transition:width 0.4s;"></div>
                 </div>
-                <span style="font-size:10px;color:rgba(255,255,255,0.4);">${done}/${total}</span>
-                <button onclick="loadScenes()" style="background:transparent;border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-size:10px;letter-spacing:1px;padding:2px 8px;cursor:pointer;border-radius:2px;">Refresh</button>
+                <span style="font-size:8px;color:rgba(255,255,255,0.28);">${done}/${total}</span>
+                <button onclick="loadScenes()" class="hbtn" style="font-size:9px;padding:2px 7px;">Refresh</button>
               </div>`;
           }
           await loadScenes();
-          if (!_orchPollActive) {
-            _orchPollActive = true;
-            setTimeout(checkOrchJobs, 8000);
-          }
+          if(!_orchPollActive){_orchPollActive=true;setTimeout(checkOrchJobs,6000);}
         } else {
-          if (banner) banner.style.display = "none";
-          _orchPollActive = false;
+          if(banner) banner.style.display="none";
+          _orchPollActive=false;
         }
-      } catch (_) {}
+      } catch(_){}
     }
-
-    // Start polling after initial load
-    setTimeout(checkOrchJobs, 4000);
+    setTimeout(checkOrchJobs,4000);
   </script>
-<script src="themes.js"></script>
+  <script src="themes.js"></script>
 </body>
 </html>

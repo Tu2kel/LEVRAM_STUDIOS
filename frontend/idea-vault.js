@@ -661,7 +661,7 @@ window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
   const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
   const locName  = document.getElementById("iv-dev-location")?.value || "";
   const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
-  const model    = document.getElementById("iv-model")?.value || "ws_wan22";
+  const model    = window.ivGetModel?.() || "ws_wan22";
 
   if (btn) { btn.disabled = true; btn.classList.add("lora-scanning"); }
   if (statusEl) statusEl.textContent = "Approving…";
@@ -853,7 +853,7 @@ const IV_MODEL_COSTS = {
 };
 
 window.ivUpdateCostEst = function ivUpdateCostEst() {
-  const model    = document.getElementById("iv-model")?.value || "ws_wan22";
+  const model    = window.ivGetModel?.() || "ws_wan22";
   const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
   const estEl    = document.getElementById("iv-cost-est");
   const sceneEl  = document.getElementById("iv-scene-list");
@@ -926,7 +926,7 @@ window.ivGenerateKeyframes = async function ivGenerateKeyframes() {
       body: JSON.stringify({
         scenes, character_id: charId, character_name: charName,
         character2_id: char2Id, character2_name: char2Name,
-        duration: sceneSec, model: document.getElementById("iv-model")?.value || "ws_wan22", keyframes_only: true,
+        duration: sceneSec, model: window.ivGetModel?.() || "ws_wan22", keyframes_only: true,
         project,
       }),
     });
@@ -1014,7 +1014,7 @@ function ivShowKeyframeReview(shots, rawScenes) {
   if (animateBar) animateBar.style.display = "block";
   // Update animate button label with model
   const animBtn = document.getElementById("iv-animate-selected-btn");
-  const model   = document.getElementById("iv-model")?.value || "kling_26";
+  const model   = window.ivGetModel?.() || "kling_26";
   const minfo   = IV_MODEL_COSTS[model] || {};
   if (animBtn) animBtn.textContent = `🎬 Animate Selected with ${minfo.label || model}`;
 }
@@ -1048,7 +1048,7 @@ window.ivAnimateSelected = async function ivAnimateSelected() {
   const charSel  = document.getElementById("iv-dev-character");
   const charId   = charSel?.value || "";
   const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
-  const model    = document.getElementById("iv-model")?.value || "kling_26";
+  const model    = window.ivGetModel?.() || "kling_26";
   const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
 
   const approved = _ivKeyframeShots.filter((_, i) => {

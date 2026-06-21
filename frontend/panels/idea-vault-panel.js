@@ -130,39 +130,70 @@ document.getElementById("tab-idea-vault").innerHTML = `
         <div id="iv-revision-status" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px;min-height:14px;"></div>
       </div>
 
-      <!-- Approve bar -->
-      <div style="margin-top:16px;border-top:1px solid rgba(201,168,76,0.15);padding-top:14px;">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-          <div class="field-label" style="margin:0;white-space:nowrap;">Quality:</div>
-          <select id="iv-model" class="voice-char-select" style="flex:2;min-width:160px;" onchange="ivUpdateCostEst()">
-            <option value="ws_wan22" selected>Wan 2.2 &#9889; — WaveSpeed</option>
-            <option value="ws_wan22_spicy">&#128308; Wan 2.2 Spicy — Uncensored</option>
-            <option value="ws_wan27">Wan 2.7 &#9889; — WaveSpeed latest</option>
-            <option value="kling_26">Kling 2.6 Pro — production quality</option>
-          </select>
+      <!-- Director Panel -->
+      <div style="margin-top:16px;border-top:1px solid rgba(201,168,76,0.12);padding-top:0;">
+        <div style="background:#0a0910;border:1px solid rgba(255,255,255,0.07);border-radius:5px;overflow:hidden;">
+
+          <!-- Panel label row -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:8px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.2);">&#9670; Director Panel</span>
+            </div>
+            <div id="iv-cost-est" style="font-size:9px;color:rgba(201,168,76,0.5);letter-spacing:1px;"></div>
+          </div>
+
+          <!-- Model pills -->
+          <div style="display:flex;align-items:center;gap:0;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);overflow-x:auto;">
+            <span style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.18);margin-right:8px;white-space:nowrap;">Model</span>
+            <div style="display:flex;gap:4px;flex-wrap:nowrap;">
+              <label class="dp-pill">
+                <input type="radio" name="iv-model-r" value="ws_wan22" id="iv-model" style="display:none;" checked onchange="ivUpdateCostEst()" />
+                <span class="dp-pill-label">Wan 2.2 &#9889;</span>
+              </label>
+              <label class="dp-pill">
+                <input type="radio" name="iv-model-r" value="ws_wan27" style="display:none;" onchange="ivUpdateCostEst()" />
+                <span class="dp-pill-label">Wan 2.7</span>
+              </label>
+              <label class="dp-pill">
+                <input type="radio" name="iv-model-r" value="kling_26" style="display:none;" onchange="ivUpdateCostEst()" />
+                <span class="dp-pill-label">Kling 2.6</span>
+              </label>
+              <label class="dp-pill">
+                <input type="radio" name="iv-model-r" value="ws_wan22_spicy" style="display:none;" onchange="ivUpdateCostEst()" />
+                <span class="dp-pill-label" style="color:rgba(255,100,100,0.7);">&#128308; Spicy</span>
+              </label>
+            </div>
+            <div style="width:1px;background:rgba(255,255,255,0.06);margin:0 10px;height:16px;flex-shrink:0;"></div>
+            <span style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.18);margin-right:8px;white-space:nowrap;">Clip</span>
+            <select id="iv-scene-sec-dp" style="background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-family:Rajdhani,sans-serif;font-size:11px;padding:3px 7px;border-radius:3px;cursor:pointer;" onchange="document.getElementById('iv-scene-sec').value=this.value;ivUpdateCostEst()">
+              <option value="5">5s</option>
+              <option value="8">8s</option>
+              <option value="10">10s</option>
+            </select>
+          </div>
+
+          <!-- Action row -->
+          <div style="display:flex;gap:6px;padding:8px 12px;align-items:center;">
+            <button id="iv-keyframe-btn" onclick="ivGenerateKeyframes()"
+              style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.45);font-family:Rajdhani,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:7px 12px;border-radius:3px;cursor:pointer;white-space:nowrap;">
+              &#128444; Keyframes
+            </button>
+            <button id="iv-approve-btn" onclick="ivApproveAndGenerate()"
+              style="flex:1;background:linear-gradient(90deg,#7a5800,#c9a84c);border:none;color:#000;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:8px 16px;border-radius:3px;cursor:pointer;white-space:nowrap;">
+              GENERATE &#9654;
+            </button>
+          </div>
+
         </div>
-        <div id="iv-cost-est" style="font-size:10px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-bottom:10px;"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button id="iv-keyframe-btn" onclick="ivGenerateKeyframes()"
-            style="flex:1;background:rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.4);color:rgba(201,168,76,0.8);font-family:Rajdhani,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:7px 14px;border-radius:3px;cursor:pointer;white-space:nowrap;">
-            &#128444; Keyframes &#8594; Review
-          </button>
-          <button id="iv-approve-btn" onclick="ivApproveAndGenerate()"
-            style="flex:2;background:linear-gradient(90deg,rgba(139,105,20,0.6),rgba(201,168,76,0.6));border:1px solid rgba(201,168,76,0.6);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:8px 20px;border-radius:3px;cursor:pointer;white-space:nowrap;">
-            &#9989; APPROVE + GENERATE
-          </button>
-        </div>
+
         <!-- Animate Approved (shown after keyframe review) -->
-        <div id="iv-animate-bar" style="display:none;margin-top:10px;padding:10px;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.25);border-radius:3px;">
-          <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Review keyframes above — select which to animate</div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <button onclick="ivSelectAllKeyframes(true)"
-              style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:10px;letter-spacing:1px;padding:4px 8px;cursor:pointer;border-radius:2px;">All</button>
-            <button onclick="ivSelectAllKeyframes(false)"
-              style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:10px;letter-spacing:1px;padding:4px 8px;cursor:pointer;border-radius:2px;">None</button>
-            <button id="iv-animate-selected-btn" onclick="ivAnimateSelected()"
-              style="flex:1;background:linear-gradient(90deg,rgba(33,150,243,0.5),rgba(100,181,246,0.5));border:1px solid rgba(33,150,243,0.6);color:#90caf9;font-family:Rajdhani,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:7px 16px;border-radius:3px;cursor:pointer;">
-              &#127916; Animate Selected with Kling
+        <div id="iv-animate-bar" style="display:none;margin-top:8px;padding:10px 12px;background:rgba(33,150,243,0.05);border:1px solid rgba(33,150,243,0.2);border-radius:4px;">
+          <div style="font-size:9px;color:#90caf9;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Select keyframes to animate</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button onclick="ivSelectAllKeyframes(true)" style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);font-size:9px;letter-spacing:1px;padding:4px 8px;cursor:pointer;border-radius:2px;">All</button>
+            <button onclick="ivSelectAllKeyframes(false)" style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);font-size:9px;letter-spacing:1px;padding:4px 8px;cursor:pointer;border-radius:2px;">None</button>
+            <button id="iv-animate-selected-btn" onclick="ivAnimateSelected()" style="flex:1;background:rgba(33,150,243,0.15);border:1px solid rgba(33,150,243,0.4);color:#90caf9;font-family:Rajdhani,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:7px;border-radius:3px;cursor:pointer;">
+              &#127916; Animate Selected
             </button>
           </div>
         </div>
@@ -171,3 +202,16 @@ document.getElementById("tab-idea-vault").innerHTML = `
     </div>
   </div>
 `;
+
+// Pill-radio sync: keep iv-scene-sec in sync with the dp clone
+(function(){
+  const dp = document.getElementById("iv-scene-sec-dp");
+  const orig = document.getElementById("iv-scene-sec");
+  if (dp && orig) orig.addEventListener("change", () => { dp.value = orig.value; });
+})();
+
+// Global model reader — reads radio group, falls back to first radio value
+window.ivGetModel = function() {
+  const checked = document.querySelector('input[name="iv-model-r"]:checked');
+  return checked?.value || "ws_wan22";
+};

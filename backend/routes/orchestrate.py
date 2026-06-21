@@ -199,38 +199,47 @@ async def _gen_image(prompt: str, character_id: str) -> str:
         print(f"[PULID] face_url={face_url!r}")
 
         if face_url:
-            # Use WaveSpeed PuLID with public URL directly
             from backend.routes.image_gen import _ws_submit_poll, _download_url, _save_bytes, IMAGE_DIR
-            import json as _json, datetime as _dt
-            outputs = await loop.run_in_executor(None, lambda: _ws_submit_poll(
-                "wavespeed-ai/flux-pulid", {
-                    "prompt":              f"{prompt}, cinematic photorealistic",
-                    "image":               face_url,
-                    "width":               1280, "height": 720,
-                    "num_inference_steps": 28,
-                    "guidance_scale":      3.5,
-                    "true_cfg":            1.0,
-                }
-            ))
-            remote_url = outputs[0] if outputs else ""
-            if not remote_url:
-                raise RuntimeError("WaveSpeed PuLID returned no image")
-            IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-            ts    = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-            fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
-            image_bytes = await loop.run_in_executor(None, lambda: _download_url(remote_url))
-            (IMAGE_DIR / fname).write_bytes(image_bytes)
-            return "/output/renders/images/" + fname
-        else:
-            result = await loop.run_in_executor(
-                None, lambda: _ws_generate_image(prompt, "widescreen", "cinematic photorealistic")
-            )
-    else:
-        result = await loop.run_in_executor(
-            None, lambda: _ws_generate_image(prompt, "widescreen", "cinematic photorealistic")
-        )
+            import datetime as _dt
+            try:
+                outputs = await loop.run_in_executor(None, lambda: _ws_submit_poll(
+                    "wavespeed-ai/flux-pulid", {
+                        "prompt":              f"{prompt}, cinematic photorealistic",
+                        "image":               face_url,
+                        "width":               1280, "height": 720,
+                        "num_inference_steps": 28,
+                        "guidance_scale":      3.5,
+                        "true_cfg":            1.0,
+                    }
+                ))
+                remote_url = outputs[0] if outputs else ""
+                if not remote_url:
+                    raise RuntimeError("WaveSpeed PuLID returned no image")
+                IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+                ts    = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+                fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
+                image_bytes = await loop.run_in_executor(None, lambda: _download_url(remote_url))
+                (IMAGE_DIR / fname).write_bytes(image_bytes)
+                return "/output/renders/images/" + fname
+            except Exception as _pulid_err:
+                print(f"[PULID] WaveSpeed failed ({_pulid_err}), falling to plain gen")
 
-    return result["imageUrl"]
+    # ── Plain generation — cascade Venice → Novita → WaveSpeed ──────────────────
+    from backend.routes.image_gen import _venice_generate_image, _novita_generate_image
+    _plain_prompt = prompt
+    _plain_providers = [
+        ("Venice",     lambda: _venice_generate_image(_plain_prompt, "cinematic", "cinematic photorealistic")),
+        ("Novita",     lambda: _novita_generate_image(_plain_prompt, "cinematic", "cinematic photorealistic", "novita_photo")),
+        ("WaveSpeed",  lambda: _ws_generate_image(_plain_prompt, "widescreen", "cinematic photorealistic")),
+    ]
+    for _pname, _pfn in _plain_providers:
+        try:
+            result = await loop.run_in_executor(None, _pfn)
+            print(f"[PLAIN] {_pname} succeeded")
+            return result["imageUrl"]
+        except Exception as _pe:
+            print(f"[PLAIN] {_pname} failed ({_pe}), trying next")
+    raise RuntimeError("All image providers failed — check credits on WaveSpeed, Venice, and Novita")
 
 
 # ── I2V animation ─────────────────────────────────────────────────────────────

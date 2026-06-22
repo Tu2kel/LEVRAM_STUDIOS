@@ -21,8 +21,39 @@
       <button class="sb-view-btn active" id="sb-view-script" onclick="sbSetView('script')">✍ Script</button>
       <button class="sb-view-btn" id="sb-view-director" onclick="sbSetView('director')">◈ Director</button>
     </div>
+    <button class="sb-import-btn" onclick="sbOpenImport()">📄 Import Script</button>
     <button class="sb-refresh-btn" onclick="sbLoad()">↻ Refresh</button>
   </header>
+
+  <!-- Import Script Modal -->
+  <div id="sb-import-modal" class="sb-import-overlay" onclick="if(event.target===this)sbCloseImport()">
+    <div class="sb-import-box">
+      <div class="sb-import-header">
+        <span class="sb-import-title">BREAKDOWN SCRIPT → SHOTS</span>
+        <button class="sb-lightbox-close" onclick="sbCloseImport()" style="position:static;top:auto;right:auto;">✕</button>
+      </div>
+      <p class="sb-import-hint">Paste your screenplay. Hermes adapts it beat-for-beat — no interpretation, no added plot. Dialogue is preserved verbatim. The story ends exactly where your script ends.</p>
+      <div class="sb-import-controls">
+        <label class="sb-import-label">Target shots
+          <input id="sb-import-count" type="number" min="4" max="120" value="28" class="sb-import-num" />
+        </label>
+        <label class="sb-import-label">Project
+          <input id="sb-import-project" type="text" class="sb-import-proj" placeholder="auto-detect from header…" />
+        </label>
+        <label class="sb-import-label">Char 1
+          <input id="sb-import-char1" type="text" class="sb-import-char" placeholder="e.g. Kora" />
+        </label>
+        <label class="sb-import-label">Char 2
+          <input id="sb-import-char2" type="text" class="sb-import-char" placeholder="e.g. Pietro Vale" />
+        </label>
+      </div>
+      <textarea id="sb-import-script" class="sb-import-textarea" placeholder="Paste your screenplay here…"></textarea>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:12px;">
+        <button id="sb-import-run-btn" class="sb-import-run" onclick="sbRunImport()">⚡ Break Down Script</button>
+        <span id="sb-import-status" class="sb-import-status"></span>
+      </div>
+    </div>
+  </div>
 
   <!-- Script view toolbar -->
   <div id="sb-script-bar" class="sb-script-bar">

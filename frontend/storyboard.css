@@ -639,3 +639,136 @@ body {
   text-transform: uppercase;
   text-align: center;
 }
+
+/* ── Import Script button ─────────────────────────── */
+.sb-import-btn {
+  background: rgba(201,168,76,0.08);
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  font-family: Rajdhani, sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.sb-import-btn:hover { background: rgba(201,168,76,0.18); }
+
+/* ── Import Modal ─────────────────────────────────── */
+.sb-import-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.sb-import-overlay.open { display: flex; }
+
+.sb-import-box {
+  background: #0e0e1a;
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 6px;
+  width: 100%;
+  max-width: 780px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.sb-import-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sb-import-title {
+  font-family: Orbitron, sans-serif;
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.sb-import-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+.sb-import-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sb-import-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.sb-import-num {
+  width: 70px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text);
+  font-family: Rajdhani, sans-serif;
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 3px;
+}
+.sb-import-proj, .sb-import-char {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text);
+  font-family: Rajdhani, sans-serif;
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 3px;
+  min-width: 130px;
+}
+.sb-import-textarea {
+  flex: 1;
+  min-height: 280px;
+  resize: none;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 12px;
+  outline: none;
+}
+.sb-import-textarea:focus { border-color: rgba(201,168,76,0.4); }
+.sb-import-run {
+  background: linear-gradient(90deg, #7a5800, #c9a84c);
+  border: none;
+  color: #000;
+  font-family: Rajdhani, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 9px 22px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sb-import-run:disabled { opacity: 0.5; cursor: default; }
+.sb-import-status {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}

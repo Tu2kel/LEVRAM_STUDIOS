@@ -642,3 +642,67 @@ window.sbGenMissing        = sbGenMissing;
 window.sbToggleRegenPanel  = sbToggleRegenPanel;
 window.sbSetStyle          = sbSetStyle;
 window.sbEnhanceDesc       = sbEnhanceDesc;
+
+// ── Import Script ──────────────────────────────────────────────
+
+function sbOpenImport() {
+  const modal = document.getElementById("sb-import-modal");
+  if (!modal) return;
+  // Pre-fill project and character fields from current context
+  const projIn = document.getElementById("sb-import-project");
+  const char1In = document.getElementById("sb-import-char1");
+  if (projIn && !projIn.value && _sbProject) projIn.value = _sbProject;
+  modal.classList.add("open");
+  document.getElementById("sb-import-script")?.focus();
+}
+
+function sbCloseImport() {
+  document.getElementById("sb-import-modal")?.classList.remove("open");
+}
+
+async function sbRunImport() {
+  const script  = document.getElementById("sb-import-script")?.value.trim();
+  const count   = parseInt(document.getElementById("sb-import-count")?.value || "28");
+  const project = document.getElementById("sb-import-project")?.value.trim() || _sbProject || "Untitled";
+  const char1   = document.getElementById("sb-import-char1")?.value.trim() || "";
+  const char2   = document.getElementById("sb-import-char2")?.value.trim() || "";
+  const btn     = document.getElementById("sb-import-run-btn");
+  const statEl  = document.getElementById("sb-import-status");
+
+  if (!script) { if (statEl) statEl.textContent = "Paste a script first."; return; }
+
+  if (btn)    { btn.disabled = true; btn.textContent = "Breaking down…"; }
+  if (statEl) statEl.textContent = "Hermes is reading your script…";
+
+  try {
+    const res  = await levFetch(`${SB_BASE}/scenes/import-script`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ script, num_shots: count, project, character: char1, character2: char2 }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || "Import failed");
+
+    const n = data.shots?.length || 0;
+    if (statEl) statEl.innerHTML = `<span style="color:#4caf50;">✓ ${n} shots imported</span>`;
+
+    // Switch to this project and reload
+    _sbProject = project;
+    localStorage.setItem("levram_active_project", project);
+    const sel = document.getElementById("sb-project-sel");
+    if (sel) sel.value = project;
+
+    setTimeout(() => {
+      sbCloseImport();
+      sbLoad();
+    }, 900);
+  } catch (err) {
+    if (statEl) statEl.innerHTML = `<span style="color:var(--fail);">${err.message}</span>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "⚡ Break Down Script"; }
+  }
+}
+
+window.sbOpenImport  = sbOpenImport;
+window.sbCloseImport = sbCloseImport;
+window.sbRunImport   = sbRunImport;

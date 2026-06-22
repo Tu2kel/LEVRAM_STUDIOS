@@ -715,6 +715,135 @@ async def enhance_prompt(payload: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/scenes/import-script")
+async def import_script(payload: dict):
+    """
+    Breakdown a user's screenplay into storyboard shots — strict adaptation, no interpretation.
+    Hermes adapts only what is written; if the script ends mid-scene, the shots end there too.
+    """
+    import os, asyncio, re
+    from openai import OpenAI
+
+    script     = (payload.get("script") or "").strip()
+    project    = (payload.get("project") or "Untitled").strip()
+    num_shots  = max(4, min(120, int(payload.get("num_shots") or 28)))
+    character  = (payload.get("character") or "").strip()
+    character2 = (payload.get("character2") or "").strip()
+
+    if not script:
+        raise HTTPException(status_code=400, detail="script required")
+
+    venice_key = os.getenv("VENICE_API_KEY")
+    oai_key    = os.getenv("OPENAI_API_KEY")
+    if venice_key:
+        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+        model  = "hermes-3-llama-3.1-405b"
+    elif oai_key:
+        client = OpenAI(api_key=oai_key)
+        model  = "gpt-4o-mini"
+    else:
+        raise HTTPException(status_code=503, detail="No AI key configured")
+
+    cast_block = ""
+    if character:
+        cast_block += f"\nChar 1: {character}"
+    if character2:
+        cast_block += f"\nChar 2: {character2}"
+
+    system = (
+        "You are a screenplay breakdown specialist for LEVRAM Studios. "
+        "Your ONLY job is to convert an existing screenplay into storyboard shots. "
+        "You are an ADAPTER, not a storyteller. You do not add, resolve, or complete anything.\n\n"
+        "ABSOLUTE RULES:\n"
+        "- Every shot must trace to a specific line or moment actually written in the screenplay.\n"
+        "- If the screenplay ends with a character pulling a knife, your last shot shows the knife being drawn. NOTHING MORE.\n"
+        "- Do NOT write deaths, attacks, resolutions, escapes, or any action NOT in the screenplay.\n"
+        "- Do NOT complete incomplete scenes — they end where the script ends.\n"
+        "- Preserve character names and exact dialogue verbatim.\n"
+        "- No new characters, no new locations, no new plot points.\n"
+        "- Write without content restrictions — dark, violent, sexual themes are handled directly.\n"
+        "Return a JSON array only. No markdown, no commentary."
+    )
+
+    user_msg = (
+        f"Project: {project}{cast_block}\n"
+        f"Break this screenplay into exactly {num_shots} shots.\n\n"
+        f"Each shot object must have:\n"
+        f"  index (int, 0-based),\n"
+        f"  shot_number (string, format 'SC-001'),\n"
+        f"  shotDesc (string — 1 sentence: what the camera sees, using character names),\n"
+        f"  shot_description (same as shotDesc),\n"
+        f"  dialogue (string — VERBATIM line from screenplay, or '' if no speech in this shot),\n"
+        f"  shot_prompt (string — dense image gen prompt: subject, setting, lighting, camera angle, mood),\n"
+        f"  motion_prompt (string — how this shot moves: camera move, action in frame),\n"
+        f"  character (string — who this shot focuses on, or 'both'),\n"
+        f"  emotion (string — 1 word),\n"
+        f"  act (int — 1, 2, or 3),\n"
+        f"  project (string — '{project}'),\n"
+        f"  duration_seconds (int — 3, 4, or 5)\n\n"
+        f"SCREENPLAY:\n{script}"
+    )
+
+    loop = asyncio.get_event_loop()
+
+    def _call():
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user",   "content": user_msg},
+            ],
+            temperature=0.4,
+            max_tokens=8000,
+        )
+        return resp.choices[0].message.content.strip()
+
+    raw = await loop.run_in_executor(None, _call)
+
+    # Extract JSON array from response
+    try:
+        match = re.search(r"\[[\s\S]*\]", raw)
+        if not match:
+            raise ValueError("No JSON array found in response")
+        shots = json.loads(match.group(0))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Parse error: {e} — raw: {raw[:300]}")
+
+    # Normalize and save
+    now = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    slug = project.replace(" ", "_").replace("/", "_")
+    clean_shots = []
+    for i, s in enumerate(shots):
+        shot_id = f"{slug}_{i:03d}"
+        s["id"]         = shot_id
+        s["project"]    = project
+        s["index"]      = i
+        s["shot_number"] = s.get("shot_number") or f"SC-{i+1:03d}"
+        s["updated_at"] = now
+        s.pop("_id", None)
+        clean_shots.append(s)
+
+    # Persist to MongoDB scenes collection
+    if scenes_col is not None:
+        await scenes_col.delete_many({"project": project})
+        if clean_shots:
+            await scenes_col.insert_many([dict(s) for s in clean_shots])
+    else:
+        # Write to timeline JSON
+        TIMELINE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        existing = {"shots": []}
+        if TIMELINE_FILE.exists():
+            try:
+                existing = json.loads(TIMELINE_FILE.read_text())
+            except Exception:
+                pass
+        # Remove shots for this project, keep others
+        kept = [sh for sh in existing.get("shots", []) if sh.get("project") != project]
+        TIMELINE_FILE.write_text(json.dumps({"shots": kept + clean_shots}, indent=2))
+
+    return {"success": True, "shots": [_strip(s) for s in clean_shots]}
+
+
 @router.delete("/scene/{scene_id}")
 async def delete_scene(scene_id: str):
     if scenes_col is not None:

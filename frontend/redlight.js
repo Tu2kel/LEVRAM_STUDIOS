@@ -121,11 +121,12 @@ window.RL = (function () {
       if (typeof igSetEngine === "function") igSetEngine(imgModel);
     }
 
-    // I2V model selects
-    ["ig-i2v-model", "orch-model", "iv-model"].forEach(id => {
+    // I2V model selects — show/hide RL-only options then set value
+    const isRL = i2vModel === RL_I2V_MODEL;
+    ["ig-i2v-model", "orch-model", "iv-model", "qs-model"].forEach(id => {
       const sel = document.getElementById(id);
       if (!sel) return;
-      // Try to set the value; if the option doesn't exist yet, it's a no-op
+      sel.querySelectorAll(".rl-only").forEach(o => { o.style.display = isRL ? "" : "none"; });
       const opt = sel.querySelector(`option[value="${i2vModel}"]`);
       if (opt) sel.value = i2vModel;
     });

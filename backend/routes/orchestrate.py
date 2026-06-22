@@ -182,13 +182,12 @@ async def _gen_image(prompt: str, character_id: str) -> str:
         if byo_ref_url and byo_ref_url.startswith("http"):
             face_url = byo_ref_url
         elif byo_ref_url and domain:
-            # Don't gate on file existence — just build the URL and let WaveSpeed try
             face_url = f"https://{domain}/{byo_ref_url.lstrip('/')}"
-        if not face_url and refs and domain:
-            # Don't gate on file existence — volume should serve it
-            face_url = f"https://{domain}/{refs[0].lstrip('/')}"
 
-        # MongoDB base64 fallback — restore file to volume then serve it
+        # Restore from MongoDB b64 BEFORE building URL from refs path —
+        # Railway's ephemeral volume loses files between deploys, so refs[0]
+        # path may exist in DB but not on disk. b64 restore writes the file
+        # back so the URL is guaranteed to serve a real image.
         if not face_url and domain:
             refs_b64 = (db_char or {}).get("reference_images_b64") or []
             if refs_b64:
@@ -200,8 +199,14 @@ async def _gen_image(prompt: str, character_id: str) -> str:
                     restore_path.parent.mkdir(parents=True, exist_ok=True)
                     restore_path.write_bytes(raw)
                     face_url = f"https://{domain}/{entry['url'].lstrip('/')}"
-                except Exception:
-                    pass
+                    print(f"[PULID] restored face ref from b64 → {face_url}")
+                except Exception as _b64_err:
+                    print(f"[PULID] b64 restore failed: {_b64_err}")
+
+        # Last resort: raw volume path (may 404 if volume wiped)
+        if not face_url and refs and domain:
+            face_url = f"https://{domain}/{refs[0].lstrip('/')}"
+            print(f"[PULID] using raw volume path (no b64 backup): {face_url}")
 
         print(f"[PULID] face_url={face_url!r}")
 

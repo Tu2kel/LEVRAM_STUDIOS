@@ -47,11 +47,13 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ── Load character dropdowns (Char 1 + Char 2) ────────────────
+let _ivCharLoading = false;
 async function ivLoadCharacters() {
+  if (_ivCharLoading) return;
+  _ivCharLoading = true;
   const sel  = document.getElementById("iv-dev-character");
   const sel2 = document.getElementById("iv-dev-character2");
-  if (!sel) return;
-  // Clear before repopulating so studio switches don't stack duplicates
+  if (!sel) { _ivCharLoading = false; return; }
   sel.innerHTML  = `<option value="">None / Original</option>`;
   if (sel2) sel2.innerHTML = `<option value="">None</option>`;
   try {
@@ -73,6 +75,8 @@ async function ivLoadCharacters() {
   } catch (err) {
     console.warn("[IV] ivLoadCharacters failed:", err);
     if (sel) sel.innerHTML = `<option value="">Could not load characters</option>`;
+  } finally {
+    _ivCharLoading = false;
   }
 }
 

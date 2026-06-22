@@ -274,10 +274,11 @@ When asked for only ONE section, output only that section's format without === h
     const ivBlock   = parseSectionBlock(text, "IDEA VAULT");
     const charBlock = parseSectionBlock(text, "CHARACTER");
     const imgBlock  = parseSectionBlock(text, "IMAGE PROMPT");
-    if (ivBlock)   injectIdeaVault(ivBlock);
+    if (ivBlock)   injectIdeaVault(ivBlock);  // already calls switchTab("idea-vault")
     if (charBlock) await injectCharLab(charBlock);  // await so IG dropdown refreshes after save
     if (imgBlock)  setField("ig-prompt", imgBlock);
-    if (window.switchTab) window.switchTab("idea-vault");
+    // Only switch if injectIdeaVault didn't already — avoids double ivLoadCharacters race
+    if (!ivBlock && window.switchTab) window.switchTab("idea-vault");
   }
 
   function attachInjectButtons(msgEl, text) {

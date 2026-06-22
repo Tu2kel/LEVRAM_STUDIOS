@@ -60,27 +60,80 @@ def _json_save(scene_id: str, data: dict):
     return str(file_path)
 
 
+TIMELINE_FILE = Path("data/timelines/main_timeline.json")
+
+
 def _json_load_all() -> list[dict]:
+    """Load scenes from both the scenes/ directory and the orchestrator timeline file."""
+    seen_ids: set = set()
+    scenes: list[dict] = []
+
+    # Primary: orchestrator timeline (most complete, has shotDesc, obedience_score, etc.)
+    if TIMELINE_FILE.exists():
+        try:
+            shots = json.loads(TIMELINE_FILE.read_text()).get("shots", [])
+            for s in shots:
+                sid = s.get("id", "")
+                if sid:
+                    seen_ids.add(sid)
+                scenes.append(s)
+        except Exception:
+            pass
+
+    # Secondary: legacy shot-builder files in data/scenes/
     SCENES_DIR.mkdir(parents=True, exist_ok=True)
-    scenes = []
     for f in sorted(SCENES_DIR.glob("*.json"), reverse=True):
         try:
             with open(f, "r", encoding="utf-8") as fh:
                 d = json.load(fh)
-                d["file"] = str(f)
-                scenes.append(d)
+            sid = d.get("id", "")
+            if sid and sid in seen_ids:
+                continue  # orchestrator version takes precedence
+            d["file"] = str(f)
+            scenes.append(d)
+            if sid:
+                seen_ids.add(sid)
         except Exception:
             continue
     return scenes
 
 
 def _json_find(scene_id: str) -> tuple[dict | None, Path | None]:
+    # Check timeline first
+    if TIMELINE_FILE.exists():
+        try:
+            shots = json.loads(TIMELINE_FILE.read_text()).get("shots", [])
+            for s in shots:
+                if s.get("id") == scene_id:
+                    return s, TIMELINE_FILE
+        except Exception:
+            pass
     matches = sorted(SCENES_DIR.glob(f"*_{scene_id}_*.json"), reverse=True)
     if not matches:
         return None, None
     path = matches[0]
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f), path
+
+
+def _timeline_upsert(scene_id: str, updated: dict):
+    """Replace a single shot in the timeline JSON file in-place."""
+    shots: list = []
+    if TIMELINE_FILE.exists():
+        try:
+            shots = json.loads(TIMELINE_FILE.read_text()).get("shots", [])
+        except Exception:
+            shots = []
+    replaced = False
+    for i, s in enumerate(shots):
+        if s.get("id") == scene_id:
+            shots[i] = updated
+            replaced = True
+            break
+    if not replaced:
+        shots.append(updated)
+    TIMELINE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    TIMELINE_FILE.write_text(json.dumps({"shots": shots}, indent=2))
 
 
 # ─── Routes ───────────────────────────────────────────────────
@@ -165,8 +218,11 @@ async def patch_scene(scene_id: str, payload: dict):
     if path is None:
         raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")
     existing.update(payload)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(existing, f, indent=2)
+    if path == TIMELINE_FILE:
+        _timeline_upsert(scene_id, existing)
+    else:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(existing, f, indent=2)
     return {"success": True, "scene": existing}
 
 

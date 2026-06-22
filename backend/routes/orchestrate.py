@@ -77,9 +77,64 @@ async def _plan_shots(concept: str, num_shots: int, character_name: str) -> list
     return await loop.run_in_executor(None, _call)
 
 
+# ── Location reference resolver ───────────────────────────────────────────────
+
+async def _fetch_location_ref_url(loc_name: str) -> str:
+    """Read location's first reference image from disk, upload to WS CDN. Returns URL or ''."""
+    if not loc_name:
+        return ""
+    import base64 as _b64loc
+    from backend.routes.image_gen import _ws_to_public_url
+    loop = asyncio.get_event_loop()
+    try:
+        from backend.db import locations_col as _loc_col
+        loc_doc = None
+        if _loc_col is not None:
+            _lc = await _loc_col.find_one(
+                {"name": {"$regex": f"^{re.escape(loc_name)}$", "$options": "i"}}
+            )
+            loc_doc = {k: v for k, v in _lc.items() if k != "_id"} if _lc else None
+        else:
+            _lf = Path("data/locations.json")
+            if _lf.exists():
+                _locs = json.loads(_lf.read_text()).get("locations", [])
+                loc_doc = next(
+                    (l for l in _locs if l.get("name", "").lower() == loc_name.lower()), None
+                )
+        if not loc_doc:
+            print(f"[LOC_LOCK] no location doc for '{loc_name}'")
+            return ""
+        refs     = loc_doc.get("reference_images") or []
+        refs_b64 = loc_doc.get("reference_images_b64") or []
+        # Disk first
+        for ref_path in refs:
+            p = Path(ref_path.lstrip("/"))
+            if p.exists():
+                b64str = _b64loc.b64encode(p.read_bytes()).decode()
+                url = await loop.run_in_executor(
+                    None, lambda b=b64str: _ws_to_public_url(b, "image/jpeg", prefix="loc")
+                )
+                print(f"[LOC_LOCK] uploaded loc ref for '{loc_name}' → {url}")
+                return url
+        # b64 fallback
+        for entry in refs_b64:
+            if entry.get("data"):
+                mime = entry.get("mediaType", "image/jpeg")
+                url = await loop.run_in_executor(
+                    None, lambda d=entry["data"], m=mime: _ws_to_public_url(d, m, prefix="loc")
+                )
+                print(f"[LOC_LOCK] uploaded loc ref (b64) for '{loc_name}' → {url}")
+                return url
+        print(f"[LOC_LOCK] location '{loc_name}' has no reference images")
+        return ""
+    except Exception as _le:
+        print(f"[LOC_LOCK] fetch failed for '{loc_name}': {_le}")
+        return ""
+
+
 # ── Image generation ──────────────────────────────────────────────────────────
 
-async def _gen_image(prompt: str, character_id: str) -> str:
+async def _gen_image(prompt: str, character_id: str, location_ref_url: str = "") -> str:
     """Returns local /output/renders/images/... URL. Routes through WaveSpeed."""
     from backend.routes.image_gen import (
         _ws_generate_image, _ws_pulid, WS_IMG_SIZES, _ws_to_public_url
@@ -107,6 +162,69 @@ async def _gen_image(prompt: str, character_id: str) -> str:
     active_idx   = int((db_char or {}).get("active_preview_index") or 0)
     byo_entry    = preview_imgs[active_idx] if preview_imgs else None
     byo_ref_url  = (byo_entry or {}).get("url", "") if byo_entry else ""
+
+    # ── Location lock via Seedream + face swap ────────────────────────────────
+    if location_ref_url:
+        from backend.routes.image_gen import _ws_submit_poll, _ws_face_swap, _download_url, IMAGE_DIR
+        import datetime as _dt
+        import base64 as _b64loc
+        try:
+            loc_prompt = (
+                f"1 image. Set the scene in this exact environment: {prompt}. "
+                "Match the location's exact lighting, architecture, and atmosphere from the reference."
+            )
+            loc_out = await loop.run_in_executor(None, lambda: _ws_submit_poll(
+                "bytedance/seedream-v5.0-lite/edit-sequential", {
+                    "prompt":       loc_prompt,
+                    "images":       [location_ref_url],
+                    "aspect_ratio": "16:9",
+                    "scale":        5.0,
+                }
+            ))
+            loc_remote = loc_out[0] if loc_out else ""
+            if not loc_remote:
+                raise RuntimeError("Seedream location lock returned no image")
+            IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+            _ts   = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+            _fn   = f"orch_{_ts}_{uuid.uuid4().hex[:6]}.jpg"
+            (IMAGE_DIR / _fn).write_bytes(
+                await loop.run_in_executor(None, lambda: _download_url(loc_remote))
+            )
+            loc_local = "/output/renders/images/" + _fn
+            print(f"[LOC_LOCK] Seedream environment OK: {loc_local}")
+
+            # Face-swap character into the location-locked base image
+            _face_bytes = None
+            if byo_ref_url:
+                _p = Path(byo_ref_url.lstrip("/"))
+                if _p.exists():
+                    _face_bytes = _p.read_bytes()
+            if not _face_bytes:
+                for _rp in refs:
+                    _p = Path(_rp.lstrip("/"))
+                    if _p.exists():
+                        _face_bytes = _p.read_bytes()
+                        break
+            if not _face_bytes:
+                _rb64 = (db_char or {}).get("reference_images_b64") or []
+                if _rb64:
+                    _face_bytes = _b64loc.b64decode(_rb64[0]["data"])
+            if _face_bytes:
+                try:
+                    _fref = type("R", (), {
+                        "base64":    _b64loc.b64encode(_face_bytes).decode(),
+                        "mediaType": "image/jpeg",
+                    })()
+                    _, swapped = await loop.run_in_executor(
+                        None, lambda: _ws_face_swap(str(IMAGE_DIR / _fn), _fref)
+                    )
+                    print(f"[LOC_LOCK] face swap applied over location-locked image")
+                    return swapped
+                except Exception as _fs_err:
+                    print(f"[LOC_LOCK] face swap failed ({_fs_err}), returning loc-locked image")
+            return loc_local
+        except Exception as _loc_err:
+            print(f"[LOC_LOCK] Seedream location lock failed ({_loc_err}), falling through")
 
     # ── Full body reference via Seedream (takes priority — covers face + body) ─
     print(f"[BODY_REF] char_id={character_id} db_char={'found' if db_char else 'MISSING'} body_refs={body_refs}")
@@ -453,6 +571,16 @@ async def _run_pipeline(job_id: str, payload: dict):
     except Exception:
         pass
 
+    # Location ref URL cache (avoid re-uploading same location for every shot)
+    _loc_url_cache: dict[str, str] = {}
+
+    async def _get_loc_ref_url(name: str) -> str:
+        if not name:
+            return ""
+        if name not in _loc_url_cache:
+            _loc_url_cache[name] = await _fetch_location_ref_url(name)
+        return _loc_url_cache[name]
+
     # Build a tone prefix injected into every image prompt so the AI stays on genre
     _tone_prefix = ""
     genre_lower = genre.lower()
@@ -578,6 +706,10 @@ async def _run_pipeline(job_id: str, payload: dict):
                 if _location_context:
                     image_prompt = image_prompt + f", {_location_context}"
 
+                # Resolve location reference image for this shot
+                _shot_loc    = (shot.get("location") or location_name or "").strip()
+                _loc_ref_url = await _get_loc_ref_url(_shot_loc)
+
                 # Autonomous QC — retry up to 3 times on failure
                 image_url = None
                 _genre_lower = genre.lower() if genre else ""
@@ -590,7 +722,7 @@ async def _run_pipeline(job_id: str, payload: dict):
                 )
                 for _attempt, _suffix in enumerate(_qc_suffixes):
                     try:
-                        image_url = await _gen_image(image_prompt + _suffix, shot_char_id)
+                        image_url = await _gen_image(image_prompt + _suffix, shot_char_id, location_ref_url=_loc_ref_url)
                         break
                     except Exception as _e:
                         if _attempt == len(_qc_suffixes) - 1:
@@ -641,7 +773,7 @@ async def _run_pipeline(job_id: str, payload: dict):
                                                        f"{', '.join(_sol_rc) if isinstance(_sol_rc, list) else _sol_rc}.")
                             _sol_prompt = image_prompt + _sol_reinforce if _sol_reinforce else image_prompt
                             try:
-                                image_url = await _gen_image(_sol_prompt, shot_char_id)
+                                image_url = await _gen_image(_sol_prompt, shot_char_id, location_ref_url=_loc_ref_url)
                                 if shot_char_id_2 and image_url:
                                     image_url = await _apply_char2_swap(image_url, shot_char_id_2)
                                 _sol_url = (f"https://{_sol_domain}{image_url}"

@@ -199,6 +199,15 @@ function sbCardHTML(shot) {
         <div class="sb-card-actions">
           ${imgSrc ? `<button class="sb-btn view-btn" onclick="sbOpenLightbox('${imgSrc}','${shotNum}','${desc.replace(/'/g,"\\'")}')">↗ View</button>` : ""}
           <button class="sb-btn ${regenBtnClass}" id="sb-regen-btn-${id}" onclick="sbToggleRegenPanel('${id}')">↻ Regen</button>
+          <span class="sb-help-icon" tabindex="0">?
+            <span class="sb-tooltip">
+              <strong>↻ Regen</strong> — open this panel to edit the scene description, pick a style, then hit Generate.<br><br>
+              <strong>✨ Enhance</strong> — AI rewrites your description into a richer image prompt.<br><br>
+              <strong>Style buttons</strong> — set the visual mood: Cinematic, Action, Dramatic, Noir, Horror, Intimate, Epic.<br><br>
+              <strong>↻ Generate</strong> — sends to WaveSpeed with your face lock + location lock applied.<br><br>
+              <strong>Cancel</strong> — close without generating.
+            </span>
+          </span>
         </div>
       </div>
       <!-- Regen edit panel (hidden until ↻ Regen is clicked) -->
@@ -687,6 +696,61 @@ window.sbGenMissing        = sbGenMissing;
 window.sbToggleRegenPanel  = sbToggleRegenPanel;
 window.sbSetStyle          = sbSetStyle;
 window.sbEnhanceDesc       = sbEnhanceDesc;
+
+// ── Add Shot ───────────────────────────────────────────────────
+
+async function sbAddShot() {
+  const btn = document.getElementById("sb-add-shot");
+  if (btn) { btn.disabled = true; btn.textContent = "Adding…"; }
+
+  try {
+    const res = await levFetch(`${SB_BASE}/save-scene`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project:          _sbProject || "",
+        shot_description: "",
+        scene_number:     "",
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "Failed to create shot");
+
+    const projShots = sbGetProjectShots();
+    const shotNum   = `SC-${String(projShots.length + 1).padStart(3, "0")}`;
+    const newShot   = {
+      ...data.scene,
+      shotDesc:     data.scene.shot_description || "",
+      shot_number:  shotNum,
+      project:      _sbProject || data.scene.project || "",
+    };
+    _sbAllShots.push(newShot);
+
+    // Persist shot_number and project to DB
+    await levFetch(`${SB_BASE}/scene/${newShot.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shot_number: shotNum, project: newShot.project }),
+    });
+
+    sbRenderScript();
+
+    // Scroll new shot into view
+    const list = document.getElementById("sb-script");
+    if (list) {
+      const last = list.lastElementChild;
+      if (last) last.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  } catch (err) {
+    console.error("[SB] add shot failed:", err);
+    const st = document.getElementById("sb-gen-status");
+    if (st) { st.textContent = "Add shot failed: " + err.message.slice(0, 60); }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "+ Add Shot"; }
+  }
+}
+
+window.sbAddShot = sbAddShot;
 
 // ── Import Script ──────────────────────────────────────────────
 

@@ -397,9 +397,11 @@
 
   function _buildPicker() {
     var toggle = document.getElementById("theme-toggle");
+    var isFloat = false;
 
-    // Standalone pages (no nav toggle) — inject a small floating button
+    // Standalone pages (no nav toggle) — inject a small floating button at bottom-right
     if (!toggle) {
+      isFloat = true;
       toggle = document.createElement("button");
       toggle.id = "lev-theme-float";
       var cur = window.getTheme();
@@ -409,11 +411,12 @@
         t0.accent + ';border:1px solid rgba(201,168,76,.5);margin-right:5px;vertical-align:middle;"></span>' +
         t0.label;
       toggle.style.cssText = [
-        "position:fixed;top:10px;right:14px;z-index:99999;",
-        "background:rgba(201,168,76,0.10);border:1px solid rgba(201,168,76,0.4);",
+        "position:fixed;bottom:20px;right:20px;z-index:99999;",
+        "background:rgba(13,12,30,0.88);border:1px solid rgba(201,168,76,0.4);",
         "color:#c9a84c;font-family:Rajdhani,sans-serif;font-size:12px;",
-        "letter-spacing:2px;text-transform:uppercase;padding:5px 12px;",
-        "border-radius:2px;cursor:pointer;",
+        "letter-spacing:2px;text-transform:uppercase;padding:6px 14px;",
+        "border-radius:3px;cursor:pointer;",
+        "box-shadow:0 4px 18px rgba(0,0,0,0.7);",
       ].join("");
       document.body.appendChild(toggle);
     }
@@ -424,9 +427,13 @@
     // Create picker dropdown
     var picker = document.createElement("div");
     picker.id = "theme-picker";
+    // Float: opens upward above the button; Nav: opens downward below the nav bar
+    var pickerPos = isFloat
+      ? "bottom:66px;right:14px;"
+      : "top:70px;right:10px;";
     picker.style.cssText = [
-      "position:fixed;z-index:9999;",
-      "top:70px;right:10px;",
+      "position:fixed;z-index:99999;",
+      pickerPos,
       "background:linear-gradient(180deg,#0d0c1e,#09080f);",
       "border:1px solid rgba(201,168,76,0.45);",
       "border-radius:6px;",

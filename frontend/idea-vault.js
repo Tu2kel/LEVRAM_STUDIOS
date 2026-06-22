@@ -331,7 +331,12 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
     const sceneCount = (data.story?.scenes || []).length;
     if (!sceneCount) throw new Error("Develop returned 0 scenes — check backend logs");
 
-    if (cardStat) { cardStat.style.color = "#4caf50"; cardStat.textContent = `✓ ${sceneCount} scenes — open in Storyboard`; }
+    const proj    = encodeURIComponent(data.story?.title || "");
+    const sbHref  = `storyboard.html?project=${proj}`;
+    if (cardStat) {
+      cardStat.style.color = "#4caf50";
+      cardStat.innerHTML   = `✓ ${sceneCount} scenes &nbsp;<a href="${sbHref}" style="color:#c9a84c;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(201,168,76,0.4);padding-bottom:1px;">→ Open Storyboard</a>`;
+    }
     if (formStat) formStat.innerHTML = `<span style="color:#4caf50;">✓ ${sceneCount} scenes built</span>`;
     if (data.story?.title) localStorage.setItem("levram_active_project", data.story.title);
     window.refreshBattery?.();

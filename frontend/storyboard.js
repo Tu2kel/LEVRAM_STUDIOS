@@ -714,18 +714,19 @@ async function sbRunImport() {
     if (!res.ok || !data.success) throw new Error(data.detail || "Import failed");
 
     const n = data.shots?.length || 0;
-    if (statEl) statEl.innerHTML = `<span style="color:#4caf50;">✓ ${n} shots imported</span>`;
 
-    // Switch to this project and reload
+    // Switch to this project
     _sbProject = project;
     localStorage.setItem("levram_active_project", project);
     const sel = document.getElementById("sb-project-sel");
     if (sel) sel.value = project;
 
-    setTimeout(() => {
-      sbCloseImport();
-      sbLoad();
-    }, 900);
+    if (statEl) statEl.innerHTML =
+      `<span style="color:#4caf50;">✓ ${n} shots imported</span>
+       <button onclick="sbCloseImport();sbLoad();"
+         style="margin-left:14px;background:#c9a84c;color:#000;border:none;border-radius:2px;
+                padding:6px 18px;font-family:Rajdhani,sans-serif;font-size:14px;font-weight:700;
+                letter-spacing:1px;cursor:pointer;">→ View Shots</button>`;
   } catch (err) {
     if (statEl) statEl.innerHTML = `<span style="color:var(--fail);">${err.message}</span>`;
   } finally {

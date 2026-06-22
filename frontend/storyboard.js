@@ -590,39 +590,48 @@ async function sbGenMissing() {
 }
 
 async function sbPollGenMissing(jobId, total) {
-  const btn = document.getElementById("sb-gen-missing");
-  const st  = document.getElementById("sb-gen-status");
+  const btn   = document.getElementById("sb-gen-missing");
+  const st    = document.getElementById("sb-gen-status");
+  const start = Date.now();
   let attempts = 0;
+  const MAX_MINUTES = 20;
+  const MAX_ATTEMPTS = (MAX_MINUTES * 60) / 2; // 2s interval
 
-  while (attempts < 180) {
+  while (attempts < MAX_ATTEMPTS) {
     await new Promise(r => setTimeout(r, 2000));
     attempts++;
     try {
       const res  = await levFetch(`${SB_BASE}/orchestrate/status/${jobId}`);
       const data = await res.json();
-      if (st) st.textContent = (data.step || "Working…").slice(0, 80);
+
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      const mins    = Math.floor(elapsed / 60);
+      const secs    = elapsed % 60;
+      const timer   = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      const prog    = data.progress != null ? `${data.progress}/${data.total || total}` : "";
+      const step    = (data.step || "Working…").slice(0, 80);
+      if (st) st.textContent = `${step}  ${prog ? `[${prog}]` : ""}  ${timer}`;
 
       if (data.status === "keyframes_ready" || data.status === "complete") {
-        // Merge new shot data into cache
         (data.shots || []).forEach(newShot => {
           const idx = _sbAllShots.findIndex(s => s.id === newShot.id);
           if (idx >= 0) _sbAllShots[idx] = { ..._sbAllShots[idx], ...newShot };
           else _sbAllShots.push(newShot);
         });
         sbRenderScript();
-        if (st) st.textContent = `Done — ${total} keyframes generated`;
+        if (st) st.textContent = `✓ Done — ${data.progress || total} keyframes generated`;
         if (btn) btn.disabled = false;
         return;
       }
       if (data.status === "failed") {
-        if (st) st.textContent = "Failed: " + (data.error || "unknown").slice(0, 60);
+        if (st) st.textContent = "Failed: " + (data.error || "unknown").slice(0, 80);
         if (btn) btn.disabled = false;
         return;
       }
     } catch (_) { /* keep polling */ }
   }
 
-  if (st) st.textContent = "Timed out — check orchestrator status";
+  if (st) st.textContent = `Still generating — job ${jobId.slice(0, 8)} is running in the background. Refresh when ready.`;
   if (btn) btn.disabled = false;
 }
 

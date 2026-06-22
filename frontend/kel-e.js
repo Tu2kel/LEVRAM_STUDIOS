@@ -274,11 +274,110 @@ When asked for only ONE section, output only that section's format without === h
     const ivBlock   = parseSectionBlock(text, "IDEA VAULT");
     const charBlock = parseSectionBlock(text, "CHARACTER");
     const imgBlock  = parseSectionBlock(text, "IMAGE PROMPT");
-    if (ivBlock)   injectIdeaVault(ivBlock);  // already calls switchTab("idea-vault")
-    if (charBlock) await injectCharLab(charBlock);  // await so IG dropdown refreshes after save
+    const locBlock  = parseSectionBlock(text, "LOCATION");
+    if (ivBlock)   injectIdeaVault(ivBlock);
+    if (charBlock) await injectCharLab(charBlock);
     if (imgBlock)  setField("ig-prompt", imgBlock);
-    // Only switch if injectIdeaVault didn't already — avoids double ivLoadCharacters race
+    if (locBlock)  injectLocationLab(locBlock);
     if (!ivBlock && window.switchTab) window.switchTab("idea-vault");
+  }
+
+  function injectLocationLab(text) {
+    const name     = parseField(text, "NAME") || parseField(text, "LOCATION");
+    const desc     = parseField(text, "DESCRIPTION");
+    const lighting = parseField(text, "LIGHTING");
+    const atmo     = parseField(text, "ATMOSPHERE");
+    const palette  = parseField(text, "COLOR PALETTE") || parseField(text, "PALETTE");
+    const camera   = parseField(text, "CAMERA NOTES") || parseField(text, "CAMERA");
+    const timeOfDay= parseField(text, "TIME OF DAY") || parseField(text, "TIME");
+    const weather  = parseField(text, "WEATHER");
+
+    const isLocPage = !!document.getElementById("loc-name");
+
+    const _fill = () => {
+      const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+      if (window.newLocation) window.newLocation();
+      set("loc-name",         name);
+      set("loc-description",  desc);
+      set("loc-lighting",     lighting);
+      set("loc-atmosphere",   atmo);
+      set("loc-color-palette",palette);
+      set("loc-camera-notes", camera);
+      if (timeOfDay) {
+        const sel = document.getElementById("loc-time-of-day");
+        if (sel) {
+          const opt = [...sel.options].find(o => o.value.toLowerCase().includes(timeOfDay.toLowerCase().split(" ")[0]));
+          if (opt) sel.value = opt.value;
+        }
+      }
+      if (weather) {
+        const sel = document.getElementById("loc-weather");
+        if (sel) {
+          const opt = [...sel.options].find(o => o.value.toLowerCase().includes(weather.toLowerCase().split(" ")[0]));
+          if (opt) sel.value = opt.value;
+        }
+      }
+      document.getElementById("loc-name")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById("loc-name")?.focus();
+    };
+
+    if (isLocPage) {
+      _fill();
+    } else {
+      sessionStorage.setItem("kele_loc_prefill", JSON.stringify({ name, desc, lighting, atmo, palette, camera, timeOfDay, weather }));
+      window.open("location-lab.html", "_blank");
+    }
+  }
+
+  // ── Live data fetching — intercept "show me X" requests ───────
+  const _API = () => window.LEVRAM_CONFIG?.api || "";
+
+  async function _tryDataRequest(text) {
+    const t = text.toLowerCase();
+    const isQuery  = /\b(list|show|bring|get|what are|give me|my|all)\b/.test(t);
+    const isLoc    = /\blocation(s)?\b/.test(t);
+    const isChar   = /\b(character(s)?|cast)\b/.test(t);
+    const isIdea   = /\b(idea(s)?|project(s)?)\b/.test(t);
+
+    if (!isQuery) return null;
+
+    if (isLoc) {
+      try {
+        const res  = await fetch(`${_API()}/locations`);
+        const data = await res.json();
+        const locs = data.locations || [];
+        if (!locs.length) return "No locations saved yet. Create one in Location Lab.";
+        return `**Locations (${locs.length})**\n\n` + locs.map((l, i) =>
+          `**${i+1}. ${l.name}**${l.time_of_day ? ` — ${l.time_of_day}` : ""}${l.weather ? `, ${l.weather}` : ""}\n${l.description ? l.description.slice(0, 100) : ""}`
+        ).join("\n\n");
+      } catch (e) { return "Failed to fetch locations: " + e.message; }
+    }
+
+    if (isChar) {
+      try {
+        const res  = await fetch(`${_API()}/characters`);
+        const data = await res.json();
+        const chars = data.characters || [];
+        if (!chars.length) return "No characters saved yet. Create one in Character Lab.";
+        return `**Characters (${chars.length})**\n\n` + chars.map((c, i) =>
+          `**${i+1}. ${c.name}**${c.age ? `, ${c.age}` : ""}${c.gender ? ` (${c.gender})` : ""}\n${c.personality ? c.personality.slice(0, 100) : ""}`
+        ).join("\n\n");
+      } catch (e) { return "Failed to fetch characters: " + e.message; }
+    }
+
+    if (isIdea) {
+      try {
+        const res  = await fetch(`${_API()}/ideas`);
+        const data = await res.json();
+        const ideas = data.ideas || [];
+        if (!ideas.length) return "No ideas saved yet.";
+        return `**Ideas (${ideas.length})**\n\n` + ideas.map((idea, i) =>
+          `**${i+1}. ${idea.title || "Untitled"}** [${idea.status}] — ${idea.genre || ""}\n${(idea.rawIdea || "").slice(0, 100)}`
+        ).join("\n\n");
+      } catch (e) { return "Failed to fetch ideas: " + e.message; }
+    }
+
+    return null;
   }
 
   function attachInjectButtons(msgEl, text) {
@@ -288,6 +387,9 @@ When asked for only ONE section, output only that section's format without === h
 
     const hasShotBuilder  = /===\s*SHOT BUILDER\s*===/i.test(text);
     const hasMultiSection = /===\s*(IDEA VAULT|CHARACTER|IMAGE PROMPT)\s*===/i.test(text);
+    const hasLocation     = /===\s*LOCATION\s*===/i.test(text)
+      || /\bNAME:\s*.+\n[\s\S]*\bLIGHTING:/i.test(text)
+      || /\bATMOSPHERE:/i.test(text);
 
     let actions;
     if (hasShotBuilder && !hasMultiSection) {
@@ -302,9 +404,12 @@ When asked for only ONE section, output only that section's format without === h
         { label: "→ Image Prompt",  fn: () => injectImageGen(parseSectionBlock(text, "IMAGE PROMPT") || text) },
         { label: "→ Character Lab", fn: () => injectCharLab(parseSectionBlock(text, "CHARACTER") || text) },
       ];
-      if (hasShotBuilder) {
-        actions.push({ label: "→ Shot Builder", fn: () => injectShotBuilder(parseSectionBlock(text, "SHOT BUILDER") || text) });
-      }
+      if (hasShotBuilder) actions.push({ label: "→ Shot Builder", fn: () => injectShotBuilder(parseSectionBlock(text, "SHOT BUILDER") || text) });
+      if (hasLocation)    actions.push({ label: "→ Location Lab", fn: () => injectLocationLab(parseSectionBlock(text, "LOCATION") || text) });
+    } else if (hasLocation) {
+      actions = [
+        { label: "→ Location Lab", fn: () => injectLocationLab(parseSectionBlock(text, "LOCATION") || text), primary: true },
+      ];
     } else {
       actions = [
         { label: "→ Idea Vault",    fn: () => injectIdeaVault(text) },
@@ -342,6 +447,17 @@ When asked for only ONE section, output only that section's format without === h
     const assistantEl = addMessage("assistant", "▋", true);
     streaming = true;
     setSendState(false);
+
+    // Try to answer data queries locally before hitting Hermes
+    const dataReply = await _tryDataRequest(userText);
+    if (dataReply) {
+      setBubble(assistantEl, dataReply);
+      history.push({ role: "assistant", content: dataReply });
+      attachInjectButtons(assistantEl, dataReply);
+      streaming = false;
+      setSendState(true);
+      return;
+    }
 
     let fullText = "";
     const model = document.getElementById("kele-model-sel")?.value || currentModel;

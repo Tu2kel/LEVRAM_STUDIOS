@@ -4,6 +4,35 @@ let _sbAllShots  = [];
 let _sbFilter    = "all";
 let _sbProject   = "";
 let _sbView      = "script";  // "script" | "director"
+let _sbChars     = [];        // [{id, name}, ...]
+let _sbLocs      = [];        // [{name}, ...]
+
+// ── Meta (characters + locations for dropdowns) ────────────────
+
+async function sbLoadMeta() {
+  try {
+    const [cRes, lRes] = await Promise.all([
+      levFetch(`${SB_BASE}/characters`),
+      levFetch(`${SB_BASE}/locations`),
+    ]);
+    const cData = await cRes.json();
+    const lData = await lRes.json();
+    _sbChars = (cData.characters || []).map(c => c.name).filter(Boolean).sort();
+    _sbLocs  = (lData.locations  || []).map(l => l.name).filter(Boolean).sort();
+  } catch (_) {
+    // non-fatal — dropdowns will still show typed value
+  }
+}
+
+function _charOptions(current) {
+  const opts = ["", ...(_sbChars.includes(current) || !current ? _sbChars : [current, ..._sbChars])];
+  return opts.map(n => `<option value="${n}"${n === current ? " selected" : ""}>${n || "— none —"}</option>`).join("");
+}
+
+function _locOptions(current) {
+  const opts = ["", ...(_sbLocs.includes(current) || !current ? _sbLocs : [current, ..._sbLocs])];
+  return opts.map(n => `<option value="${n}"${n === current ? " selected" : ""}>${n || "— none —"}</option>`).join("");
+}
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -49,6 +78,7 @@ async function sbLoad() {
       const nb = b.shot_number || "";
       return na.localeCompare(nb, undefined, { numeric: true });
     });
+    await sbLoadMeta();
     sbPopulateProjects();
     // Render whichever view is active
     if (_sbView === "script") sbRenderScript();
@@ -464,22 +494,22 @@ function sbScriptCardHTML(shot) {
     <div class="sb-field-row-inline">
       <div class="sb-field-row">
         <div class="sb-field-label">Character 1</div>
-        <input class="sb-field-input" type="text" value="${char1}"
+        <select class="sb-field-input sb-field-select"
           data-shot="${id}" data-field="character"
-          onblur="sbSaveField('${id}','character',this.value)" />
+          onchange="sbSaveField('${id}','character',this.value)">${_charOptions(char1)}</select>
       </div>
       <div class="sb-field-row">
         <div class="sb-field-label">Character 2</div>
-        <input class="sb-field-input" type="text" value="${char2}"
+        <select class="sb-field-input sb-field-select"
           data-shot="${id}" data-field="character2"
-          onblur="sbSaveField('${id}','character2',this.value)" />
+          onchange="sbSaveField('${id}','character2',this.value)">${_charOptions(char2)}</select>
       </div>
     </div>
     <div class="sb-field-row">
       <div class="sb-field-label">Location</div>
-      <input class="sb-field-input" type="text" value="${loc}"
+      <select class="sb-field-input sb-field-select"
         data-shot="${id}" data-field="location"
-        onblur="sbSaveField('${id}','location',this.value)" />
+        onchange="sbSaveField('${id}','location',this.value)">${_locOptions(loc)}</select>
     </div>
     <div class="sb-save-indicator" id="si-${id}"></div>
   </div>

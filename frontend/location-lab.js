@@ -242,4 +242,37 @@ window.generateLocationPreview = async function() {
 };
 
 // ── Init ─────────────────────────────────────────────────────
-window.addEventListener("DOMContentLoaded", loadLocations);
+window.addEventListener("DOMContentLoaded", () => {
+  loadLocations();
+
+  // KEL-E prefill — when opened via "→ Location Lab" inject button
+  const raw = sessionStorage.getItem("kele_loc_prefill");
+  if (raw) {
+    try {
+      sessionStorage.removeItem("kele_loc_prefill");
+      const d = JSON.parse(raw);
+      if (window.newLocation) window.newLocation();
+      const set = (id, val) => { if (val) _llSetField(id, val); };
+      set("loc-name",          d.name);
+      set("loc-description",   d.desc);
+      set("loc-lighting",      d.lighting);
+      set("loc-atmosphere",    d.atmo);
+      set("loc-color-palette", d.palette);
+      set("loc-camera-notes",  d.camera);
+      if (d.timeOfDay) {
+        const sel = document.getElementById("loc-time-of-day");
+        if (sel) {
+          const opt = [...sel.options].find(o => o.value.toLowerCase().includes((d.timeOfDay || "").toLowerCase().split(" ")[0]));
+          if (opt) sel.value = opt.value;
+        }
+      }
+      if (d.weather) {
+        const sel = document.getElementById("loc-weather");
+        if (sel) {
+          const opt = [...sel.options].find(o => o.value.toLowerCase().includes((d.weather || "").toLowerCase().split(" ")[0]));
+          if (opt) sel.value = opt.value;
+        }
+      }
+    } catch (_) {}
+  }
+});

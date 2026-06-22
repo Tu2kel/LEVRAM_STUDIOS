@@ -520,6 +520,7 @@ async def _run_pipeline(job_id: str, payload: dict):
             # ── 2. Keyframe image
             _update(job_id, progress=i,
                     step=f"{label} Generating keyframe — {shot.get('description','')[:60]}…")
+            _obedience = None  # Scene Obedience Lock score (set inside try)
             try:
                 raw_prompt   = shot.get("image_prompt") or shot.get("shot_prompt") or shot.get("description") or concept
 
@@ -595,6 +596,55 @@ async def _run_pipeline(job_id: str, payload: dict):
                 if shot_char_id_2 and image_url:
                     image_url = await _apply_char2_swap(image_url, shot_char_id_2)
 
+                # ── Scene Obedience Lock — validate image against scene contract ──────
+                _sol_contract = shot.get("scene_contract") or {}
+                if not _sol_contract:
+                    _sol_chars = [n for n in [char_name, char2_name] if n]
+                    if _sol_chars or shot.get("required_action"):
+                        _sol_contract = {
+                            "required_chars":   _sol_chars,
+                            "required_action":  shot.get("required_action") or (shot.get("description") or "")[:120],
+                            "required_outcome": shot.get("required_outcome") or "",
+                            "environment":      _location_context[:100] if _location_context else "",
+                        }
+                if _sol_contract and image_url:
+                    from backend.routes.validate import validate_scene as _sol_fn
+                    _sol_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+                    _sol_url    = (f"https://{_sol_domain}{image_url}"
+                                   if _sol_domain and image_url.startswith("/") else image_url)
+                    for _sol_i in range(3):
+                        try:
+                            _obedience = await _sol_fn(_sol_url, _sol_contract)
+                        except Exception as _sol_err:
+                            print(f"[SOL] validate error: {_sol_err}")
+                            break
+                        if _obedience.get("pass") or _obedience.get("error"):
+                            break
+                        if _sol_i < 2:
+                            _sol_scores = (f"chars={_obedience.get('characters', 0):.0%} "
+                                           f"action={_obedience.get('action', 0):.0%}")
+                            _update(job_id, step=f"{label} ↻ Obedience FAIL ({_sol_scores}) — regen…")
+                            _sol_reinforce = ""
+                            if _obedience.get("action", 1.0) < 0.5:
+                                _sol_ra = _sol_contract.get("required_action", "")
+                                if _sol_ra:
+                                    _sol_reinforce += f" CRITICAL: {_sol_ra}."
+                            if _obedience.get("characters", 1.0) < 0.7:
+                                _sol_rc = _sol_contract.get("required_chars", [])
+                                if _sol_rc:
+                                    _sol_reinforce += (f" MUST SHOW: "
+                                                       f"{', '.join(_sol_rc) if isinstance(_sol_rc, list) else _sol_rc}.")
+                            _sol_prompt = image_prompt + _sol_reinforce if _sol_reinforce else image_prompt
+                            try:
+                                image_url = await _gen_image(_sol_prompt, shot_char_id)
+                                if shot_char_id_2 and image_url:
+                                    image_url = await _apply_char2_swap(image_url, shot_char_id_2)
+                                _sol_url = (f"https://{_sol_domain}{image_url}"
+                                            if _sol_domain and image_url.startswith("/") else image_url)
+                            except Exception as _sol_rge:
+                                print(f"[SOL] regen failed: {_sol_rge}")
+                                break
+
             except Exception as e:
                 err_msg = f"Shot {i+1} keyframe failed after 3 attempts: {str(e)[:120]}"
                 print(f"[ORCH] {err_msg}")
@@ -630,7 +680,7 @@ async def _run_pipeline(job_id: str, payload: dict):
 
             # ── 5. Build shot record
             shot_doc = {
-                "id":              str(uuid.uuid4()),
+                "id":              shot.get("shot_id") or str(uuid.uuid4()),
                 "shot_number":     f"SC-{i+1:03d}",
                 "name":            f"Shot {i+1}: {shot.get('description','')[:50]}",
                 "shotDesc":        shot.get("description", ""),
@@ -646,6 +696,7 @@ async def _run_pipeline(job_id: str, payload: dict):
                 "fxUrl":           audio_url,
                 "rawUrl":          audio_url,
                 "source":          "orchestrator",
+                "obedience_score": _obedience,
                 "createdAt":       datetime.now().strftime("%Y-%m-%d %H:%M"),
             }
 
@@ -653,9 +704,13 @@ async def _run_pipeline(job_id: str, payload: dict):
             await _append_to_timeline(shot_doc)
             _JOBS[job_id].setdefault("shots", []).append(shot_doc)
             mode_tag = "keyframe" if keyframes_only else ('animated' if video_url else 'keyframe only')
+            _sol_tag = ""
+            if _obedience and not _obedience.get("skipped") and not _obedience.get("error"):
+                _sol_pct = int((_obedience.get("total") or 0) * 100)
+                _sol_tag = f" · SOL {_sol_pct}% {'✔' if _obedience.get('pass') else '✗'}"
             _update(job_id,
                     step=f"{label} ✔ Shot {i+1} — {mode_tag}"
-                         f"{', voiced' if audio_url else ''}")
+                         f"{', voiced' if audio_url else ''}{_sol_tag}")
 
         total_done = len(_JOBS[job_id].get("shots", []))
         if keyframes_only:

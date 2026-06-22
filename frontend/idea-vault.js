@@ -849,10 +849,9 @@ async function ivPollJob(jobId, totalScenes, statusEl) {
 // ── Cost estimator ─────────────────────────────────────────────
 // WaveSpeed charges $0.01/second; Kling is flat per clip
 const IV_MODEL_COSTS = {
-  "ws_wan22":       { label: "Wan 2.2 ⚡",          ratePerSec: 0.01, fixedCost: null },
-  "ws_wan22_spicy": { label: "🔴 Wan 2.2 Spicy",    ratePerSec: 0.01, fixedCost: null },
-  "ws_wan27":       { label: "Wan 2.7 ⚡",          ratePerSec: 0.01, fixedCost: null },
-  "kling_26":       { label: "Kling 2.6 Pro",        ratePerSec: null, fixedCost: 0.28 },
+  "ws_wan22":       { label: "Wan 2.2 ⚡",       ratePerSec: 0.01, fixedCost: null },
+  "ws_wan22_spicy": { label: "🔴 Wan 2.2 Spicy", ratePerSec: 0.01, fixedCost: null },
+  "ws_wan27":       { label: "Wan 2.7 ⚡",       ratePerSec: 0.01, fixedCost: null },
 };
 
 window.ivUpdateCostEst = function ivUpdateCostEst() {
@@ -999,14 +998,30 @@ function ivShowKeyframeReview(shots, rawScenes) {
     const imgUrl = shot.renderOutputUrl || shot.imageUrl || "";
     const raw    = rawScenes[i] || {};
     const actColor = { 1: "rgba(255,100,100,0.5)", 2: "rgba(201,168,76,0.5)", 3: "rgba(100,200,100,0.5)" }[raw.act] || "rgba(255,255,255,0.15)";
+
+    // Scene Obedience Lock badge
+    const sol = shot.obedience_score;
+    let solBadge = "";
+    if (sol && !sol.skipped && !sol.error) {
+      const pct     = Math.round((sol.total || 0) * 100);
+      const passed  = sol.pass;
+      const bg      = passed ? "rgba(46,204,113,0.15)"  : "rgba(231,76,60,0.15)";
+      const border  = passed ? "rgba(46,204,113,0.4)"   : "rgba(231,76,60,0.4)";
+      const color   = passed ? "#2ecc71"                : "#e74c3c";
+      const icon    = passed ? "✔"                      : "✗";
+      const tip     = `Characters: ${Math.round((sol.characters||0)*100)}% · Location: ${Math.round((sol.location||0)*100)}% · Action: ${Math.round((sol.action||0)*100)}% · Outcome: ${Math.round((sol.outcome||0)*100)}%${sol.notes ? ' — ' + sol.notes : ''}`;
+      solBadge = `<span title="${tip}" style="font-size:9px;letter-spacing:1px;padding:2px 6px;border-radius:2px;background:${bg};border:1px solid ${border};color:${color};cursor:help;">${icon} SOL ${pct}%</span>`;
+    }
+
     return `
       <div id="iv-kf-${i}" data-approved="true" onclick="ivToggleKeyframe(${i})"
         style="cursor:pointer;background:rgba(0,0,0,0.4);border:2px solid var(--gold);border-left:4px solid ${actColor};border-radius:3px;padding:8px;display:flex;gap:10px;align-items:flex-start;transition:border-color 0.15s;">
         ${imgUrl ? `<img src="${imgUrl}" style="width:80px;height:50px;object-fit:cover;border-radius:2px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);" />` : `<div style="width:80px;height:50px;background:rgba(255,255,255,0.05);border-radius:2px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:rgba(255,255,255,0.3);">No image</div>`}
         <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
             <span style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;">S${i+1}</span>
             <span class="iv-kf-check-${i}" style="font-size:11px;color:#4caf50;">✔ Selected</span>
+            ${solBadge}
           </div>
           <div style="font-size:11px;color:var(--text);line-height:1.4;">${raw.description || shot.shotDesc || ""}</div>
           ${raw.dialogue ? `<div style="font-size:10px;color:var(--gold);font-style:italic;margin-top:3px;">"${raw.dialogue}"</div>` : ""}
@@ -1017,7 +1032,7 @@ function ivShowKeyframeReview(shots, rawScenes) {
   if (animateBar) animateBar.style.display = "block";
   // Update animate button label with model
   const animBtn = document.getElementById("iv-animate-selected-btn");
-  const model   = window.ivGetModel?.() || "kling_26";
+  const model   = window.ivGetModel?.() || "ws_wan22";
   const minfo   = IV_MODEL_COSTS[model] || {};
   if (animBtn) animBtn.textContent = `🎬 Animate Selected with ${minfo.label || model}`;
 }
@@ -1051,7 +1066,7 @@ window.ivAnimateSelected = async function ivAnimateSelected() {
   const charSel  = document.getElementById("iv-dev-character");
   const charId   = charSel?.value || "";
   const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
-  const model    = window.ivGetModel?.() || "kling_26";
+  const model    = window.ivGetModel?.() || "ws_wan22";
   const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
 
   const approved = _ivKeyframeShots.filter((_, i) => {

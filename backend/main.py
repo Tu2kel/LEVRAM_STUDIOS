@@ -25,6 +25,7 @@ from backend.routes.projects import router as projects_router
 from backend.routes.orchestrate import router as orchestrate_router
 from backend.routes.rl_agent import router as rl_agent_router
 from backend.routes.locations import router as locations_router
+from backend.routes.validate import router as validate_router
 from dotenv import load_dotenv
 from pathlib import Path
 load_dotenv()
@@ -176,3 +177,4 @@ app.include_router(projects_router)
 app.include_router(orchestrate_router)
 app.include_router(rl_agent_router)
 app.include_router(locations_router)
+app.include_router(validate_router)

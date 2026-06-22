@@ -27,8 +27,8 @@ const IG_VIDEO_ENGINE_HINTS = {
   runway_gen4:   "Runway Gen-4.5 ✦ — fal.ai cloud. Paid per clip. T2V + I2V. Highest quality.",
 };
 
-// Default engine: Venice for RL mode, DALL-E 3 for main studio
-const _igDefaultEngine = () => (window.RL?.isActive?.()) ? "venice_flux" : "dalle3";
+// Default engine: Venice for RL mode, WaveSpeed FLUX for main studio
+const _igDefaultEngine = () => (window.RL?.isActive?.()) ? "venice_flux" : "ws_flux";
 const _IG_VALID_ENGINES = new Set([
   "full_lock",
   "dalle3","fal_flux","comfy","consistent_character",

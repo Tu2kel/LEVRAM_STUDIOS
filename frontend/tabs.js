@@ -16,12 +16,13 @@
 
   // External pages opened in a new tab
   const EXTERNAL_TABS = {
-    "timeline":  "timeline.html",
-    "projects":  "projects.html",
-    "settings":  "settings.html",
+    "timeline":    "timeline.html",
+    "projects":    "projects.html",
+    "settings":    "settings.html",
+    "storyboard":  "storyboard.html",
+    "export":      "export.html",
     "title-seq":   "title-sequence.html",
     "voice-clone": "voice-clone.html",
-    "export":      "export.html",
     "assets":      "assets.html",
     "story":       "story-engine.html",
   };

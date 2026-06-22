@@ -55,11 +55,19 @@ You help develop music videos, skits, short films, story arcs, character bios, s
 
 CRITICAL: Only do what is asked. Match your response exactly to the scope of the request.
 
+CREATIVE DIRECTION — ENFORCE THESE WITHOUT EXCEPTION:
+- Honor the user's ending. If they say the character is standing in blood, she is standing in blood. Do NOT redirect to hope, healing, or reclaimed power unless the user specifically asked for that.
+- Dark endings are valid endings. Tragedy, moral ambiguity, unresolved trauma, and villain-adjacent outcomes are legitimate story conclusions. Do not add redemption arcs the user did not write.
+- Traumatic bonding, Stockholm dynamics, fractured psychology, and emotional contradiction (e.g. killing someone you were attached to) are powerful storytelling tools. Develop them, don't sanitize them.
+- If the user's character becomes "slightly evil," more aggressive, hypervigilant, or emotionally unstable — write that character exactly as described. Do not soften it into a "journey to healing."
+- The user's tone is the correct tone. Match darkness with darkness, complexity with complexity. Do not impose a network-TV filter on noir, psychological thriller, or adult drama concepts.
+- Never add "renewed spirit," "newfound purpose," or "ready to continue her journey" endings unless the user wrote those words. Assume the ending is what the user told you it is.
+
 APP SECTIONS you can fill:
-IDEA VAULT — Title, Genre, Concept (the full idea/summary), Tags (keywords).
+IDEA VAULT — Title, Genre, Concept (the full idea/summary), Tags (keywords), Location (primary shooting location name if relevant).
 CHARACTER LAB — Name, Gender, Age, Appearance (physical detail), Wardrobe (style + outfit), Voice (tone/speech), Personality (attitude and energy), Notes (backstory, motivations).
 IMAGE GEN — one dense paragraph visual prompt, no labels, ready for an AI image generator.
-SHOT BUILDER — numbered shot list.
+SHOT BUILDER — numbered shot list with camera angle, subject, action, and mood for each shot.
 
 When asked to DEVELOP an idea across the full app, output EXACTLY this multi-section format:
 
@@ -68,6 +76,7 @@ TITLE: ...
 GENRE: ...
 CONCEPT: ...
 TAGS: ...
+LOCATION: [primary location name if relevant, or leave blank]
 
 === CHARACTER ===
 NAME: ...
@@ -81,6 +90,10 @@ NOTES: ...
 
 === IMAGE PROMPT ===
 [one dense paragraph — lighting, setting, composition, mood, style]
+
+When asked for a shot list, output EXACTLY this format:
+=== SHOT BUILDER ===
+[numbered shots]
 
 When asked for only ONE section, output only that section's format without === headers.`;
 
@@ -128,12 +141,12 @@ When asked for only ONE section, output only that section's format without === h
     const sel = document.getElementById("kele-model-sel");
     if (!sel) return;
     sel.innerHTML = `
-      <option value="llama-3.3-70b" selected>Llama 3.3 70B (Recommended)</option>
-      <option value="hermes-3-llama-3.1-405b">Hermes 3 405B (Uncensored)</option>
+      <option value="hermes-3-llama-3.1-405b" selected>Hermes 3 405B</option>
+      <option value="llama-3.3-70b">Llama 3.3 70B</option>
       <option value="deepseek-v3.2">DeepSeek V3.2</option>
       <option value="gemma-4-uncensored">Gemma 4 Uncensored</option>
     `;
-    currentModel = "llama-3.3-70b";
+    currentModel = "hermes-3-llama-3.1-405b";
     sel.onchange = () => { currentModel = sel.value; };
   }
 
@@ -179,15 +192,37 @@ When asked for only ONE section, output only that section's format without === h
   }
 
   function injectIdeaVault(text) {
-    const title   = parseField(text, "TITLE");
-    const genre   = parseField(text, "GENRE");
-    const concept = parseField(text, "CONCEPT");
-    const tags    = parseField(text, "TAGS");
+    const title    = parseField(text, "TITLE");
+    const genre    = parseField(text, "GENRE");
+    const concept  = parseField(text, "CONCEPT");
+    const tags     = parseField(text, "TAGS");
+    const location = parseField(text, "LOCATION");
     setField("iv-title", title || "KEL-E Idea");
     setField("iv-text",  concept || text);
     if (genre) setField("iv-genre", genre);
     if (tags)  setField("iv-tags",  tags);
+    if (location) {
+      const locSel = document.getElementById("iv-dev-location");
+      if (locSel) {
+        const loc = location.toLowerCase().trim();
+        const opt = [...locSel.options].find(o =>
+          o.value.toLowerCase() === loc || o.textContent.trim().toLowerCase() === loc
+        );
+        if (opt) locSel.value = opt.value;
+      }
+    }
     if (window.switchTab) window.switchTab("idea-vault");
+  }
+
+  function injectShotBuilder(text) {
+    const shotEl = document.getElementById("ai-shot-idea");
+    if (shotEl) {
+      shotEl.value = text;
+      shotEl.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    if (window.switchTab) window.switchTab("shot-builder");
+    const sbTab = document.querySelector(".nav-btn[data-tab='shot-builder']");
+    if (sbTab) sbTab.click();
   }
 
   function injectImageGen(text) {
@@ -250,20 +285,32 @@ When asked for only ONE section, output only that section's format without === h
     const bar = document.createElement("div");
     bar.className = "kele-inject-bar";
 
+    const hasShotBuilder  = /===\s*SHOT BUILDER\s*===/i.test(text);
     const hasMultiSection = /===\s*(IDEA VAULT|CHARACTER|IMAGE PROMPT)\s*===/i.test(text);
 
-    const actions = hasMultiSection
-      ? [
-          { label: "→ Fill App",      fn: () => injectAll(text), primary: true },
-          { label: "→ Idea Vault",    fn: () => injectIdeaVault(parseSectionBlock(text, "IDEA VAULT") || text) },
-          { label: "→ Image Prompt",  fn: () => injectImageGen(parseSectionBlock(text, "IMAGE PROMPT") || text) },
-          { label: "→ Character Lab", fn: () => injectCharLab(parseSectionBlock(text, "CHARACTER") || text) },
-        ]
-      : [
-          { label: "→ Idea Vault",    fn: () => injectIdeaVault(text) },
-          { label: "→ Image Prompt",  fn: () => injectImageGen(text)  },
-          { label: "→ Character Lab", fn: () => injectCharLab(text)   },
-        ];
+    let actions;
+    if (hasShotBuilder && !hasMultiSection) {
+      const shotBlock = parseSectionBlock(text, "SHOT BUILDER") || text;
+      actions = [
+        { label: "→ Shot Builder", fn: () => injectShotBuilder(shotBlock), primary: true },
+      ];
+    } else if (hasMultiSection) {
+      actions = [
+        { label: "→ Fill App",      fn: () => injectAll(text), primary: true },
+        { label: "→ Idea Vault",    fn: () => injectIdeaVault(parseSectionBlock(text, "IDEA VAULT") || text) },
+        { label: "→ Image Prompt",  fn: () => injectImageGen(parseSectionBlock(text, "IMAGE PROMPT") || text) },
+        { label: "→ Character Lab", fn: () => injectCharLab(parseSectionBlock(text, "CHARACTER") || text) },
+      ];
+      if (hasShotBuilder) {
+        actions.push({ label: "→ Shot Builder", fn: () => injectShotBuilder(parseSectionBlock(text, "SHOT BUILDER") || text) });
+      }
+    } else {
+      actions = [
+        { label: "→ Idea Vault",    fn: () => injectIdeaVault(text) },
+        { label: "→ Image Prompt",  fn: () => injectImageGen(text)  },
+        { label: "→ Character Lab", fn: () => injectCharLab(text)   },
+      ];
+    }
 
     actions.forEach(({ label, fn, primary }) => {
       const btn = document.createElement("button");
@@ -396,9 +443,12 @@ When asked for only ONE section, output only that section's format without === h
         if (action.develop) {
           const inp = document.getElementById("kele-input");
           const raw = (inp?.value || "").trim();
-          const prompt = raw
-            ? `Develop this idea across all sections of LEVRAM Studios — clean it up and output the full structured format:\n\n${raw}`
-            : "I have a rough idea. What would you like to create?";
+          if (!raw) {
+            const msgEl = addMessage("assistant", "Type your idea in the input field below, then click Develop Idea. Give me the concept — genre, characters, vibe, anything — and I'll build it out across all sections.");
+            attachInjectButtons(msgEl, "");
+            return;
+          }
+          const prompt = `Develop this idea across all sections of LEVRAM Studios — clean it up and output the full structured format:\n\n${raw}`;
           if (inp) inp.value = "";
           send(prompt);
         } else {

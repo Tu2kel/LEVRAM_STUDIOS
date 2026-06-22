@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LEVRAM Storyboard</title>
+  <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="storyboard.css" />
+  <script src="config.js"></script>
+  <script src="themes.js"></script>
+</head>
+<body>
+
+  <header class="sb-header">
+    <button class="sb-back" onclick="window.location.href='index.html'">← LEVRAM</button>
+    <span class="sb-title">Storyboard Director</span>
+    <select id="sb-project-sel" class="sb-project-sel">
+      <option value="">All Projects</option>
+    </select>
+    <button class="sb-refresh-btn" onclick="sbLoad()">↻ Refresh</button>
+  </header>
+
+  <div class="sb-stats-bar">
+    <div class="sb-stat">Shots: <strong id="sb-stat-total">—</strong></div>
+    <div class="sb-stat s-pass">Pass: <strong id="sb-stat-pass">—</strong></div>
+    <div class="sb-stat s-fail">Fail: <strong id="sb-stat-fail">—</strong></div>
+    <div class="sb-stat">No Data: <strong id="sb-stat-nd">—</strong></div>
+    <div class="sb-filters">
+      <button class="sb-filter-btn active" data-filter="all">All</button>
+      <button class="sb-filter-btn" data-filter="pass">✔ Pass</button>
+      <button class="sb-filter-btn" data-filter="fail">✗ Fail</button>
+      <button class="sb-filter-btn" data-filter="nodata">⏳ No Data</button>
+    </div>
+  </div>
+
+  <div id="sb-grid" class="sb-grid">
+    <div class="sb-empty">Loading shots…</div>
+  </div>
+
+  <!-- Lightbox -->
+  <div id="sb-lightbox" class="sb-lightbox" onclick="if(event.target===this)sbCloseLightbox()">
+    <div class="sb-lightbox-inner">
+      <button class="sb-lightbox-close" onclick="sbCloseLightbox()">✕</button>
+      <img id="sb-lightbox-img" class="sb-lightbox-img" />
+      <div id="sb-lightbox-meta" class="sb-lightbox-meta"></div>
+    </div>
+  </div>
+
+  <script src="storyboard.js"></script>
+  <script src="kel-e.js"></script>
+</body>
+</html>

@@ -107,12 +107,9 @@ document.getElementById("tab-image-gen").innerHTML = `
         <div class="field-group">
           <div class="field-label">Video Engine</div>
           <div class="cl-voice-toggle" id="ig-video-engine-toggle" style="flex-wrap:wrap;gap:4px;">
-            <button class="cl-vtoggle-btn active" data-vengine="wan21">Wan 2.1 — Fast</button>
-            <button class="cl-vtoggle-btn" data-vengine="wan21_14b">Wan 2.2 14B — Best Free</button>
-            <button class="cl-vtoggle-btn" data-vengine="runway_gen4" title="Paid per clip via fal.ai credits">Runway Gen-4.5 &#10022;</button>
-            <button class="cl-vtoggle-btn" data-vengine="wan" title="Requires local ComfyUI running">Local (ComfyUI)</button>
+            <button class="cl-vtoggle-btn active" data-vengine="wan" title="Requires local ComfyUI running">Local (ComfyUI)</button>
           </div>
-          <div id="ig-video-engine-hint" class="field-hint" style="margin-top:4px;">WaveSpeed &#9889; models active — cheapest rates. fal.ai on standby.</div>
+          <div id="ig-video-engine-hint" class="field-hint" style="margin-top:4px;">T2V requires local ComfyUI. For cloud video, use I2V &#8594; Animate on a keyframe.</div>
         </div>
         <div id="ig-wan-local-controls" style="display:none;">
           <div class="field-group">
@@ -273,10 +270,6 @@ document.getElementById("tab-image-gen").innerHTML = `
               <option value="ws_wan22_spicy" class="rl-only" style="display:none;color:#ff6680;">&#128308; Wan 2.2 Spicy &#9889; — NSFW I2V (WaveSpeed)</option>
               <option value="ws_wan22" selected>Wan 2.2 &#9889; — $0.05/clip (WaveSpeed)</option>
               <option value="ws_wan27">Wan 2.7 &#9889; — latest (WaveSpeed)</option>
-              <option value="kling_26">Kling 2.6 Pro — production</option>
-              <option value="kling_o1">Kling O1 — Dual Keyframe (start &#8594; end)</option>
-              <option value="runway_turbo">Runway Gen-4 Turbo &#10022;</option>
-              <option value="runway_gen4_i2v">Runway Gen-4.5 &#10022; — best Runway</option>
             </select>
             <!-- End frame slot — Kling O1 only -->
             <div id="ig-i2v-endframe" style="display:none;margin-top:6px;padding:8px;background:rgba(0,0,0,0.3);border:1px dashed rgba(201,168,76,0.4);border-radius:3px;">

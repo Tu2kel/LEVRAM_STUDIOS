@@ -6,7 +6,7 @@ import json
 import uuid
 from typing import Optional
 
-from backend.db import scenes_col
+from backend.db import scenes_col, ideas_col
 
 router = APIRouter()
 
@@ -136,6 +136,69 @@ def _timeline_upsert(scene_id: str, updated: dict):
     TIMELINE_FILE.write_text(json.dumps({"shots": shots}, indent=2))
 
 
+IDEAS_FILE = Path("data/ideas.json")
+
+
+def _story_scenes_to_shots(idea: dict) -> list[dict]:
+    """Convert an idea's story.scenes list into storyboard-compatible shot dicts."""
+    story   = idea.get("story") or {}
+    raw     = story.get("scenes") or []
+    project = idea.get("project") or idea.get("title") or ""
+    char1   = idea.get("character_name") or ""
+    char2   = idea.get("character_name_2") or ""
+    shots   = []
+    for i, sc in enumerate(raw):
+        shot_id = f"{idea.get('id','idea')}_{i:03d}"
+        shots.append({
+            "id":           shot_id,
+            "shot_number":  f"SC-{i+1:03d}",
+            "project":      project,
+            "shotDesc":     sc.get("description") or sc.get("shot_description") or "",
+            "shot_description": sc.get("description") or sc.get("shot_description") or "",
+            "shot_prompt":  sc.get("image_prompt") or "",
+            "dialogue":     sc.get("dialogue") or "",
+            "motion_prompt": sc.get("motion") or sc.get("motion_prompt") or "",
+            "character":    sc.get("character") or char1,
+            "character2":   sc.get("character2") or char2,
+            "location":     sc.get("location") or "",
+            "act":          sc.get("act") or "",
+            "emotion":      sc.get("emotion") or "",
+            "_from_idea":   True,   # flag: not yet in scenes collection
+        })
+    return shots
+
+
+async def _idea_story_fallback(project: str) -> list[dict]:
+    """Pull story scenes from the ideas collection when scenes collection is empty."""
+    all_shots: list[dict] = []
+
+    if ideas_col is not None:
+        query = {"story.scenes": {"$exists": True, "$ne": []}}
+        if project:
+            query["$or"] = [{"project": project}, {"title": project}]
+        async for idea in ideas_col.find(query):
+            shots = _story_scenes_to_shots(idea)
+            if project:
+                shots = [s for s in shots if s.get("project") == project]
+            all_shots.extend(shots)
+    else:
+        if IDEAS_FILE.exists():
+            try:
+                raw = json.loads(IDEAS_FILE.read_text())
+                ideas = raw if isinstance(raw, list) else raw.get("ideas", [])
+                for idea in ideas:
+                    if not (idea.get("story") or {}).get("scenes"):
+                        continue
+                    shots = _story_scenes_to_shots(idea)
+                    if project:
+                        shots = [s for s in shots if s.get("project") == project]
+                    all_shots.extend(shots)
+            except Exception:
+                pass
+
+    return all_shots
+
+
 # ─── Routes ───────────────────────────────────────────────────
 
 
@@ -159,11 +222,18 @@ async def list_scenes(project: str = ""):
     if scenes_col is not None:
         query = {"project": project} if project else {}
         docs = await scenes_col.find(query).sort("shot_number", 1).to_list(None)
-        return {"success": True, "count": len(docs), "scenes": [_strip(d) for d in docs]}
+        scenes = [_strip(d) for d in docs]
+        # If no generated scenes yet, pull from idea story drafts
+        if not scenes:
+            scenes = await _idea_story_fallback(project)
+        return {"success": True, "count": len(scenes), "scenes": scenes}
 
     all_scenes = _json_load_all()
     if project:
         all_scenes = [s for s in all_scenes if s.get("project", "") == project]
+    # If still empty, pull from idea story drafts
+    if not all_scenes:
+        all_scenes = await _idea_story_fallback(project)
     return {"success": True, "count": len(all_scenes), "scenes": all_scenes}
 
 
@@ -208,10 +278,11 @@ async def patch_scene(scene_id: str, payload: dict):
 
     if scenes_col is not None:
         result = await scenes_col.find_one_and_update(
-            {"id": scene_id}, {"$set": payload}, return_document=True
+            {"id": scene_id}, {"$set": payload}, upsert=True, return_document=True
         )
         if not result:
-            raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")
+            # upsert created it — fetch it back
+            result = await scenes_col.find_one({"id": scene_id}) or {}
         return {"success": True, "scene": _strip(result)}
 
     existing, path = _json_find(scene_id)

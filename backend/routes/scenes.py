@@ -837,9 +837,34 @@ async def import_script(payload: dict):
                 existing = json.loads(TIMELINE_FILE.read_text())
             except Exception:
                 pass
-        # Remove shots for this project, keep others
         kept = [sh for sh in existing.get("shots", []) if sh.get("project") != project]
         TIMELINE_FILE.write_text(json.dumps({"shots": kept + clean_shots}, indent=2))
+
+    # Sync imported shots back to idea.story.scenes so the idea vault
+    # reflects the imported script and the fallback always matches what's live.
+    if ideas_col is not None and clean_shots:
+        try:
+            idea_doc = await ideas_col.find_one({"title": project})
+            if idea_doc:
+                synced_scenes = []
+                for s in clean_shots:
+                    synced_scenes.append({
+                        "description":   s.get("shotDesc") or s.get("shot_description") or "",
+                        "image_prompt":  s.get("shot_prompt") or s.get("shotDesc") or "",
+                        "dialogue":      s.get("dialogue") or "",
+                        "motion_prompt": s.get("motion_prompt") or "",
+                        "character":     s.get("character") or "",
+                        "character2":    s.get("character2") or "",
+                        "location":      s.get("location") or "",
+                        "emotion":       s.get("emotion") or "",
+                        "duration_seconds": s.get("duration_seconds") or 5,
+                    })
+                await ideas_col.update_one(
+                    {"_id": idea_doc["_id"]},
+                    {"$set": {"story.scenes": synced_scenes, "status": "developed"}}
+                )
+        except Exception as _sync_err:
+            print(f"[import-script] idea sync failed (non-fatal): {_sync_err}")
 
     return {"success": True, "shots": [_strip(s) for s in clean_shots]}
 

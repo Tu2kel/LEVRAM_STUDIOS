@@ -145,6 +145,31 @@ async def clear_all_scenes():
     return {"success": True, "deleted": deleted}
 
 
+@router.patch("/scene/{scene_id}")
+async def patch_scene(scene_id: str, payload: dict):
+    """Partial update — merges only the supplied fields, preserves everything else."""
+    if not payload:
+        raise HTTPException(status_code=400, detail="No fields provided")
+    payload.pop("_id", None)
+    payload["updated_at"] = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+    if scenes_col is not None:
+        result = await scenes_col.find_one_and_update(
+            {"id": scene_id}, {"$set": payload}, return_document=True
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")
+        return {"success": True, "scene": _strip(result)}
+
+    existing, path = _json_find(scene_id)
+    if path is None:
+        raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")
+    existing.update(payload)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(existing, f, indent=2)
+    return {"success": True, "scene": existing}
+
+
 @router.put("/scene/{scene_id}")
 async def update_scene(scene_id: str, scene: ScenePayload):
     now = datetime.utcnow().strftime("%Y%m%d_%H%M%S")

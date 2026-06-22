@@ -13,14 +13,27 @@
 
   <header class="sb-header">
     <button class="sb-back" onclick="window.location.href='index.html'">← LEVRAM</button>
-    <span class="sb-title">Storyboard Director</span>
+    <span class="sb-title" id="sb-title-text">Storyboard Director</span>
     <select id="sb-project-sel" class="sb-project-sel">
       <option value="">All Projects</option>
     </select>
+    <div class="sb-view-toggle">
+      <button class="sb-view-btn active" id="sb-view-script" onclick="sbSetView('script')">✍ Script</button>
+      <button class="sb-view-btn" id="sb-view-director" onclick="sbSetView('director')">◈ Director</button>
+    </div>
     <button class="sb-refresh-btn" onclick="sbLoad()">↻ Refresh</button>
   </header>
 
-  <div class="sb-stats-bar">
+  <!-- Script view toolbar -->
+  <div id="sb-script-bar" class="sb-script-bar">
+    <div class="sb-stat">Shots: <strong id="sb-stat-total2">—</strong></div>
+    <div class="sb-stat" id="sb-keyed-stat">Keyed: <strong id="sb-stat-keyed">—</strong></div>
+    <button class="sb-gen-missing-btn" id="sb-gen-missing" onclick="sbGenMissing()">⚡ Generate Missing Keyframes</button>
+    <span id="sb-gen-status" class="sb-gen-status"></span>
+  </div>
+
+  <!-- Director view stats/filters -->
+  <div id="sb-director-bar" class="sb-stats-bar" style="display:none;">
     <div class="sb-stat">Shots: <strong id="sb-stat-total">—</strong></div>
     <div class="sb-stat s-pass">Pass: <strong id="sb-stat-pass">—</strong></div>
     <div class="sb-stat s-fail">Fail: <strong id="sb-stat-fail">—</strong></div>
@@ -33,7 +46,13 @@
     </div>
   </div>
 
-  <div id="sb-grid" class="sb-grid">
+  <!-- Script view -->
+  <div id="sb-script" class="sb-script-list">
+    <div class="sb-empty">Loading script…</div>
+  </div>
+
+  <!-- Director view -->
+  <div id="sb-grid" class="sb-grid" style="display:none;">
     <div class="sb-empty">Loading shots…</div>
   </div>
 

@@ -307,6 +307,188 @@ body {
   line-height: 2;
 }
 
+/* ── View toggle ──────────────────────────────────── */
+.sb-view-toggle {
+  display: flex;
+  gap: 2px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--gold-dim);
+  border-radius: 3px;
+  padding: 2px;
+}
+.sb-view-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: Rajdhani, sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.sb-view-btn.active {
+  background: rgba(201,168,76,0.18);
+  color: var(--gold);
+}
+.sb-view-btn:hover:not(.active) { color: var(--text); }
+
+/* ── Script view toolbar ──────────────────────────── */
+.sb-script-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px;
+  background: rgba(0,0,0,0.35);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.sb-gen-missing-btn {
+  background: rgba(201,168,76,0.10);
+  border: 1px solid rgba(201,168,76,0.45);
+  color: var(--gold);
+  font-family: Rajdhani, sans-serif;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-left: auto;
+}
+.sb-gen-missing-btn:hover { background: rgba(201,168,76,0.22); }
+.sb-gen-missing-btn:disabled { opacity: 0.4; cursor: default; }
+.sb-gen-status {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  min-width: 160px;
+}
+
+/* ── Script list ──────────────────────────────────── */
+.sb-script-list {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sb-shot-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.sb-shot-card:focus-within { border-color: rgba(201,168,76,0.35); }
+.sb-shot-card.has-key { border-left: 3px solid rgba(46,204,113,0.50); }
+.sb-shot-card.no-key  { border-left: 3px solid rgba(201,168,76,0.20); }
+
+.sb-shot-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border);
+}
+.sb-shot-num {
+  font-family: Orbitron, sans-serif;
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 2px;
+  min-width: 64px;
+}
+.sb-shot-chars {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.sb-shot-char-tag {
+  background: rgba(201,168,76,0.10);
+  border: 1px solid rgba(201,168,76,0.25);
+  color: rgba(201,168,76,0.80);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+.sb-shot-key-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sb-shot-key-dot.has { background: var(--pass); box-shadow: 0 0 6px rgba(46,204,113,0.5); }
+.sb-shot-key-dot.none { background: rgba(255,255,255,0.15); }
+
+.sb-shot-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sb-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sb-field-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.sb-field-input {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: var(--text);
+  font-family: Rajdhani, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 6px 10px;
+  resize: none;
+  width: 100%;
+  transition: border-color 0.15s;
+  min-height: 40px;
+}
+.sb-field-input:focus {
+  outline: none;
+  border-color: rgba(201,168,76,0.30);
+  background: rgba(0,0,0,0.5);
+}
+.sb-field-input.dialogue {
+  font-style: italic;
+  color: rgba(221,217,207,0.75);
+  min-height: 34px;
+}
+.sb-field-row-inline {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.sb-save-indicator {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: transparent;
+  text-align: right;
+  padding-right: 2px;
+  transition: color 0.3s;
+  text-transform: uppercase;
+  height: 14px;
+}
+.sb-save-indicator.saved { color: var(--pass); }
+.sb-save-indicator.saving { color: var(--gold); }
+.sb-save-indicator.err { color: var(--fail); }
+
 /* ── Lightbox ─────────────────────────────────────── */
 .sb-lightbox {
   position: fixed;

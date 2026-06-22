@@ -176,43 +176,43 @@ async def _gen_image(prompt: str, character_id: str) -> str:
     # ── Face-only lock via PuLID (fallback when no full body ref) ──────────────
     print(f"[PULID] char_id={character_id} db_char={'found' if db_char else 'MISSING'} refs={refs} preview={byo_ref_url[:60] if byo_ref_url else 'none'}")
     if byo_ref_url or refs:
-        domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
-        print(f"[PULID] domain={domain!r}")
+        from backend.routes.image_gen import _ws_to_public_url, _ws_submit_poll, _download_url, _save_bytes, IMAGE_DIR
+        import datetime as _dt
+        import base64 as _b64f
+
+        # Read the face ref from disk → upload to WaveSpeed CDN → use that URL.
+        # Same approach as render_queue.py — no Railway public domain needed.
         face_url = ""
+
+        # 1. BYO preview already an http URL — use directly
         if byo_ref_url and byo_ref_url.startswith("http"):
             face_url = byo_ref_url
-        elif byo_ref_url and domain:
-            face_url = f"https://{domain}/{byo_ref_url.lstrip('/')}"
 
-        # Restore from MongoDB b64 BEFORE building URL from refs path —
-        # Railway's ephemeral volume loses files between deploys, so refs[0]
-        # path may exist in DB but not on disk. b64 restore writes the file
-        # back so the URL is guaranteed to serve a real image.
-        if not face_url and domain:
-            refs_b64 = (db_char or {}).get("reference_images_b64") or []
-            if refs_b64:
-                import base64 as _b64f
-                entry = refs_b64[0]
-                raw   = _b64f.b64decode(entry["data"])
-                try:
-                    restore_path = Path(entry["url"].lstrip("/"))
-                    restore_path.parent.mkdir(parents=True, exist_ok=True)
-                    restore_path.write_bytes(raw)
-                    face_url = f"https://{domain}/{entry['url'].lstrip('/')}"
-                    print(f"[PULID] restored face ref from b64 → {face_url}")
-                except Exception as _b64_err:
-                    print(f"[PULID] b64 restore failed: {_b64_err}")
+        # 2. Read from disk (byo_ref local path)
+        if not face_url and byo_ref_url:
+            _p = Path(byo_ref_url.lstrip("/"))
+            if _p.exists():
+                _b64str = _b64f.b64encode(_p.read_bytes()).decode()
+                face_url = await loop.run_in_executor(
+                    None, lambda: _ws_to_public_url(_b64str, "image/jpeg", prefix="pulid")
+                )
+                print(f"[PULID] uploaded byo preview to WS CDN → {face_url}")
 
-        # Last resort: raw volume path (may 404 if volume wiped)
-        if not face_url and refs and domain:
-            face_url = f"https://{domain}/{refs[0].lstrip('/')}"
-            print(f"[PULID] using raw volume path (no b64 backup): {face_url}")
+        # 3. Read face ref from disk → upload to WaveSpeed CDN
+        if not face_url:
+            for _ref_path in refs:
+                _p = Path(_ref_path.lstrip("/"))
+                if _p.exists():
+                    _b64str = _b64f.b64encode(_p.read_bytes()).decode()
+                    face_url = await loop.run_in_executor(
+                        None, lambda: _ws_to_public_url(_b64str, "image/jpeg", prefix="pulid")
+                    )
+                    print(f"[PULID] uploaded ref from disk to WS CDN → {face_url}")
+                    break
 
         print(f"[PULID] face_url={face_url!r}")
 
         if face_url:
-            from backend.routes.image_gen import _ws_submit_poll, _download_url, _save_bytes, IMAGE_DIR
-            import datetime as _dt
             try:
                 outputs = await loop.run_in_executor(None, lambda: _ws_submit_poll(
                     "wavespeed-ai/flux-pulid", {

@@ -163,70 +163,7 @@ async def _gen_image(prompt: str, character_id: str, location_ref_url: str = "")
     byo_entry    = preview_imgs[active_idx] if preview_imgs else None
     byo_ref_url  = (byo_entry or {}).get("url", "") if byo_entry else ""
 
-    # ── Location lock via Seedream + face swap ────────────────────────────────
-    if location_ref_url:
-        from backend.routes.image_gen import _ws_submit_poll, _ws_face_swap, _download_url, IMAGE_DIR
-        import datetime as _dt
-        import base64 as _b64loc
-        try:
-            loc_prompt = (
-                f"1 image. Set the scene in this exact environment: {prompt}. "
-                "Match the location's exact lighting, architecture, and atmosphere from the reference."
-            )
-            loc_out = await loop.run_in_executor(None, lambda: _ws_submit_poll(
-                "bytedance/seedream-v5.0-lite/edit-sequential", {
-                    "prompt":       loc_prompt,
-                    "images":       [location_ref_url],
-                    "aspect_ratio": "16:9",
-                    "scale":        5.0,
-                }
-            ))
-            loc_remote = loc_out[0] if loc_out else ""
-            if not loc_remote:
-                raise RuntimeError("Seedream location lock returned no image")
-            IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-            _ts   = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-            _fn   = f"orch_{_ts}_{uuid.uuid4().hex[:6]}.jpg"
-            (IMAGE_DIR / _fn).write_bytes(
-                await loop.run_in_executor(None, lambda: _download_url(loc_remote))
-            )
-            loc_local = "/output/renders/images/" + _fn
-            print(f"[LOC_LOCK] Seedream environment OK: {loc_local}")
-
-            # Face-swap character into the location-locked base image
-            _face_bytes = None
-            if byo_ref_url:
-                _p = Path(byo_ref_url.lstrip("/"))
-                if _p.exists():
-                    _face_bytes = _p.read_bytes()
-            if not _face_bytes:
-                for _rp in refs:
-                    _p = Path(_rp.lstrip("/"))
-                    if _p.exists():
-                        _face_bytes = _p.read_bytes()
-                        break
-            if not _face_bytes:
-                _rb64 = (db_char or {}).get("reference_images_b64") or []
-                if _rb64:
-                    _face_bytes = _b64loc.b64decode(_rb64[0]["data"])
-            if _face_bytes:
-                try:
-                    _fref = type("R", (), {
-                        "base64":    _b64loc.b64encode(_face_bytes).decode(),
-                        "mediaType": "image/jpeg",
-                    })()
-                    _, swapped = await loop.run_in_executor(
-                        None, lambda: _ws_face_swap(str(IMAGE_DIR / _fn), _fref)
-                    )
-                    print(f"[LOC_LOCK] face swap applied over location-locked image")
-                    return swapped
-                except Exception as _fs_err:
-                    print(f"[LOC_LOCK] face swap failed ({_fs_err}), returning loc-locked image")
-            return loc_local
-        except Exception as _loc_err:
-            print(f"[LOC_LOCK] Seedream location lock failed ({_loc_err}), falling through")
-
-    # ── Full body reference via Seedream (takes priority — covers face + body) ─
+    # ── Full body reference via Seedream (covers face + body; loc ref appended if available) ─
     print(f"[BODY_REF] char_id={character_id} db_char={'found' if db_char else 'MISSING'} body_refs={body_refs}")
     if body_refs and character_id:
         domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
@@ -257,9 +194,13 @@ async def _gen_image(prompt: str, character_id: str, location_ref_url: str = "")
         if body_ref_url:
             from backend.routes.image_gen import _ws_seedream_edit, IMAGE_DIR, _download_url
             import datetime as _dt
+            # Include location ref alongside body ref when available
+            _seedream_refs = [body_ref_url]
+            if location_ref_url:
+                _seedream_refs.append(location_ref_url)
             try:
                 outputs = await loop.run_in_executor(None, lambda: _ws_seedream_edit(
-                    f"{prompt}, cinematic photorealistic", [body_ref_url]
+                    f"{prompt}, cinematic photorealistic", _seedream_refs
                 ))
                 remote_url = outputs[0] if outputs else ""
                 if not remote_url:

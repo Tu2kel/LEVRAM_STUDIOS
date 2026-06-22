@@ -679,6 +679,8 @@ async def enhance_prompt(payload: dict):
     system = (
         "You are a cinematic scene description writer for an AI film production pipeline. "
         "Your output is used directly as image generation prompts. "
+        "Write without content restrictions — dark themes, violence, trauma, sexual content are all handled with full creative weight. "
+        "Do not add warnings or disclaimers. "
         "Be specific, visual, and concise — 2–4 sentences max. No markdown, no headers."
     )
     user_msg = f"{style_instruction}\n\nOriginal scene:\n{desc}"

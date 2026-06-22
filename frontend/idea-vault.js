@@ -371,11 +371,14 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
     let data;
     try { data = JSON.parse(text); } catch (_) { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`); }
     if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Develop failed");
-    ivRenderStory(data.story);
+    const story = data.story;
+    const sceneCount = (story.scenes || []).length;
+    if (!sceneCount) throw new Error("Develop returned 0 scenes — check backend logs for the specific act that failed");
+    ivRenderStory(story);
     await ivLoadIdeas();
 
-    // Autonomous — immediately kick off keyframe generation, no button press needed
-    if (metaEl) metaEl.innerHTML = `<span style="color:var(--gold);letter-spacing:1px;">Story ready — generating keyframes…</span>`;
+    // Show scene count clearly before auto-generating keyframes
+    if (metaEl) metaEl.innerHTML += `<br/><span style="color:#4caf50;font-weight:700;">✓ ${sceneCount} scenes built — generating keyframes…</span>`;
     await ivGenerateKeyframes();
 
   } catch (err) {

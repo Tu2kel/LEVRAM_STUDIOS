@@ -834,7 +834,18 @@ async def _gpt_develop(
             try:
                 scenes = _call_act(act_num, count, idx, desc, act_lyrics=act_lyr)
                 if not isinstance(scenes, list):
-                    scenes = scenes.get("scenes", [])
+                    # Hermes wrapped the array — try common keys before giving up
+                    for _key in ("scenes", "results", "story", "data", "shots"):
+                        if isinstance(scenes.get(_key), list):
+                            scenes = scenes[_key]
+                            break
+                    else:
+                        raise ValueError(
+                            f"Act {act_num}: Hermes returned a dict with no recognizable array key. "
+                            f"Keys: {list(scenes.keys()) if isinstance(scenes, dict) else type(scenes)}"
+                        )
+                if not scenes:
+                    raise ValueError(f"Act {act_num}: Hermes returned 0 scenes — likely a JSON parse failure or empty response")
                 all_scenes.extend(scenes)
                 idx += len(scenes)
             except Exception as e:

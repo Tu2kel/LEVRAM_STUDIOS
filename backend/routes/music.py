@@ -131,45 +131,97 @@ class GenerateMusicPayload(BaseModel):
 
 @router.post("/music/generate")
 async def generate_music(payload: GenerateMusicPayload):
-    """Generate AI music from a text prompt via fal.ai stable-audio."""
+    """Generate AI music — WaveSpeed primary, fal.ai stable-audio fallback."""
     import asyncio
     import urllib.request as ur
 
-    api_key = os.getenv("FAL_KEY")
-    if not api_key:
-        raise HTTPException(status_code=400, detail="FAL_KEY not set — AI music generation unavailable.")
-
     duration = max(8, min(90, payload.duration))
 
-    def _run():
+    # ── WaveSpeed music (active when WS_MUSIC_MODEL env var is set) ──────────
+    ws_model   = os.getenv("WS_MUSIC_MODEL", "")   # e.g. "wavespeed-ai/stable-audio"
+    ws_api_key = os.getenv("WAVESPEED_API_KEY", "")
+
+    def _run_wavespeed() -> tuple[str, str]:
+        import time, requests as _req
+        headers = {
+            "Authorization": f"Bearer {ws_api_key}",
+            "Content-Type":  "application/json",
+        }
+        r = _req.post(
+            f"https://api.wavespeed.ai/api/v2/{ws_model}",
+            headers=headers,
+            json={"prompt": payload.prompt, "duration": duration},
+            timeout=60,
+        )
+        r.raise_for_status()
+        request_id = r.json().get("data", {}).get("id") or r.json().get("id", "")
+        if not request_id:
+            raise RuntimeError(f"WaveSpeed: no request_id in response: {r.text[:200]}")
+
+        for _ in range(90):
+            time.sleep(3)
+            pr = _req.get(
+                f"https://api.wavespeed.ai/api/v2/predictions/{request_id}",
+                headers=headers, timeout=30,
+            )
+            pr.raise_for_status()
+            result = pr.json().get("data", pr.json())
+            status = result.get("status", "")
+            if status == "completed":
+                outputs = result.get("outputs") or []
+                audio_url = outputs[0] if outputs else ""
+                if not audio_url:
+                    raise RuntimeError("WaveSpeed: completed but no output URL")
+                track_id = uuid.uuid4().hex[:10]
+                filename = f"ai_{track_id}.wav"
+                ur.urlretrieve(audio_url, MUSIC_DIR / filename)
+                return f"/output/music/{filename}", filename
+            if status in ("failed", "error"):
+                raise RuntimeError(f"WaveSpeed job failed: {result.get('error', 'unknown')}")
+        raise RuntimeError("WaveSpeed music timed out after 4.5 min")
+
+    # ── fal.ai fallback ────────────────────────────────────────────────────────
+    def _run_fal() -> tuple[str, str]:
+        fal_key = os.getenv("FAL_KEY", "")
+        if not fal_key:
+            raise RuntimeError("FAL_KEY not set")
         try:
             import fal_client
         except ImportError:
             raise RuntimeError("fal-client not installed")
-        os.environ["FAL_KEY"] = api_key
+        os.environ["FAL_KEY"] = fal_key
         result = fal_client.run(
             "fal-ai/stable-audio",
-            arguments={
-                "prompt": payload.prompt,
-                "seconds_total": duration,
-                "steps": 100,
-            },
+            arguments={"prompt": payload.prompt, "seconds_total": duration, "steps": 100},
         )
         audio_url = (result.get("audio_file") or {}).get("url") or result.get("audio", {}).get("url") or ""
         if not audio_url:
             raise RuntimeError("fal.ai returned no audio URL")
-
         track_id = uuid.uuid4().hex[:10]
         filename = f"ai_{track_id}.wav"
-        local_path = MUSIC_DIR / filename
-        ur.urlretrieve(audio_url, local_path)
+        ur.urlretrieve(audio_url, MUSIC_DIR / filename)
         return f"/output/music/{filename}", filename
 
     loop = asyncio.get_event_loop()
-    try:
-        local_url, filename = await loop.run_in_executor(None, _run)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    source = "wavespeed"
+    local_url = filename = ""
+
+    if ws_model and ws_api_key:
+        try:
+            local_url, filename = await loop.run_in_executor(None, _run_wavespeed)
+        except Exception as _ws_err:
+            print(f"[MUSIC] WaveSpeed failed ({_ws_err}), falling back to fal.ai")
+            source = "fal-stable-audio"
+            try:
+                local_url, filename = await loop.run_in_executor(None, _run_fal)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+    else:
+        source = "fal-stable-audio"
+        try:
+            local_url, filename = await loop.run_in_executor(None, _run_fal)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     track_name = payload.name or f"AI Score — {payload.prompt[:40]}"
@@ -182,7 +234,7 @@ async def generate_music(payload: GenerateMusicPayload):
         "project":   payload.project,
         "prompt":    payload.prompt,
         "duration":  duration,
-        "source":    "fal-stable-audio",
+        "source":    source,
         "createdAt": now,
     }
     if music_col is not None:

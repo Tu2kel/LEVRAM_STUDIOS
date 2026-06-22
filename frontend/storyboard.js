@@ -210,6 +210,11 @@ function sbCardHTML(shot) {
           </span>
         </div>
       </div>
+      <!-- Hover footer: Add After + Delete -->
+      <div class="sb-card-footer">
+        <button class="sb-footer-add" onclick="sbAddShot('${id}')">+ Add After</button>
+        <button class="sb-footer-del" onclick="sbDeleteShot('${id}')">✕ Delete</button>
+      </div>
       <!-- Regen edit panel (hidden until ↻ Regen is clicked) -->
       <div class="sb-regen-panel" id="sb-rp-${id}" style="display:none;">
         <div class="sb-rp-label">Scene Description</div>
@@ -525,6 +530,11 @@ function sbScriptCardHTML(shot) {
     </div>
     <div class="sb-save-indicator" id="si-${id}"></div>
   </div>
+  <!-- Hover footer: Add After + Delete -->
+  <div class="ssc-card-footer">
+    <button class="sb-footer-add" onclick="sbAddShot('${id}')">+ Add After</button>
+    <button class="sb-footer-del" onclick="sbDeleteShot('${id}')">✕ Delete</button>
+  </div>
 </div>`;
 }
 
@@ -697,60 +707,80 @@ window.sbToggleRegenPanel  = sbToggleRegenPanel;
 window.sbSetStyle          = sbSetStyle;
 window.sbEnhanceDesc       = sbEnhanceDesc;
 
-// ── Add Shot ───────────────────────────────────────────────────
+// ── Add Shot (after a specific card, or at end) ───────────────
 
-async function sbAddShot() {
-  const btn = document.getElementById("sb-add-shot");
-  if (btn) { btn.disabled = true; btn.textContent = "Adding…"; }
-
+async function sbAddShot(afterId = null) {
   try {
     const res = await levFetch(`${SB_BASE}/save-scene`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        project:          _sbProject || "",
-        shot_description: "",
-        scene_number:     "",
-      }),
+      body: JSON.stringify({ project: _sbProject || "", shot_description: "", scene_number: "" }),
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.detail || "Failed to create shot");
 
-    const projShots = sbGetProjectShots();
-    const shotNum   = `SC-${String(projShots.length + 1).padStart(3, "0")}`;
-    const newShot   = {
-      ...data.scene,
-      shotDesc:     data.scene.shot_description || "",
-      shot_number:  shotNum,
-      project:      _sbProject || data.scene.project || "",
-    };
-    _sbAllShots.push(newShot);
+    // Find insertion index in the global array
+    let globalIdx = _sbAllShots.length;
+    if (afterId) {
+      const i = _sbAllShots.findIndex(s => s.id === afterId);
+      if (i >= 0) globalIdx = i + 1;
+    }
 
-    // Persist shot_number and project to DB
-    await levFetch(`${SB_BASE}/scene/${newShot.id}`, {
+    // Shot number = position after afterId within project shots
+    const projShots = sbGetProjectShots();
+    let projPos = projShots.length + 1;
+    if (afterId) {
+      const pi = projShots.findIndex(s => s.id === afterId);
+      if (pi >= 0) projPos = pi + 2;
+    }
+    const shotNum = `SC-${String(projPos).padStart(3, "0")}`;
+
+    const newShot = {
+      ...data.scene,
+      shotDesc:    data.scene.shot_description || "",
+      shot_number: shotNum,
+      project:     _sbProject || data.scene.project || "",
+    };
+    _sbAllShots.splice(globalIdx, 0, newShot);
+
+    // Persist shot_number to DB
+    levFetch(`${SB_BASE}/scene/${newShot.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ shot_number: shotNum, project: newShot.project }),
     });
 
-    sbRenderScript();
+    if (_sbView === "script") sbRenderScript(); else sbRenderFiltered();
 
-    // Scroll new shot into view
-    const list = document.getElementById("sb-script");
-    if (list) {
-      const last = list.lastElementChild;
-      if (last) last.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    // Scroll new card into view
+    setTimeout(() => {
+      const el = document.getElementById(`ssc-${newShot.id}`) || document.getElementById(`sb-card-${newShot.id}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
   } catch (err) {
     console.error("[SB] add shot failed:", err);
     const st = document.getElementById("sb-gen-status");
-    if (st) { st.textContent = "Add shot failed: " + err.message.slice(0, 60); }
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "+ Add Shot"; }
+    if (st) st.textContent = "Add shot failed: " + err.message.slice(0, 60);
   }
 }
 
-window.sbAddShot = sbAddShot;
+// ── Delete Shot ────────────────────────────────────────────────
+
+async function sbDeleteShot(id) {
+  if (!confirm("Delete this shot? This cannot be undone.")) return;
+  try {
+    const res = await levFetch(`${SB_BASE}/scene/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Server returned " + res.status);
+    _sbAllShots = _sbAllShots.filter(s => s.id !== id);
+    if (_sbView === "script") sbRenderScript(); else sbRenderFiltered();
+  } catch (err) {
+    console.error("[SB] delete failed:", err);
+    alert("Delete failed: " + err.message);
+  }
+}
+
+window.sbAddShot    = sbAddShot;
+window.sbDeleteShot = sbDeleteShot;
 
 // ── Import Script ──────────────────────────────────────────────
 

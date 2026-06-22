@@ -231,13 +231,13 @@ async def _gen_image(prompt: str, character_id: str) -> str:
             except Exception as _pulid_err:
                 print(f"[PULID] WaveSpeed failed ({_pulid_err}), falling to plain gen")
 
-    # ── Plain generation — cascade Venice → Novita → WaveSpeed ──────────────────
+    # ── Plain generation — cascade WaveSpeed → Novita → Venice ──────────────────
     from backend.routes.image_gen import _venice_generate_image, _novita_generate_image
     _plain_prompt = prompt
     _plain_providers = [
-        ("Venice",     lambda: _venice_generate_image(_plain_prompt, "cinematic", "cinematic photorealistic")),
-        ("Novita",     lambda: _novita_generate_image(_plain_prompt, "cinematic", "cinematic photorealistic", "novita_photo")),
         ("WaveSpeed",  lambda: _ws_generate_image(_plain_prompt, "widescreen", "cinematic photorealistic")),
+        ("Novita",     lambda: _novita_generate_image(_plain_prompt, "cinematic", "cinematic photorealistic", "novita_photo")),
+        ("Venice",     lambda: _venice_generate_image(_plain_prompt, "cinematic", "cinematic photorealistic")),
     ]
     for _pname, _pfn in _plain_providers:
         try:

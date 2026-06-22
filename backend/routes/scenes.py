@@ -574,6 +574,88 @@ async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
     return {"success": True, "imageUrl": image_url, "new_prompt": new_prompt, "scene_id": scene_id}
 
 
+_ENHANCE_STYLES = {
+    "cinematic": (
+        "Rewrite this as a cinematic film-still description for AI image generation. "
+        "Detailed visual composition, lighting quality, color grade, camera angle, atmosphere. "
+        "No dialogue. Pure visual language."
+    ),
+    "action": (
+        "Rewrite as a high-energy action beat: dynamic pose, motion blur suggestion, impact, "
+        "environment chaos, tension. Optimized for AI image generation."
+    ),
+    "dramatic": (
+        "Rewrite as an intense dramatic moment: emotional weight on the face, body language, "
+        "environmental atmosphere reinforcing the emotion. Cinematic framing."
+    ),
+    "noir": (
+        "Rewrite in neo-noir style: deep shadow, high contrast, rain or smoke, moral ambiguity "
+        "in the composition, moody color palette of blacks and cold blues or amber."
+    ),
+    "horror": (
+        "Rewrite as a horror scene: visceral dread, practical fear, shadow and silhouette, "
+        "unsettling detail in the environment, suffocating atmosphere."
+    ),
+    "intimate": (
+        "Rewrite as a close, intimate moment: tight framing, shallow depth of field, "
+        "micro-expressions, soft or harsh lighting depending on the emotional beat."
+    ),
+    "epic": (
+        "Rewrite as an epic wide establishing shot: scale, grandeur, environmental storytelling, "
+        "the character small against something vast."
+    ),
+}
+
+
+@router.post("/scene/enhance-prompt")
+async def enhance_prompt(payload: dict):
+    """Rewrite a scene description in a given cinematic style using Venice AI."""
+    import os
+    from openai import OpenAI
+
+    desc  = (payload.get("description") or "").strip()
+    style = (payload.get("style") or "cinematic").lower()
+    if not desc:
+        raise HTTPException(status_code=400, detail="description required")
+
+    style_instruction = _ENHANCE_STYLES.get(style, _ENHANCE_STYLES["cinematic"])
+    system = (
+        "You are a cinematic scene description writer for an AI film production pipeline. "
+        "Your output is used directly as image generation prompts. "
+        "Be specific, visual, and concise — 2–4 sentences max. No markdown, no headers."
+    )
+    user_msg = f"{style_instruction}\n\nOriginal scene:\n{desc}"
+
+    venice_key = os.getenv("VENICE_API_KEY", "")
+    oai_key    = os.getenv("OPENAI_API_KEY", "")
+
+    try:
+        if venice_key:
+            client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+            model  = "hermes-3-llama-3.1-405b"
+        elif oai_key:
+            client = OpenAI(api_key=oai_key)
+            model  = "gpt-4o-mini"
+        else:
+            raise HTTPException(status_code=503, detail="No AI key configured")
+
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user",   "content": user_msg},
+            ],
+            max_tokens=220,
+            temperature=0.75,
+        )
+        enhanced = resp.choices[0].message.content.strip()
+        return {"success": True, "enhanced": enhanced, "style": style}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.delete("/scene/{scene_id}")
 async def delete_scene(scene_id: str):
     if scenes_col is not None:

@@ -128,6 +128,7 @@ function sbCardHTML(shot) {
   const solText  = sbSolText(sol);
   const cardEdge = solClass === "pass" ? "sol-pass" : solClass === "fail" ? "sol-fail" : "";
   const id       = shot.id;
+  const safeDesc = desc.replace(/`/g, "\\`").replace(/\$/g, "\\$");
 
   // SOL detail row
   let solDetail = "";
@@ -167,10 +168,84 @@ function sbCardHTML(shot) {
         ${solDetail}
         <div class="sb-card-actions">
           ${imgSrc ? `<button class="sb-btn view-btn" onclick="sbOpenLightbox('${imgSrc}','${shotNum}','${desc.replace(/'/g,"\\'")}')">↗ View</button>` : ""}
-          <button class="sb-btn ${regenBtnClass}" id="sb-regen-btn-${id}" onclick="sbRegenShot('${id}')">↻ Regen</button>
+          <button class="sb-btn ${regenBtnClass}" id="sb-regen-btn-${id}" onclick="sbToggleRegenPanel('${id}')">↻ Regen</button>
+        </div>
+      </div>
+      <!-- Regen edit panel (hidden until ↻ Regen is clicked) -->
+      <div class="sb-regen-panel" id="sb-rp-${id}" style="display:none;">
+        <div class="sb-rp-label">Scene Description</div>
+        <textarea class="sb-rp-textarea" id="sb-rp-ta-${id}" rows="4">${desc}</textarea>
+        <div class="sb-rp-styles">
+          <button class="sb-rp-style active" data-style="cinematic" onclick="sbSetStyle('${id}',this)">Cinematic</button>
+          <button class="sb-rp-style" data-style="action"    onclick="sbSetStyle('${id}',this)">Action</button>
+          <button class="sb-rp-style" data-style="dramatic"  onclick="sbSetStyle('${id}',this)">Dramatic</button>
+          <button class="sb-rp-style" data-style="noir"      onclick="sbSetStyle('${id}',this)">Noir</button>
+          <button class="sb-rp-style" data-style="horror"    onclick="sbSetStyle('${id}',this)">Horror</button>
+          <button class="sb-rp-style" data-style="intimate"  onclick="sbSetStyle('${id}',this)">Intimate</button>
+          <button class="sb-rp-style" data-style="epic"      onclick="sbSetStyle('${id}',this)">Epic</button>
+        </div>
+        <div class="sb-rp-actions">
+          <button class="sb-rp-enhance" id="sb-rp-enh-${id}" onclick="sbEnhanceDesc('${id}')">✨ Enhance</button>
+          <div style="flex:1"></div>
+          <button class="sb-rp-cancel"  onclick="sbToggleRegenPanel('${id}')">Cancel</button>
+          <button class="sb-rp-confirm" id="sb-rp-go-${id}"  onclick="sbRegenShot('${id}')">↻ Generate</button>
         </div>
       </div>
     </div>`;
+}
+
+// ── Regen Panel ────────────────────────────────────────────────
+
+function sbToggleRegenPanel(shotId) {
+  const panel = document.getElementById(`sb-rp-${shotId}`);
+  if (!panel) return;
+  const isOpen = panel.style.display !== "none";
+  panel.style.display = isOpen ? "none" : "block";
+  if (!isOpen) {
+    // Auto-resize textarea on open
+    const ta = document.getElementById(`sb-rp-ta-${shotId}`);
+    if (ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
+  }
+}
+
+function sbSetStyle(shotId, btn) {
+  const panel = document.getElementById(`sb-rp-${shotId}`);
+  if (!panel) return;
+  panel.querySelectorAll(".sb-rp-style").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+async function sbEnhanceDesc(shotId) {
+  const ta  = document.getElementById(`sb-rp-ta-${shotId}`);
+  const btn = document.getElementById(`sb-rp-enh-${shotId}`);
+  const panel = document.getElementById(`sb-rp-${shotId}`);
+  if (!ta || !btn) return;
+
+  const style = panel?.querySelector(".sb-rp-style.active")?.dataset?.style || "cinematic";
+  const desc  = ta.value.trim();
+  if (!desc) return;
+
+  btn.textContent = "Enhancing…";
+  btn.disabled = true;
+
+  try {
+    const res  = await levFetch(`${SB_BASE}/scene/enhance-prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description: desc, style }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "Enhance failed");
+    ta.value = data.enhanced;
+    ta.style.height = "auto";
+    ta.style.height = ta.scrollHeight + "px";
+    btn.textContent = "✨ Enhanced";
+    setTimeout(() => { btn.textContent = "✨ Enhance"; btn.disabled = false; }, 1800);
+  } catch (err) {
+    btn.textContent = "✨ Enhance";
+    btn.disabled = false;
+    console.error("[SB] enhance failed:", err);
+  }
 }
 
 // ── Regen ──────────────────────────────────────────────────────
@@ -179,8 +254,16 @@ async function sbRegenShot(shotId) {
   const shot = _sbAllShots.find(s => s.id === shotId);
   if (!shot) return;
 
-  const overlay = document.getElementById(`sb-ov-${shotId}`);
-  const stepEl  = document.getElementById(`sb-step-${shotId}`);
+  // Read description from panel textarea if open, else use stored desc
+  const ta        = document.getElementById(`sb-rp-ta-${shotId}`);
+  const newDesc   = ta ? ta.value.trim() : "";
+  const finalDesc = newDesc || shot.shotDesc || shot.shot_description || "";
+
+  // Close panel and show overlay
+  const panel    = document.getElementById(`sb-rp-${shotId}`);
+  if (panel) panel.style.display = "none";
+  const overlay  = document.getElementById(`sb-ov-${shotId}`);
+  const stepEl   = document.getElementById(`sb-step-${shotId}`);
   const regenBtn = document.getElementById(`sb-regen-btn-${shotId}`);
   if (overlay)  overlay.classList.add("active");
   if (stepEl)   stepEl.textContent = "Starting…";
@@ -193,11 +276,10 @@ async function sbRegenShot(shotId) {
       body: JSON.stringify({
         scenes: [{
           shot_id:        shot.id,
-          description:    shot.shotDesc || shot.shot_description || "",
-          image_prompt:   shot.shotPrompt || shot.shot_prompt || shot.shotDesc || "",
+          description:    finalDesc,
+          image_prompt:   finalDesc,
           motion_prompt:  shot.motion_prompt || "cinematic motion, smooth camera",
           dialogue:       shot.dialogue || "",
-          required_action:  shot.obedience_score?.notes ? "" : "",
           scene_contract: shot.scene_contract || null,
         }],
         character_name:  shot.character || "",
@@ -545,9 +627,12 @@ window.addEventListener("DOMContentLoaded", () => {
   sbLoad();
 });
 
-window.sbOpenLightbox  = sbOpenLightbox;
-window.sbCloseLightbox = sbCloseLightbox;
-window.sbRegenShot     = sbRegenShot;
-window.sbSetView       = sbSetView;
-window.sbSaveField     = sbSaveField;
-window.sbGenMissing    = sbGenMissing;
+window.sbOpenLightbox      = sbOpenLightbox;
+window.sbCloseLightbox     = sbCloseLightbox;
+window.sbRegenShot         = sbRegenShot;
+window.sbSetView           = sbSetView;
+window.sbSaveField         = sbSaveField;
+window.sbGenMissing        = sbGenMissing;
+window.sbToggleRegenPanel  = sbToggleRegenPanel;
+window.sbSetStyle          = sbSetStyle;
+window.sbEnhanceDesc       = sbEnhanceDesc;

@@ -92,11 +92,11 @@ async def _generate_keyframe_ws(item: dict) -> dict:
     char_id     = item.get("character_id") or shot.get("character_id") or ""
     render_style = item.get("renderStyle") or shot.get("renderStyle") or "cinematic photorealistic"
 
-    prompt_parts = [
-        shot.get("shotDesc") or shot.get("description") or "",
-        shot.get("shotPrompt") or shot.get("prompt") or "",
-        render_style,
-    ]
+    # Use shotPrompt (image-ready) if set and different from shotDesc; otherwise just shotDesc
+    _desc   = shot.get("shotDesc") or shot.get("description") or ""
+    _imgpmt = shot.get("shotPrompt") or shot.get("prompt") or ""
+    _base   = _imgpmt if (_imgpmt and _imgpmt != _desc) else _desc
+    prompt_parts = [_base, render_style]
     if item.get("dialogue"):
         prompt_parts.append(f'dialogue context: "{item["dialogue"]}"')
     prompt = ", ".join(p.strip() for p in prompt_parts if p and p.strip())

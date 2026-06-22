@@ -544,9 +544,27 @@ async def _gpt_develop(
     arc_text       = _extract_escalation_arc(concept)
     user_structure = _extract_user_structure(concept)
 
+    # Detect if the concept is a screenplay excerpt (has sluglines / dialogue formatting)
+    _concept_upper = concept.upper()
+    _is_screenplay = (
+        any(marker in _concept_upper for marker in ["INT.", "EXT.", "INT/EXT", "I/E."])
+        or _concept_upper.count("\n\n") > 4
+    )
+
     # Universal director rule — injected into every system prompt
     _director_rule = ""
-    if user_structure or arc_text or lyric_lines:
+    if _is_screenplay and not lyric_lines:
+        _director_rule = (
+            "\n\nDIRECTOR'S INSTRUCTIONS — MANDATORY:\n"
+            "The concept is a SCREENPLAY EXCERPT — this is the INCITING INCIDENT only, not the complete story.\n"
+            "SCENE 1 must adapt this exact excerpt faithfully (same location, same action beats).\n"
+            "Acts 2 and 3 explore what happens AFTER this scene: immediate psychological aftermath, "
+            "trauma response, personality shift, B-roll memory fragments, escalating consequences.\n"
+            "DO NOT resolve the story with a villain death or hero victory — this is Act 1 of a longer arc.\n"
+            "DO NOT compress the excerpt into 1 scene — adapt its beats across 3-6 scenes for Act 1.\n"
+            "Keep the villain alive and in control at the end of this film."
+        )
+    elif user_structure or arc_text or lyric_lines:
         _director_rule = (
             "\n\nDIRECTOR'S INSTRUCTIONS — MANDATORY:\n"
             "The concept below contains explicit structural instructions from the director. "

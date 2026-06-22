@@ -139,16 +139,17 @@ async function ivLoadIdeas() {
                   style="flex:1;display:inline-block;text-align:center;background:rgba(33,150,243,0.12);border:1px solid rgba(33,150,243,0.4);color:#90caf9;font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;text-decoration:none;">
                   → Storyboard
                 </a>
-                <button onclick="ivDevelopIdea('${idea.id}')" title="Re-develop story"
+                <button id="iv-dev-btn-${idea.id}" onclick="ivDevelopIdea('${idea.id}')" title="Re-develop story"
                   style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
                   ↺
                 </button>`
-              : `<button onclick="ivDevelopIdea('${idea.id}')"
+              : `<button id="iv-dev-btn-${idea.id}" onclick="ivDevelopIdea('${idea.id}')"
                   style="flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
                   ⚡ Develop Story
                 </button>`
             }
           </div>
+          <div id="iv-card-status-${idea.id}" style="font-size:10px;color:rgba(255,255,255,0.4);min-height:0;padding-top:0;"></div>
         </div>`;
     }).join("");
   } catch (err) {
@@ -283,8 +284,21 @@ async function ivDeleteIdea(id) {
 // ── Develop ────────────────────────────────────────────────────
 window.ivDevelopIdea = async function ivDevelopIdea(id) {
   _ivSetCurrentId(id);
-  const statusEl = document.getElementById("iv-status");
-  if (statusEl) statusEl.textContent = "Developing story…";
+
+  const btn      = document.getElementById(`iv-dev-btn-${id}`);
+  const cardStat = document.getElementById(`iv-card-status-${id}`);
+  const formStat = document.getElementById("iv-status");
+
+  const _setBtnState = (label, color) => {
+    if (btn) { btn.textContent = label; btn.disabled = true; btn.style.opacity = "0.6"; }
+    if (cardStat) { cardStat.style.color = color; cardStat.textContent = label; cardStat.style.paddingTop = "4px"; }
+    if (formStat) formStat.textContent = label;
+  };
+  const _clearBtn = () => {
+    if (btn) { btn.disabled = false; btn.style.opacity = ""; }
+  };
+
+  _setBtnState("Developing…", "rgba(201,168,76,0.7)");
 
   const charSel   = document.getElementById("iv-dev-character");
   const charSel2  = document.getElementById("iv-dev-character2");
@@ -317,12 +331,15 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
     const sceneCount = (data.story?.scenes || []).length;
     if (!sceneCount) throw new Error("Develop returned 0 scenes — check backend logs");
 
-    if (statusEl) statusEl.innerHTML = `<span style="color:#4caf50;">✓ ${sceneCount} scenes built — open in Storyboard to edit &amp; generate</span>`;
+    if (cardStat) { cardStat.style.color = "#4caf50"; cardStat.textContent = `✓ ${sceneCount} scenes — open in Storyboard`; }
+    if (formStat) formStat.innerHTML = `<span style="color:#4caf50;">✓ ${sceneCount} scenes built</span>`;
     if (data.story?.title) localStorage.setItem("levram_active_project", data.story.title);
     window.refreshBattery?.();
     await ivLoadIdeas();
   } catch (err) {
-    if (statusEl) statusEl.textContent = "Error: " + err.message;
+    if (cardStat) { cardStat.style.color = "var(--imperial-red)"; cardStat.textContent = "Error: " + err.message; }
+    if (formStat) formStat.textContent = "Error: " + err.message;
+    _clearBtn();
   }
 };
 

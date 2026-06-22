@@ -2,8 +2,8 @@
 const IV_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 let ivCurrentIdeaId  = sessionStorage.getItem("ivCurrentIdeaId") || null;
-let ivEditingIdeaId  = null;   // non-null when the capture form is in edit mode
-let _ivIdeasCache    = [];     // latest loaded ideas list
+let ivEditingIdeaId  = null;
+let _ivIdeasCache    = [];
 
 function _ivSetCurrentId(id) {
   ivCurrentIdeaId = id;
@@ -18,7 +18,6 @@ window.LEVRAM_CHAR = {
   set:     (id, name) => {
     if (id) { localStorage.setItem("levram_active_char_id", id); localStorage.setItem("levram_active_char_name", name || ""); }
     else     { localStorage.removeItem("levram_active_char_id"); localStorage.removeItem("levram_active_char_name"); }
-    // Sync all character dropdowns on the page
     document.querySelectorAll("select[data-char-sync]").forEach(s => { if (s.value !== id) s.value = id; });
   },
 };
@@ -34,7 +33,6 @@ function _ivApplyGenreDefaults(genre) {
   if (secSel && !secSel.dataset.userSet) secSel.value = isAdult ? "8" : "5";
 }
 
-// Mark as user-set when manually changed so auto-defaults stop overriding
 document.addEventListener("DOMContentLoaded", () => {
   ["iv-minutes", "iv-scene-sec"].forEach(id => {
     document.getElementById(id)?.addEventListener("change", e => {
@@ -69,7 +67,6 @@ async function ivLoadCharacters() {
         sel2.appendChild(o2);
       }
     });
-    // Restore last-used character
     const saved = LEVRAM_CHAR.getId();
     if (saved && [...sel.options].some(o => o.value === saved)) sel.value = saved;
   } catch (err) {
@@ -98,7 +95,7 @@ async function ivLoadLocations() {
   }
 }
 
-// ── List ───────────────────────────────────────────────────────
+// ── Idea list ──────────────────────────────────────────────────
 async function ivLoadIdeas() {
   const list = document.getElementById("iv-list");
   if (!list) return;
@@ -119,6 +116,7 @@ async function ivLoadIdeas() {
       const mins    = idea.target_minutes || 8;
       const secPer  = idea.scene_seconds  || 5;
       const scenes  = Math.ceil((mins * 60 / secPer) * 1.1);
+      const sbLink  = `storyboard.html?project=${encodeURIComponent(idea.title || "")}`;
       return `
         <div class="iv-card" style="cursor:default;">
           <div class="iv-card-top">
@@ -137,11 +135,11 @@ async function ivLoadIdeas() {
               ✎ Edit
             </button>
             ${idea.story
-              ? `<button onclick="ivViewStory('${idea.id}')"
-                  style="flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.4);color:var(--gold);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
-                  📋 View Story
-                </button>
-                <button onclick="ivDevelopIdea('${idea.id}')" title="Re-run GPT to regenerate story"
+              ? `<a href="${sbLink}"
+                  style="flex:1;display:inline-block;text-align:center;background:rgba(33,150,243,0.12);border:1px solid rgba(33,150,243,0.4);color:#90caf9;font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border-radius:2px;text-decoration:none;">
+                  → Storyboard
+                </a>
+                <button onclick="ivDevelopIdea('${idea.id}')" title="Re-develop story"
                   style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);font-family:Rajdhani,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border-radius:2px;cursor:pointer;">
                   ↺
                 </button>`
@@ -181,14 +179,12 @@ async function ivSaveIdea() {
   try {
     let res;
     if (ivEditingIdeaId) {
-      // Update existing idea
       res = await levFetch(`${IV_BASE}/ideas/${ivEditingIdeaId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
     } else {
-      // Create new idea
       res = await levFetch(`${IV_BASE}/ideas`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -210,7 +206,6 @@ async function ivSaveIdea() {
 
 // ── Edit ───────────────────────────────────────────────────────
 window.ivEditIdea = async function ivEditIdea(id) {
-  // Fetch fresh idea data
   let idea = null;
   try {
     const res  = await levFetch(`${IV_BASE}/ideas`);
@@ -219,18 +214,15 @@ window.ivEditIdea = async function ivEditIdea(id) {
   } catch (_) {}
   if (!idea) return;
 
-  // Load into capture form
   const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ""; };
-  set("iv-title",      idea.title     || "");
-  set("iv-text",       idea.rawIdea   || "");
-  set("iv-genre",      idea.genre     || "sci-fi action");
-  set("iv-tags",       (idea.tags || []).join(", "));
-  // Apply genre-smart defaults first, then override with saved values if present
+  set("iv-title",  idea.title     || "");
+  set("iv-text",   idea.rawIdea   || "");
+  set("iv-genre",  idea.genre     || "sci-fi action");
+  set("iv-tags",   (idea.tags || []).join(", "));
   _ivApplyGenreDefaults(idea.genre || "");
   if (idea.target_minutes) set("iv-minutes",   idea.target_minutes);
   if (idea.scene_seconds)  set("iv-scene-sec", idea.scene_seconds);
 
-  // Track active project for battery and cross-tab awareness
   if (idea.title) {
     localStorage.setItem("levram_active_project", idea.title);
     window.refreshBattery?.();
@@ -238,7 +230,6 @@ window.ivEditIdea = async function ivEditIdea(id) {
 
   ivEditingIdeaId = id;
 
-  // Flip save button label and add cancel
   const saveBtn = document.getElementById("iv-save-btn");
   if (saveBtn) {
     saveBtn.textContent = "✔ Update Idea";
@@ -247,7 +238,6 @@ window.ivEditIdea = async function ivEditIdea(id) {
     saveBtn.style.color = "#90caf9";
   }
 
-  // Insert cancel button if not already there
   if (!document.getElementById("iv-cancel-edit-btn")) {
     const cancel = document.createElement("button");
     cancel.id = "iv-cancel-edit-btn";
@@ -257,7 +247,6 @@ window.ivEditIdea = async function ivEditIdea(id) {
     saveBtn?.parentNode?.insertBefore(cancel, saveBtn.nextSibling);
   }
 
-  // Scroll capture form into view
   document.getElementById("iv-title")?.scrollIntoView({ behavior: "smooth", block: "center" });
   document.getElementById("iv-title")?.focus();
 };
@@ -284,66 +273,18 @@ async function ivDeleteIdea(id) {
   try {
     const res = await levFetch(`${IV_BASE}/ideas/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Delete failed");
-    if (ivCurrentIdeaId === id) {
-      const panel = document.getElementById("iv-story-panel");
-      if (panel) panel.style.display = "none";
-      _ivSetCurrentId(null);
-    }
+    if (ivCurrentIdeaId === id) _ivSetCurrentId(null);
     await ivLoadIdeas();
   } catch (err) {
     console.error("IV DELETE ERROR:", err);
   }
 }
 
-// ── View existing story (no API call) ─────────────────────────
-window.ivViewStory = function ivViewStory(id) {
-  _ivSetCurrentId(id);
-  const idea = _ivIdeasCache.find(i => i.id === id);
-  if (!idea?.story) { ivDevelopIdea(id); return; }
-  const panel = document.getElementById("iv-story-panel");
-  if (panel) panel.style.display = "block";
-  const approveEl = document.getElementById("iv-approve-status");
-  if (approveEl) approveEl.textContent = "";
-  panel?.scrollIntoView({ behavior: "smooth", block: "start" });
-  ivRenderStory(idea.story);
-
-  // Auto-select characters from idea's saved character IDs, then localStorage fallback
-  const charSel  = document.getElementById("iv-dev-character");
-  const charSel2 = document.getElementById("iv-dev-character2");
-  if (charSel) {
-    const targetId = idea.character_id || LEVRAM_CHAR.getId();
-    if (targetId && [...charSel.options].some(o => o.value === targetId)) {
-      charSel.value = targetId;
-    }
-  }
-  if (charSel2 && idea.character2_id) {
-    if ([...charSel2.options].some(o => o.value === idea.character2_id)) {
-      charSel2.value = idea.character2_id;
-    }
-  }
-};
-
 // ── Develop ────────────────────────────────────────────────────
 window.ivDevelopIdea = async function ivDevelopIdea(id) {
   _ivSetCurrentId(id);
-  const panel    = document.getElementById("iv-story-panel");
-  const titleEl  = document.getElementById("iv-story-title");
-  const durEl    = document.getElementById("iv-story-duration");
-  const metaEl   = document.getElementById("iv-story-meta");
-  const sceneEl  = document.getElementById("iv-scene-list");
-  const reelEl   = document.getElementById("iv-reel-row");
-  const approveEl = document.getElementById("iv-approve-status");
-  const approveBtn = document.getElementById("iv-approve-btn");
-
-  if (panel) panel.style.display = "block";
-  if (titleEl) titleEl.textContent = "Developing…";
-  if (durEl)   durEl.textContent   = "…";
-  if (metaEl)  metaEl.textContent  = "GPT is building your story breakdown…";
-  if (sceneEl) sceneEl.innerHTML   = "";
-  if (reelEl)  reelEl.innerHTML    = "";
-  if (approveEl) approveEl.textContent = "";
-  if (approveBtn) { approveBtn.disabled = true; approveBtn.classList.add("lora-scanning"); }
-  panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const statusEl = document.getElementById("iv-status");
+  if (statusEl) statusEl.textContent = "Developing story…";
 
   const charSel   = document.getElementById("iv-dev-character");
   const charSel2  = document.getElementById("iv-dev-character2");
@@ -353,12 +294,9 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
   const char2Id   = charSel2?.value || "";
   const locName   = document.getElementById("iv-dev-location")?.value || "";
 
-  // Use the idea's saved target_minutes if available — don't rely on form which may show wrong default
   const cachedIdea = (_ivIdeasCache || []).find(i => i.id === id);
-  const savedMinutes = cachedIdea?.target_minutes;
-  const formMinutes  = parseFloat(document.getElementById("iv-minutes")?.value || "10");
-  const minutes  = savedMinutes || formMinutes;
-  const sceneSec = parseInt(cachedIdea?.scene_seconds || document.getElementById("iv-scene-sec")?.value || "5");
+  const minutes    = cachedIdea?.target_minutes || parseFloat(document.getElementById("iv-minutes")?.value || "8");
+  const sceneSec   = parseInt(cachedIdea?.scene_seconds || document.getElementById("iv-scene-sec")?.value || "5");
 
   try {
     const res  = await levFetch(`${IV_BASE}/ideas/${id}/develop`, {
@@ -375,739 +313,16 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
     let data;
     try { data = JSON.parse(text); } catch (_) { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`); }
     if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Develop failed");
-    const story = data.story;
-    const sceneCount = (story.scenes || []).length;
-    if (!sceneCount) throw new Error("Develop returned 0 scenes — check backend logs for the specific act that failed");
-    ivRenderStory(story);
+
+    const sceneCount = (data.story?.scenes || []).length;
+    if (!sceneCount) throw new Error("Develop returned 0 scenes — check backend logs");
+
+    if (statusEl) statusEl.innerHTML = `<span style="color:#4caf50;">✓ ${sceneCount} scenes built — open in Storyboard to edit &amp; generate</span>`;
+    if (data.story?.title) localStorage.setItem("levram_active_project", data.story.title);
+    window.refreshBattery?.();
     await ivLoadIdeas();
-
-    // Show scene count clearly before auto-generating keyframes
-    if (metaEl) metaEl.innerHTML += `<br/><span style="color:#4caf50;font-weight:700;">✓ ${sceneCount} scenes built — generating keyframes…</span>`;
-    await ivGenerateKeyframes();
-
-  } catch (err) {
-    if (metaEl) metaEl.textContent = "Error: " + err.message;
-    if (approveBtn) { approveBtn.disabled = false; approveBtn.classList.remove("lora-scanning"); }
-  }
-};
-
-// ── One Shot: develop → approve → generate (no stops) ─────────
-window.ivOneShotRun = async function ivOneShotRun(id) {
-  _ivSetCurrentId(id);
-  const panel     = document.getElementById("iv-story-panel");
-  const titleEl   = document.getElementById("iv-story-title");
-  const metaEl    = document.getElementById("iv-story-meta");
-  const sceneEl   = document.getElementById("iv-scene-list");
-  const reelEl    = document.getElementById("iv-reel-row");
-  const statusEl  = document.getElementById("iv-approve-status");
-  const approveBtn = document.getElementById("iv-approve-btn");
-
-  if (panel) panel.style.display = "block";
-  if (titleEl) titleEl.textContent = "One Shot — Writing Story…";
-  if (metaEl) metaEl.textContent = "GPT building story breakdown…";
-  if (sceneEl) sceneEl.innerHTML = "";
-  if (reelEl) reelEl.innerHTML = "";
-  if (statusEl) statusEl.textContent = "";
-  if (approveBtn) { approveBtn.disabled = true; approveBtn.classList.add("lora-scanning"); }
-  panel?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  const charSel  = document.getElementById("iv-dev-character");
-  const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
-  const minutes  = parseFloat(document.getElementById("iv-minutes")?.value || "2");
-  const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "8");
-
-  try {
-    const res  = await levFetch(`${IV_BASE}/ideas/${id}/develop`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ character_name: charName, target_minutes: minutes, scene_seconds: sceneSec }),
-    });
-    const text = await res.text();
-    let data;
-    try { data = JSON.parse(text); } catch (_) { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`); }
-    if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Develop failed");
-
-    ivRenderStory(data.story);
-    await ivLoadIdeas();
-
-    if (statusEl) statusEl.innerHTML = `<span style="color:var(--gold);letter-spacing:1px;">Story ready — launching pipeline…</span>`;
-    await ivApproveAndGenerate();
-
-  } catch (err) {
-    if (metaEl) metaEl.textContent = "Error: " + err.message;
-    if (approveBtn) { approveBtn.disabled = false; approveBtn.classList.remove("lora-scanning"); }
-  }
-};
-
-// ── Render story ───────────────────────────────────────────────
-function ivRenderStory(story) {
-  _ivCurrentStory = story;
-  const titleEl   = document.getElementById("iv-story-title");
-  const durEl     = document.getElementById("iv-story-duration");
-  const metaEl    = document.getElementById("iv-story-meta");
-  const sceneEl   = document.getElementById("iv-scene-list");
-  const reelEl    = document.getElementById("iv-reel-row");
-  const approveBtn = document.getElementById("iv-approve-btn");
-
-  if (titleEl) titleEl.textContent = story.title || "Story Breakdown";
-
-  // Runtime from actual per-scene durations (est_seconds = sum of duration_seconds)
-  const totalSec = Math.max(0, story.est_seconds || (story.num_scenes || 0) * 7);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  const targetMin = story.target_minutes || "?";
-  if (durEl) durEl.textContent = `~${m}m${s > 0 ? ` ${s}s` : ""}`;
-
-  if (metaEl) metaEl.innerHTML = `
-    <strong style="color:var(--gold);">${story.title || ""}</strong><br/>
-    ${story.logline || ""}<br/><br/>
-    <em style="color:rgba(255,255,255,0.5);">${story.act_structure || ""}</em><br/><br/>
-    <span style="color:var(--gold);">${story.num_scenes} scenes</span>
-    = <span style="color:var(--gold);">~${m} min${s > 0 ? ` ${s}s` : ""}</span>
-    &nbsp;(target: ${targetMin} min)
-  `;
-
-  // Reel cuts
-  if (reelEl) {
-    reelEl.style.display = "flex";
-    const reels = [
-      { label: "60s Reel", key: "reel_60s", color: "#c9a84c" },
-      { label: "30s Reel", key: "reel_30s", color: "#4caf7a" },
-      { label: "15s Reel", key: "reel_15s", color: "#4caaff" },
-    ];
-    reelEl.innerHTML = reels.map(r => {
-      const indices = story[r.key] || [];
-      if (!indices.length) return "";
-      return `<div style="background:rgba(0,0,0,0.4);border:1px solid ${r.color}33;border-radius:3px;padding:4px 8px;font-size:10px;letter-spacing:1px;">
-        <span style="color:${r.color};text-transform:uppercase;">${r.label}</span>
-        <span style="color:var(--text-dim);margin-left:6px;">Scenes ${indices.map(i => i + 1).join(", ")}</span>
-      </div>`;
-    }).join("");
-  }
-
-  // Scene list
-  const scenes = story.scenes || [];
-  const reel60  = new Set(story.reel_60s  || []);
-  const reel30  = new Set(story.reel_30s  || []);
-  const reel15  = new Set(story.reel_15s  || []);
-
-  if (sceneEl) {
-    const esc = s => (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-    sceneEl.innerHTML = scenes.map((sc, i) => {
-      const isReel15 = reel15.has(sc.index ?? i);
-      const isReel30 = reel30.has(sc.index ?? i);
-      const isReel60 = reel60.has(sc.index ?? i);
-      const reelDots = [
-        isReel15 ? `<span style="color:#4caaff;font-size:9px;">●15s</span>` : "",
-        isReel30 ? `<span style="color:#4caf7a;font-size:9px;">●30s</span>` : "",
-        isReel60 ? `<span style="color:#c9a84c;font-size:9px;">●60s</span>` : "",
-      ].filter(Boolean).join(" ");
-      // Auto-assign act by position if missing
-      const scAct = sc.act || (i < Math.ceil(scenes.length / 3) ? 1 : i < Math.ceil(scenes.length * 2 / 3) ? 2 : 3);
-      const actColor = { 1: "rgba(255,100,100,0.5)", 2: "rgba(201,168,76,0.5)", 3: "rgba(100,200,100,0.5)" }[scAct] || "rgba(255,255,255,0.2)";
-      return `
-        <div data-scene-idx="${i}" style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-left:3px solid ${actColor};border-radius:3px;padding:8px 10px;margin-bottom:4px;">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-            <span style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;min-width:28px;">S${(sc.index ?? i) + 1}</span>
-            <span style="font-size:9px;color:${actColor.replace("0.5", "0.9")};letter-spacing:1px;text-transform:uppercase;">Act ${scAct}</span>
-            <input data-field="emotion" value="${esc(sc.emotion)}"
-              style="width:80px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-family:Rajdhani,sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:1px 2px;outline:none;"
-              placeholder="emotion" />
-            <span style="margin-left:auto;display:flex;gap:4px;">${reelDots}</span>
-            <button onclick="ivTrimFromScene(${i})" title="Delete this and all after"
-              style="background:rgba(180,30,30,0.25);border:1px solid rgba(255,80,80,0.3);color:rgba(255,100,100,0.7);font-size:9px;letter-spacing:1px;padding:2px 5px;border-radius:2px;cursor:pointer;font-family:Rajdhani,sans-serif;text-transform:uppercase;">
-              ✂
-            </button>
-            <button onclick="ivAddScene(${i})" title="Insert scene after this one"
-              style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.35);font-size:10px;padding:2px 6px;border-radius:2px;cursor:pointer;">
-              +
-            </button>
-            <button onclick="ivDeleteScene(${i})" title="Delete this scene only"
-              style="background:rgba(80,0,0,0.3);border:1px solid rgba(255,60,60,0.25);color:rgba(255,80,80,0.6);font-size:10px;padding:2px 6px;border-radius:2px;cursor:pointer;">
-              ✕
-            </button>
-          </div>
-          <textarea data-field="description" rows="2"
-            style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:2px;color:var(--text);font-family:Rajdhani,sans-serif;font-size:12px;padding:4px 6px;resize:vertical;outline:none;margin-bottom:4px;"
-            >${esc(sc.description)}</textarea>
-          <textarea data-field="dialogue" rows="2"
-            style="width:100%;box-sizing:border-box;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:2px;color:var(--gold);font-family:Rajdhani,sans-serif;font-style:italic;font-size:11px;padding:4px 6px;resize:vertical;outline:none;margin-bottom:4px;"
-            placeholder="dialogue / lyric line"
-            >${esc(sc.dialogue)}</textarea>
-          <details style="margin-top:2px;">
-            <summary style="font-size:10px;color:var(--text-dim);letter-spacing:1px;cursor:pointer;">Image Prompt ▾</summary>
-            <textarea data-field="image_prompt" rows="3"
-              style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:2px;color:rgba(255,255,255,0.45);font-family:Rajdhani,sans-serif;font-size:10px;padding:4px 6px;resize:vertical;outline:none;margin-top:4px;"
-              >${esc(sc.image_prompt)}</textarea>
-          </details>
-        </div>`;
-    }).join("");
-  }
-
-  if (approveBtn) { approveBtn.disabled = false; approveBtn.classList.remove("lora-scanning"); }
-}
-
-// ── Save scene edits from DOM ──────────────────────────────────
-window.ivSaveSceneEdits = async function ivSaveSceneEdits() {
-  const saveBtn = document.querySelector("[onclick='ivSaveSceneEdits()']");
-  const showStatus = (msg, color) => {
-    if (saveBtn) { saveBtn.textContent = msg; saveBtn.style.color = color; }
-  };
-
-  if (!ivCurrentIdeaId) {
-    showStatus("⚠ Open a story first", "var(--imperial-red)");
-    setTimeout(() => { if (saveBtn) { saveBtn.textContent = "💾 Save Edits"; saveBtn.style.color = "var(--gold)"; } }, 3000);
-    return;
-  }
-
-  const sceneEl = document.getElementById("iv-scene-list");
-  if (!sceneEl) return;
-  const cards = sceneEl.querySelectorAll("[data-scene-idx]");
-  if (!cards.length) { showStatus("⚠ No scenes", "var(--imperial-red)"); return; }
-
-  showStatus("Saving…", "rgba(255,255,255,0.6)");
-
-  // Build scenes from DOM — don't rely on _ivCurrentStory being populated
-  const scenes = [];
-  cards.forEach(card => {
-    const idx = parseInt(card.dataset.sceneIdx);
-    const get = f => card.querySelector(`[data-field="${f}"]`)?.value?.trim() ?? "";
-    const existing = _ivCurrentStory?.scenes?.[idx] || {};
-    scenes.push({ ...existing, index: idx,
-      description:  get("description"),
-      dialogue:     get("dialogue"),
-      emotion:      get("emotion"),
-      image_prompt: get("image_prompt") });
-  });
-
-  try {
-    const res = await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/story`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenes }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Save failed");
-
-    // Update in-memory cache without re-rendering (preserves scroll + focus)
-    if (_ivCurrentStory) _ivCurrentStory = { ..._ivCurrentStory, scenes };
-    showStatus("✔ Saved", "#4caf50");
-    setTimeout(() => { if (saveBtn) { saveBtn.textContent = "💾 Save Edits"; saveBtn.style.color = "var(--gold)"; } }, 2000);
-  } catch (err) {
-    showStatus("✕ " + err.message, "var(--imperial-red)");
-    setTimeout(() => { if (saveBtn) { saveBtn.textContent = "💾 Save Edits"; saveBtn.style.color = "var(--gold)"; } }, 4000);
-  }
-};
-
-// ── Scene delete / trim ────────────────────────────────────────
-let _ivCurrentStory = null;
-
-function _ivGetCurrentStoryFromDOM() {
-  const sceneEls = document.querySelectorAll("#iv-scene-list [data-scene-idx]");
-  return _ivCurrentStory;
-}
-
-async function _ivPatchScenes(newScenes) {
-  if (!ivCurrentIdeaId) return;
-  newScenes = newScenes.map((sc, i) => ({ ...sc, index: i }));
-  const secPer = _ivCurrentStory?.scene_seconds || 8;
-  const updated = { ...(_ivCurrentStory || {}), scenes: newScenes,
-    num_scenes: newScenes.length,
-    est_seconds: newScenes.length * secPer,
-    est_minutes: parseFloat((newScenes.length * secPer / 60).toFixed(1)) };
-  try {
-    const res = await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/story`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenes: newScenes, num_scenes: updated.num_scenes,
-        est_seconds: updated.est_seconds, est_minutes: updated.est_minutes }),
-    });
-    if (!res.ok) throw new Error("Patch failed");
-    _ivCurrentStory = updated;
-    // Full re-render only for structural changes (add/delete/trim)
-    ivRenderStory(_ivCurrentStory);
-  } catch (err) {
-    const metaEl = document.getElementById("iv-story-meta");
-    if (metaEl) metaEl.insertAdjacentHTML("beforeend",
-      `<div style="color:var(--imperial-red);font-size:11px;margin-top:4px;">Save failed: ${err.message}</div>`);
-  }
-}
-
-window.ivDeleteScene = async function ivDeleteScene(idx) {
-  if (!_ivCurrentStory) return;
-  const scenes = [...(_ivCurrentStory.scenes || [])];
-  scenes.splice(idx, 1);
-  await _ivPatchScenes(scenes);
-};
-
-window.ivTrimFromScene = async function ivTrimFromScene(idx) {
-  if (!_ivCurrentStory) return;
-  const scenes = (_ivCurrentStory.scenes || []).slice(0, idx);
-  await _ivPatchScenes(scenes);
-};
-
-window.ivAddScene = async function ivAddScene(afterIdx) {
-  if (!_ivCurrentStory) return;
-  // Save any pending edits first so we don't lose in-progress text
-  await ivSaveSceneEdits();
-  const scenes = [...(_ivCurrentStory.scenes || [])];
-  const insertAt = (afterIdx !== undefined) ? afterIdx + 1 : scenes.length;
-  const blank = { index: insertAt, act: scenes[insertAt - 1]?.act || 3,
-    description: "", dialogue: "", emotion: "tension", image_prompt: "", reel_weight: 5 };
-  scenes.splice(insertAt, 0, blank);
-  await _ivPatchScenes(scenes);
-};
-
-// ── Approve & Generate ─────────────────────────────────────────
-window.ivApproveAndGenerate = async function ivApproveAndGenerate() {
-  if (!ivCurrentIdeaId) return;
-  const btn      = document.getElementById("iv-approve-btn");
-  const statusEl = document.getElementById("iv-approve-status");
-  const charSel  = document.getElementById("iv-dev-character");
-  const charId   = charSel?.value || "";
-  const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
-  const locName  = document.getElementById("iv-dev-location")?.value || "";
-  const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
-  const model    = window.ivGetModel?.() || "ws_wan22";
-
-  if (btn) { btn.disabled = true; btn.classList.add("lora-scanning"); }
-  if (statusEl) statusEl.textContent = "Approving…";
-
-  try {
-    // 1. Mark idea as approved
-    const approveRes = await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/approve`, { method: "POST" });
-    if (!approveRes.ok) throw new Error("Approve failed");
-
-    // 2. Fetch story scenes already planned (no GPT re-planning in orchestrator)
-    const ideasRes  = await levFetch(`${IV_BASE}/ideas`);
-    const ideasData = await ideasRes.json();
-    const idea      = (ideasData.ideas || []).find(i => i.id === ivCurrentIdeaId);
-    const rawScenes = idea?.story?.scenes || [];
-
-    if (!rawScenes.length) throw new Error("No scenes found — Develop the story first.");
-
-    // 3. Build full scene objects for the orchestrator
-    const genre     = idea?.genre || "";
-    const toneNotes = idea?.story?.tone_notes || "";
-    const charLower = charName.toLowerCase();
-    const charParts = charLower.split(/\s+/).filter(p => p.length > 2);
-
-    const char2Sel  = document.getElementById("iv-dev-character2");
-    const char2Id   = char2Sel?.value || "";
-    const char2Name = (char2Sel?.selectedOptions?.[0]?.dataset?.name || char2Sel?.selectedOptions?.[0]?.textContent || "").replace("None","").trim();
-
-    // Fetch both characters' appearances NOW (at generate time) so they're always
-    // in the image prompt regardless of whether they were selected at develop time
-    async function fetchAppearance(id) {
-      if (!id) return "";
-      try {
-        const r = await levFetch(`${IV_BASE}/characters`);
-        const d = await r.json();
-        const c = (d.characters || []).find(ch => ch.id === id);
-        return [c?.appearance, c?.wardrobe].filter(Boolean).join(" ");
-      } catch { return ""; }
-    }
-    const [char1App, char2App] = await Promise.all([fetchAppearance(charId), fetchAppearance(char2Id)]);
-
-    const scenes = rawScenes.map(sc => {
-      const rawImgPrompt = sc.shot_prompt || sc.image_prompt || sc.description || "";
-      const promptLower  = rawImgPrompt.toLowerCase();
-      const descText     = (sc.description || "").toLowerCase();
-
-      // Inject character appearances into prompt if not already present
-      let imagePrompt = rawImgPrompt;
-      if (char1App && charName && !promptLower.includes(charName.toLowerCase().split(" ")[0])) {
-        imagePrompt = `${charName}: ${char1App}. ` + imagePrompt;
-      }
-      if (char2App && char2Name && !promptLower.includes(char2Name.toLowerCase().split(" ")[0])) {
-        imagePrompt = `${char2Name}: ${char2App}. ` + imagePrompt;
-      }
-
-      const character_lock = charParts.length
-        ? charParts.some(p => descText.includes(p) || promptLower.includes(p))
-        : true;
-      return {
-        description:    sc.description || "",
-        image_prompt:   imagePrompt,
-        motion_prompt:  sc.motion_prompt ||
-          `${sc.emotion || "cinematic"} atmosphere, smooth continuous camera movement, ${(sc.description || "").slice(0, 120)}`,
-        dialogue:       sc.dialogue || "",
-        emotion:        sc.emotion || "",
-        character_lock,
-        duration:       sc.duration_seconds || sceneSec,
-      };
-    });
-
-    const activeProject = idea?.title || charName || "Default";
-    localStorage.setItem("levram_active_project", activeProject);
-
-    if (statusEl) statusEl.innerHTML =
-      `<span style="color:var(--gold);">Launching pipeline — ${scenes.length} scenes…</span>`;
-
-    // 4. Fire orchestrator — passes scenes directly, TTS on, no GPT re-plan
-    const orchRes  = await levFetch(`${IV_BASE}/orchestrate/run`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        scenes,
-        character_id:    charId,
-        character_name:  charName,
-        character2_id:   char2Id,
-        character2_name: char2Name,
-        location_name:   locName,
-        genre,
-        tone_notes:      toneNotes,
-        duration:        sceneSec,
-        model,
-        include_tts:     true,
-        project:         activeProject,
-        clear_project:   true,
-      }),
-    });
-    const orchData = await orchRes.json();
-    if (!orchData.success) throw new Error(orchData.error || "Orchestrator failed to start");
-
-    const jobId = orchData.job_id;
-    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
-    await ivLoadIdeas();
-
-    // 5. Live progress polling
-    ivPollJob(jobId, scenes.length, statusEl);
-    if (window.BC) BC.watchJob(jobId, "Approve + Generate");
-
   } catch (err) {
     if (statusEl) statusEl.textContent = "Error: " + err.message;
-    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
-  }
-};
-
-// ── Job progress poller ────────────────────────────────────────
-async function ivPollJob(jobId, totalScenes, statusEl) {
-  if (!statusEl) return;
-  let polls = 0;
-
-  const poll = async () => {
-    try {
-      const res  = await levFetch(`${IV_BASE}/orchestrate/status/${jobId}`);
-      const data = await res.json();
-      const done       = data.progress || 0;
-      const total      = data.total   || totalScenes;
-      const pct        = total > 0 ? Math.round((done / total) * 100) : 0;
-      const step       = data.step    || "Running…";
-      const isDone     = data.status === "complete";
-      const isExport   = data.status === "exporting";
-      const isFail     = data.status === "failed";
-      const episodeUrl = data.episode_url || "";
-      const musicUrl   = data.music_url   || "";
-
-      const _p     = localStorage.getItem("levram_active_project") || "";
-      const _tlUrl = "timeline.html" + (_p ? `?project=${encodeURIComponent(_p)}` : "");
-
-      statusEl.innerHTML = `
-        <div style="margin-bottom:6px;">
-          <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.45);margin-bottom:3px;">
-            <span>${done} / ${total} shots complete</span><span>${pct}%</span>
-          </div>
-          <div style="background:rgba(255,255,255,0.1);border-radius:2px;height:4px;">
-            <div style="background:var(--gold);border-radius:2px;height:4px;width:${pct}%;transition:width 0.5s;"></div>
-          </div>
-        </div>
-        <div style="font-size:11px;letter-spacing:1px;color:${isFail ? "var(--imperial-red)" : (isDone || isExport) ? "#4caf50" : "var(--text-dim)"};">
-          ${step}
-        </div>
-        ${(isDone || isExport) ? `<div style="margin-top:8px;font-size:11px;color:#4caf50;letter-spacing:1px;">
-          ✔ Film ready — <a href="${_tlUrl}" target="_blank" style="color:var(--gold);text-decoration:none;">Open Timeline ↗</a>
-          ${episodeUrl ? `&nbsp;·&nbsp;<a href="${IV_BASE}${episodeUrl}" download style="color:var(--gold);text-decoration:none;">⬇ Download Film</a>` : ""}
-        </div>` : ""}
-        ${isFail ? `<div style="margin-top:4px;font-size:10px;color:var(--imperial-red);">${data.error || ""}</div>` : ""}
-      `;
-
-      if (isDone) {
-        if (typeof loadScenes === "function") loadScenes();
-        setTimeout(() => {
-          if (typeof window.tlOpenExportModal === "function") {
-            window.tlOpenExportModal();
-            if (musicUrl) {
-              const sel = document.getElementById("tl-export-music-sel");
-              if (sel) {
-                const opt = [...sel.options].find(o => o.value === musicUrl || o.value.includes(musicUrl.split("/").pop()));
-                if (opt) opt.selected = true;
-              }
-            }
-          }
-        }, 800);
-      }
-
-      if (!isDone && !isFail && polls < 360) {
-        polls++;
-        setTimeout(poll, isExport ? 3000 : 5000);
-      }
-    } catch (_) {
-      if (polls < 360) { polls++; setTimeout(poll, 8000); }
-    }
-  };
-
-  setTimeout(poll, 3000);
-}
-
-// ── Cost estimator ─────────────────────────────────────────────
-// WaveSpeed charges $0.01/second; Kling is flat per clip
-const IV_MODEL_COSTS = {
-  "ws_wan22":       { label: "Wan 2.2 ⚡",       ratePerSec: 0.01, fixedCost: null },
-  "ws_wan22_spicy": { label: "🔴 Wan 2.2 Spicy", ratePerSec: 0.01, fixedCost: null },
-  "ws_wan27":       { label: "Wan 2.7 ⚡",       ratePerSec: 0.01, fixedCost: null },
-};
-
-window.ivUpdateCostEst = function ivUpdateCostEst() {
-  const model    = window.ivGetModel?.() || "ws_wan22";
-  const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
-  const estEl    = document.getElementById("iv-cost-est");
-  const sceneEl  = document.getElementById("iv-scene-list");
-  if (!estEl) return;
-  const info     = IV_MODEL_COSTS[model] || { label: model, ratePerSec: 0.01, fixedCost: null };
-  const clipCost = info.fixedCost ?? (info.ratePerSec * sceneSec);
-  const numScenes = sceneEl ? sceneEl.children.length : 0;
-  const perClip  = `$${clipCost.toFixed(2)}/${sceneSec}s clip`;
-  const total    = numScenes ? ` — ~$${(numScenes * clipCost).toFixed(2)} for ${numScenes} shots` : "";
-  estEl.textContent = `${info.label} — ${perClip}${total}`;
-};
-
-// ── Keyframes-first flow ───────────────────────────────────────
-let _ivKeyframeShots = [];   // stored after keyframes job completes
-
-window.ivGenerateKeyframes = async function ivGenerateKeyframes() {
-  if (!ivCurrentIdeaId) return;
-  const btn       = document.getElementById("iv-keyframe-btn");
-  const statusEl  = document.getElementById("iv-approve-status");
-  const charSel   = document.getElementById("iv-dev-character");
-  const charId    = charSel?.value || "";
-  const charName  = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
-  const char2Sel  = document.getElementById("iv-dev-character2");
-  const char2Id   = char2Sel?.value || "";
-  const char2Name = char2Sel?.selectedOptions?.[0]?.dataset?.name || char2Sel?.selectedOptions?.[0]?.textContent || "";
-  const sceneSec  = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
-
-  if (btn) { btn.disabled = true; btn.classList.add("lora-scanning"); }
-
-  try {
-    const approveRes = await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/approve`, { method: "POST" });
-    if (!approveRes.ok) throw new Error("Approve failed");
-
-    const ideasRes  = await levFetch(`${IV_BASE}/ideas`);
-    const ideasData = await ideasRes.json();
-    const idea      = (ideasData.ideas || []).find(i => i.id === ivCurrentIdeaId);
-    const rawScenes = idea?.story?.scenes || [];
-    if (!rawScenes.length) throw new Error("No scenes — develop story first.");
-
-    const project = idea?.title || charName || "Default";
-
-    const allScenes = rawScenes.map(sc => ({
-      description:   sc.description || "",
-      image_prompt:  sc.shot_prompt || sc.image_prompt || sc.description || "",
-      motion_prompt: sc.motion_prompt || `${sc.emotion || "cinematic"} atmosphere, smooth camera`,
-      dialogue:      sc.dialogue || "",
-      emotion:       sc.emotion || "",
-      duration:      sc.duration_seconds || sceneSec,
-    }));
-
-    // Only generate keyframes for scenes that don't already have one
-    let scenes = allScenes;
-    try {
-      const existRes  = await levFetch(`${IV_BASE}/scenes?project=${encodeURIComponent(project)}`);
-      const existData = await existRes.json();
-      const done      = (existData.scenes || []).length;
-      if (done > 0 && done < allScenes.length) {
-        scenes = allScenes.slice(done);
-        if (statusEl) statusEl.textContent = `${done} keyframes already done — generating ${scenes.length} new scene(s)…`;
-      } else if (done >= allScenes.length) {
-        if (statusEl) statusEl.textContent = "All keyframes already generated. Use ⟳ to regenerate individual shots.";
-        if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
-        return;
-      }
-    } catch (_) { /* proceed with all scenes if check fails */ }
-
-    const orchRes  = await levFetch(`${IV_BASE}/orchestrate/run`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        scenes, character_id: charId, character_name: charName,
-        character2_id: char2Id, character2_name: char2Name,
-        duration: sceneSec, model: window.ivGetModel?.() || "ws_wan22", keyframes_only: true,
-        project,
-      }),
-    });
-    const orchData = await orchRes.json();
-    if (!orchData.success) throw new Error(orchData.error || "Failed to start");
-
-    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
-
-    // Poll — when keyframes_ready, show review UI
-    ivPollKeyframeJob(orchData.job_id, scenes.length, statusEl, rawScenes);
-    if (window.BC) BC.watchJob(orchData.job_id, "Keyframes → Review");
-  } catch (err) {
-    if (statusEl) statusEl.textContent = "Error: " + err.message;
-    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
-  }
-};
-
-async function ivPollKeyframeJob(jobId, totalScenes, statusEl, rawScenes) {
-  if (!statusEl) return;
-  let polls = 0;
-
-  const poll = async () => {
-    try {
-      const res  = await levFetch(`${IV_BASE}/orchestrate/status/${jobId}`);
-      const data = await res.json();
-      const done  = data.progress || 0;
-      const total = data.total   || totalScenes;
-      const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
-
-      statusEl.innerHTML = `
-        <div style="margin-bottom:4px;">
-          <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.45);margin-bottom:2px;">
-            <span>${done}/${total} keyframes</span><span>${pct}%</span>
-          </div>
-          <div style="background:rgba(255,255,255,0.1);border-radius:2px;height:3px;">
-            <div style="background:var(--gold);border-radius:2px;height:3px;width:${pct}%;transition:width 0.4s;"></div>
-          </div>
-        </div>
-        <div style="font-size:11px;color:var(--text-dim);">${data.step || "Generating keyframes…"}</div>
-      `;
-
-      if (data.status === "keyframes_ready") {
-        _ivKeyframeShots = data.shots || [];
-        ivShowKeyframeReview(_ivKeyframeShots, rawScenes);
-        statusEl.innerHTML = `<span style="color:#4caf50;">✔ ${_ivKeyframeShots.length} keyframes ready — review and select which to animate</span>`;
-        return;
-      }
-      if (data.status === "failed") {
-        statusEl.innerHTML = `<span style="color:var(--imperial-red);">⚠ ${data.step}</span>`;
-        return;
-      }
-      if (polls < 360) { polls++; setTimeout(poll, 5000); }
-    } catch (_) {
-      if (polls < 360) { polls++; setTimeout(poll, 8000); }
-    }
-  };
-  setTimeout(poll, 3000);
-}
-
-function ivShowKeyframeReview(shots, rawScenes) {
-  const sceneEl   = document.getElementById("iv-scene-list");
-  const animateBar = document.getElementById("iv-animate-bar");
-  if (!sceneEl) return;
-
-  // Rebuild scene list with actual keyframe images + approve checkboxes
-  sceneEl.innerHTML = shots.map((shot, i) => {
-    const imgUrl = shot.renderOutputUrl || shot.imageUrl || "";
-    const raw    = rawScenes[i] || {};
-    const actColor = { 1: "rgba(255,100,100,0.5)", 2: "rgba(201,168,76,0.5)", 3: "rgba(100,200,100,0.5)" }[raw.act] || "rgba(255,255,255,0.15)";
-
-    // Scene Obedience Lock badge
-    const sol = shot.obedience_score;
-    let solBadge = "";
-    if (sol && !sol.skipped && !sol.error) {
-      const pct     = Math.round((sol.total || 0) * 100);
-      const passed  = sol.pass;
-      const bg      = passed ? "rgba(46,204,113,0.15)"  : "rgba(231,76,60,0.15)";
-      const border  = passed ? "rgba(46,204,113,0.4)"   : "rgba(231,76,60,0.4)";
-      const color   = passed ? "#2ecc71"                : "#e74c3c";
-      const icon    = passed ? "✔"                      : "✗";
-      const tip     = `Characters: ${Math.round((sol.characters||0)*100)}% · Location: ${Math.round((sol.location||0)*100)}% · Action: ${Math.round((sol.action||0)*100)}% · Outcome: ${Math.round((sol.outcome||0)*100)}%${sol.notes ? ' — ' + sol.notes : ''}`;
-      solBadge = `<span title="${tip}" style="font-size:9px;letter-spacing:1px;padding:2px 6px;border-radius:2px;background:${bg};border:1px solid ${border};color:${color};cursor:help;">${icon} SOL ${pct}%</span>`;
-    }
-
-    return `
-      <div id="iv-kf-${i}" data-approved="true" onclick="ivToggleKeyframe(${i})"
-        style="cursor:pointer;background:rgba(0,0,0,0.4);border:2px solid var(--gold);border-left:4px solid ${actColor};border-radius:3px;padding:8px;display:flex;gap:10px;align-items:flex-start;transition:border-color 0.15s;">
-        ${imgUrl ? `<img src="${imgUrl}" style="width:80px;height:50px;object-fit:cover;border-radius:2px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);" />` : `<div style="width:80px;height:50px;background:rgba(255,255,255,0.05);border-radius:2px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:rgba(255,255,255,0.3);">No image</div>`}
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
-            <span style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;">S${i+1}</span>
-            <span class="iv-kf-check-${i}" style="font-size:11px;color:#4caf50;">✔ Selected</span>
-            ${solBadge}
-          </div>
-          <div style="font-size:11px;color:var(--text);line-height:1.4;">${raw.description || shot.shotDesc || ""}</div>
-          ${raw.dialogue ? `<div style="font-size:10px;color:var(--gold);font-style:italic;margin-top:3px;">"${raw.dialogue}"</div>` : ""}
-        </div>
-      </div>`;
-  }).join("");
-
-  if (animateBar) animateBar.style.display = "block";
-  // Update animate button label with model
-  const animBtn = document.getElementById("iv-animate-selected-btn");
-  const model   = window.ivGetModel?.() || "ws_wan22";
-  const minfo   = IV_MODEL_COSTS[model] || {};
-  if (animBtn) animBtn.textContent = `🎬 Animate Selected with ${minfo.label || model}`;
-}
-
-window.ivToggleKeyframe = function ivToggleKeyframe(i) {
-  const card = document.getElementById(`iv-kf-${i}`);
-  if (!card) return;
-  const approved = card.dataset.approved === "true";
-  card.dataset.approved = approved ? "false" : "true";
-  card.style.borderColor = approved ? "rgba(255,255,255,0.15)" : "var(--gold)";
-  card.style.opacity     = approved ? "0.45" : "1";
-  const label = card.querySelector(`.iv-kf-check-${i}`);
-  if (label) { label.textContent = approved ? "✕ Skipped" : "✔ Selected"; label.style.color = approved ? "rgba(255,255,255,0.3)" : "#4caf50"; }
-};
-
-window.ivSelectAllKeyframes = function ivSelectAllKeyframes(select) {
-  _ivKeyframeShots.forEach((_, i) => {
-    const card = document.getElementById(`iv-kf-${i}`);
-    if (!card) return;
-    card.dataset.approved = select ? "true" : "false";
-    card.style.borderColor = select ? "var(--gold)" : "rgba(255,255,255,0.15)";
-    card.style.opacity     = select ? "1" : "0.45";
-    const label = card.querySelector(`.iv-kf-check-${i}`);
-    if (label) { label.textContent = select ? "✔ Selected" : "✕ Skipped"; label.style.color = select ? "#4caf50" : "rgba(255,255,255,0.3)"; }
-  });
-};
-
-window.ivAnimateSelected = async function ivAnimateSelected() {
-  const btn      = document.getElementById("iv-animate-selected-btn");
-  const statusEl = document.getElementById("iv-approve-status");
-  const charSel  = document.getElementById("iv-dev-character");
-  const charId   = charSel?.value || "";
-  const charName = charSel?.selectedOptions?.[0]?.dataset?.name || charSel?.selectedOptions?.[0]?.textContent || "";
-  const model    = window.ivGetModel?.() || "ws_wan22";
-  const sceneSec = parseInt(document.getElementById("iv-scene-sec")?.value || "5");
-
-  const approved = _ivKeyframeShots.filter((_, i) => {
-    const card = document.getElementById(`iv-kf-${i}`);
-    return card?.dataset.approved !== "false";
-  });
-
-  if (!approved.length) { if (statusEl) statusEl.textContent = "No shots selected."; return; }
-  if (btn) { btn.disabled = true; btn.classList.add("lora-scanning"); }
-  if (statusEl) statusEl.innerHTML = `<span style="color:var(--gold);">Sending ${approved.length} shots to ${model}…</span>`;
-
-  try {
-    const res  = await levFetch(`${IV_BASE}/orchestrate/reanimate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        shots: approved.map(s => ({
-          id:            s.id,
-          image_url:     s.renderOutputUrl || s.imageUrl || "",
-          motion_prompt: s.motion_prompt || `cinematic motion, smooth camera`,
-          dialogue:      s.dialogue || "",
-          project:       s.project || charName || "",
-          duration:      s.duration_seconds || s.duration || sceneSec,
-        })),
-        model, duration: sceneSec,   // fallback for shots missing their own duration
-        character_id: charId, character_name: charName,
-        include_tts: true,
-      }),
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || "Reanimate failed");
-    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
-    ivPollJob(data.job_id, approved.length, statusEl);
-    if (window.BC) BC.watchJob(data.job_id, "Re-animate approved shots");
-  } catch (err) {
-    if (statusEl) statusEl.textContent = "Error: " + err.message;
-    if (btn) { btn.disabled = false; btn.classList.remove("lora-scanning"); }
   }
 };
 
@@ -1115,7 +330,6 @@ window.ivAnimateSelected = async function ivAnimateSelected() {
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("iv-save-btn")?.addEventListener("click", ivSaveIdea);
 
-  // Auto-grow textarea as you type
   const ta = document.getElementById("iv-text");
   if (ta) {
     ta.addEventListener("input", () => {
@@ -1127,57 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ivLoadCharacters();
   ivLoadLocations();
   ivLoadIdeas();
-  ivUpdateCostEst();
 });
 
-window.ivDeleteIdea  = ivDeleteIdea;
-window.ivCancelEdit  = ivCancelEdit;
-
-// ── Director's Notes — Revise in Place ───────────────────────
-window.ivReviseStory = async function ivReviseStory() {
-  if (!ivCurrentIdeaId) {
-    const el = document.getElementById("iv-revision-status");
-    if (el) { el.style.color = "#f55"; el.textContent = "Open a story first."; }
-    return;
-  }
-  const notes   = document.getElementById("iv-revision-notes")?.value?.trim();
-  const statusEl = document.getElementById("iv-revision-status");
-  const btn     = document.querySelector("[onclick='ivReviseStory()']");
-
-  if (!notes) {
-    if (statusEl) { statusEl.style.color = "#f55"; statusEl.textContent = "Write your notes first."; }
-    return;
-  }
-
-  const charSel  = document.getElementById("iv-dev-character");
-  const char2Sel = document.getElementById("iv-dev-character2");
-  const charName  = charSel?.selectedOptions?.[0]?.dataset?.name  || charSel?.selectedOptions?.[0]?.textContent  || "";
-  const char2Name = char2Sel?.selectedOptions?.[0]?.dataset?.name || char2Sel?.selectedOptions?.[0]?.textContent || "";
-  const locName   = document.getElementById("iv-dev-location")?.value || "";
-
-  if (btn) { btn.disabled = true; btn.textContent = "Revising…"; }
-  if (statusEl) { statusEl.style.color = "#aaa"; statusEl.textContent = "Hermes is applying your notes…"; }
-
-  try {
-    const res  = await levFetch(`${IV_BASE}/ideas/${ivCurrentIdeaId}/revise`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        revision_notes: notes,
-        character_name:  charName,
-        character2_name: char2Name,
-        location_name:   locName,
-      }),
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.detail || data.error || "Revision failed");
-
-    ivRenderStory(data.story);
-    document.getElementById("iv-revision-notes").value = "";
-    if (statusEl) { statusEl.style.color = "#4caf50"; statusEl.textContent = "Story revised — title and structure preserved."; }
-  } catch (e) {
-    if (statusEl) { statusEl.style.color = "#f55"; statusEl.textContent = "Error: " + e.message; }
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "✏ Apply Notes — Keep Title & Structure"; }
-  }
-};
+window.ivDeleteIdea = ivDeleteIdea;
+window.ivCancelEdit = ivCancelEdit;

@@ -620,9 +620,15 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Escape") sbCloseLightbox();
   });
 
-  // Restore active project
-  const saved = localStorage.getItem("levram_active_project");
-  if (saved) _sbProject = saved;
+  // URL param ?project= takes priority over localStorage
+  const urlProject = new URLSearchParams(window.location.search).get("project");
+  if (urlProject) {
+    _sbProject = urlProject;
+    localStorage.setItem("levram_active_project", urlProject);
+  } else {
+    const saved = localStorage.getItem("levram_active_project");
+    if (saved) _sbProject = saved;
+  }
 
   sbLoad();
 });

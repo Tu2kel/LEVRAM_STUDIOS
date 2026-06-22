@@ -281,8 +281,8 @@ async def patch_scene(scene_id: str, payload: dict):
             {"id": scene_id}, {"$set": payload}, upsert=True, return_document=True
         )
         if not result:
-            # upsert created it — fetch it back
             result = await scenes_col.find_one({"id": scene_id}) or {}
+        await _sync_idea_scene(scene_id, payload)
         return {"success": True, "scene": _strip(result)}
 
     existing, path = _json_find(scene_id)
@@ -294,7 +294,64 @@ async def patch_scene(scene_id: str, payload: dict):
     else:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(existing, f, indent=2)
+    await _sync_idea_scene(scene_id, payload)
     return {"success": True, "scene": existing}
+
+
+# Storyboard field → idea story scene field
+_PATCH_FIELD_MAP = {
+    "shotDesc":        "description",
+    "shot_description":"description",
+    "description":     "description",
+    "shot_prompt":     "image_prompt",
+    "dialogue":        "dialogue",
+    "motion_prompt":   "motion_prompt",
+    "motion":          "motion_prompt",
+    "character":       "character",
+    "character2":      "character2",
+    "location":        "location",
+    "emotion":         "emotion",
+}
+
+
+async def _sync_idea_scene(scene_id: str, payload: dict):
+    """Mirror storyboard edits back to idea.story.scenes so re-develop preserves changes."""
+    # Scene IDs from idea story have format {idea_id}_{idx:03d}
+    parts = scene_id.rsplit("_", 1)
+    if len(parts) != 2:
+        return
+    idea_id, idx_str = parts
+    if not idx_str.isdigit():
+        return
+    idx = int(idx_str)
+
+    idea_updates = {}
+    for storyboard_field, idea_field in _PATCH_FIELD_MAP.items():
+        if storyboard_field in payload and storyboard_field != "updated_at":
+            idea_updates[f"story.scenes.{idx}.{idea_field}"] = payload[storyboard_field]
+    if not idea_updates:
+        return
+
+    if ideas_col is not None:
+        await ideas_col.update_one({"id": idea_id}, {"$set": idea_updates})
+    else:
+        if IDEAS_FILE.exists():
+            try:
+                raw  = json.loads(IDEAS_FILE.read_text())
+                data = raw if isinstance(raw, list) else raw.get("ideas", [])
+                for idea in data:
+                    if idea.get("id") == idea_id:
+                        scenes = (idea.get("story") or {}).get("scenes", [])
+                        if idx < len(scenes):
+                            for storyboard_field, idea_field in _PATCH_FIELD_MAP.items():
+                                if storyboard_field in payload:
+                                    scenes[idx][idea_field] = payload[storyboard_field]
+                        break
+                IDEAS_FILE.write_text(json.dumps(
+                    raw if isinstance(raw, list) else {"ideas": data}, indent=2
+                ))
+            except Exception:
+                pass
 
 
 @router.put("/scene/{scene_id}")

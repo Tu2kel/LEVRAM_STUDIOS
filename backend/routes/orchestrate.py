@@ -192,7 +192,7 @@ async def _gen_image(prompt: str, character_id: str, location_ref_url: str = "")
                     pass
         print(f"[BODY_REF] body_ref_url={body_ref_url!r}")
         if body_ref_url:
-            from backend.routes.image_gen import _ws_seedream_edit, IMAGE_DIR, _download_url
+            from backend.routes.image_gen import _ws_seedream_edit, _ws_face_swap, IMAGE_DIR, _download_url
             import datetime as _dt
             # Include location ref alongside body ref when available
             _seedream_refs = [body_ref_url]
@@ -209,8 +209,44 @@ async def _gen_image(prompt: str, character_id: str, location_ref_url: str = "")
                 ts    = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
                 fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
                 image_bytes = await loop.run_in_executor(None, lambda: _download_url(remote_url))
-                (IMAGE_DIR / fname).write_bytes(image_bytes)
-                return "/output/renders/images/" + fname
+                saved_path = IMAGE_DIR / fname
+                saved_path.write_bytes(image_bytes)
+                out_url = "/output/renders/images/" + fname
+
+                # Face swap: stamp character's correct face onto body-locked image
+                import base64 as _b64fs
+                _face_bytes = None
+                _face_mime  = "image/jpeg"
+                if byo_ref_url and byo_ref_url.startswith("http"):
+                    try:
+                        _face_bytes = await loop.run_in_executor(None, lambda: _download_url(byo_ref_url))
+                    except Exception:
+                        pass
+                if not _face_bytes and byo_ref_url:
+                    _p = Path(byo_ref_url.lstrip("/"))
+                    if _p.exists():
+                        _face_bytes = _p.read_bytes()
+                if not _face_bytes:
+                    for _rp in refs:
+                        _p = Path(_rp.lstrip("/"))
+                        if _p.exists():
+                            _face_bytes = _p.read_bytes()
+                            break
+                if _face_bytes:
+                    try:
+                        from backend.routes.image_gen import RefImage as _RI
+                        _face_ref = _RI(
+                            base64=_b64fs.b64encode(_face_bytes).decode(),
+                            mediaType=_face_mime,
+                        )
+                        _, out_url = await loop.run_in_executor(
+                            None, lambda: _ws_face_swap(str(saved_path), _face_ref)
+                        )
+                        print(f"[BODY_REF] face swap applied → {out_url}")
+                    except Exception as _fs_err:
+                        print(f"[BODY_REF] face swap failed ({_fs_err}), using Seedream result")
+
+                return out_url
             except Exception as _seedream_err:
                 print(f"[BODY_REF] Seedream failed ({_seedream_err}), trying Venice/Novita body-ref")
                 _body_bytes = None

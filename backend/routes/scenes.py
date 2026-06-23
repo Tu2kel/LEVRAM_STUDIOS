@@ -10,7 +10,8 @@ from backend.db import scenes_col, ideas_col
 
 router = APIRouter()
 
-SCENES_DIR = Path("data/scenes")
+SCENES_DIR    = Path("data/scenes")
+PROJECTS_DIR  = Path("data/project_shots")   # persistent per-project shot backup
 
 
 class ScenePayload(BaseModel):
@@ -217,23 +218,42 @@ async def save_scene(scene: ScenePayload):
     return {"success": True, "scene": data, "file": file_path}
 
 
+def _project_backup_fallback(project: str) -> list[dict]:
+    """Last-resort: read imported shots from the persistent per-project backup JSON."""
+    if not project:
+        return []
+    slug = project.replace(" ", "_").replace("/", "_")
+    backup = PROJECTS_DIR / f"{slug}.json"
+    if not backup.exists():
+        return []
+    try:
+        shots = json.loads(backup.read_text(encoding="utf-8"))
+        print(f"[scenes] loaded {len(shots)} shots from backup: {backup}")
+        return shots
+    except Exception as _e:
+        print(f"[scenes] backup read failed: {_e}")
+        return []
+
+
 @router.get("/scenes")
 async def list_scenes(project: str = ""):
     if scenes_col is not None:
         query = {"project": project} if project else {}
         docs = await scenes_col.find(query).sort("shot_number", 1).to_list(None)
         scenes = [_strip(d) for d in docs]
-        # If no generated scenes yet, pull from idea story drafts
         if not scenes:
             scenes = await _idea_story_fallback(project)
+        if not scenes:
+            scenes = _project_backup_fallback(project)
         return {"success": True, "count": len(scenes), "scenes": scenes}
 
     all_scenes = _json_load_all()
     if project:
         all_scenes = [s for s in all_scenes if s.get("project", "") == project]
-    # If still empty, pull from idea story drafts
     if not all_scenes:
         all_scenes = await _idea_story_fallback(project)
+    if not all_scenes:
+        all_scenes = _project_backup_fallback(project)
     return {"success": True, "count": len(all_scenes), "scenes": all_scenes}
 
 
@@ -840,29 +860,42 @@ async def import_script(payload: dict):
         kept = [sh for sh in existing.get("shots", []) if sh.get("project") != project]
         TIMELINE_FILE.write_text(json.dumps({"shots": kept + clean_shots}, indent=2))
 
-    # Sync imported shots back to idea.story.scenes so the idea vault
-    # reflects the imported script and the fallback always matches what's live.
+    # ── Persistent backup: always write project shots to disk regardless of DB state ──
+    PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        (PROJECTS_DIR / f"{slug}.json").write_text(
+            json.dumps(clean_shots, indent=2), encoding="utf-8"
+        )
+        print(f"[import-script] backup written → data/project_shots/{slug}.json")
+    except Exception as _bk_err:
+        print(f"[import-script] backup write failed (non-fatal): {_bk_err}")
+
+    # ── Sync to idea.story.scenes — upsert so project doesn't need a pre-existing idea ──
     if ideas_col is not None and clean_shots:
         try:
-            idea_doc = await ideas_col.find_one({"title": project})
-            if idea_doc:
-                synced_scenes = []
-                for s in clean_shots:
-                    synced_scenes.append({
-                        "description":   s.get("shotDesc") or s.get("shot_description") or "",
-                        "image_prompt":  s.get("shot_prompt") or s.get("shotDesc") or "",
-                        "dialogue":      s.get("dialogue") or "",
-                        "motion_prompt": s.get("motion_prompt") or "",
-                        "character":     s.get("character") or "",
-                        "character2":    s.get("character2") or "",
-                        "location":      s.get("location") or "",
-                        "emotion":       s.get("emotion") or "",
-                        "duration_seconds": s.get("duration_seconds") or 5,
-                    })
-                await ideas_col.update_one(
-                    {"_id": idea_doc["_id"]},
-                    {"$set": {"story.scenes": synced_scenes, "status": "developed"}}
-                )
+            synced_scenes = [{
+                "description":      s.get("shotDesc") or s.get("shot_description") or "",
+                "image_prompt":     s.get("shot_prompt") or s.get("shotDesc") or "",
+                "dialogue":         s.get("dialogue") or "",
+                "motion_prompt":    s.get("motion_prompt") or "",
+                "character":        s.get("character") or "",
+                "character2":       s.get("character2") or "",
+                "location":         s.get("location") or "",
+                "emotion":          s.get("emotion") or "",
+                "duration_seconds": s.get("duration_seconds") or 5,
+            } for s in clean_shots]
+            await ideas_col.update_one(
+                {"title": project},
+                {"$set": {
+                    "story.scenes": synced_scenes,
+                    "status":       "developed",
+                    "title":        project,
+                    "project":      project,
+                    "updatedAt":    now,
+                }},
+                upsert=True,
+            )
+            print(f"[import-script] idea.story.scenes synced for '{project}'")
         except Exception as _sync_err:
             print(f"[import-script] idea sync failed (non-fatal): {_sync_err}")
 

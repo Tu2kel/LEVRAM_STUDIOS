@@ -289,16 +289,16 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
   const cardStat = document.getElementById(`iv-card-status-${id}`);
   const formStat = document.getElementById("iv-status");
 
-  const _setBtnState = (label, color) => {
-    if (btn) { btn.textContent = label; btn.disabled = true; btn.style.opacity = "0.6"; }
+  const _setStatus = (label, color = "rgba(201,168,76,0.7)") => {
+    if (btn) { btn.textContent = label.length > 22 ? label.slice(0, 22) + "…" : label; btn.disabled = true; btn.style.opacity = "0.6"; }
     if (cardStat) { cardStat.style.color = color; cardStat.textContent = label; cardStat.style.paddingTop = "4px"; }
     if (formStat) formStat.textContent = label;
   };
   const _clearBtn = () => {
-    if (btn) { btn.disabled = false; btn.style.opacity = ""; }
+    if (btn) { btn.textContent = "Develop Story"; btn.disabled = false; btn.style.opacity = ""; }
   };
 
-  _setBtnState("Developing…", "rgba(201,168,76,0.7)");
+  _setStatus("Queuing…");
 
   const charSel   = document.getElementById("iv-dev-character");
   const charSel2  = document.getElementById("iv-dev-character2");
@@ -328,19 +328,47 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
     try { data = JSON.parse(text); } catch (_) { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`); }
     if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Develop failed");
 
-    const sceneCount = (data.story?.scenes || []).length;
-    if (!sceneCount) throw new Error("Develop returned 0 scenes — check backend logs");
+    const jobId = data.job_id;
+    _setStatus("Starting…");
 
-    const proj    = encodeURIComponent(data.story?.title || "");
-    const sbHref  = `storyboard.html?project=${proj}`;
-    if (cardStat) {
-      cardStat.style.color = "#4caf50";
-      cardStat.innerHTML   = `✓ ${sceneCount} scenes &nbsp;<a href="${sbHref}" style="color:#c9a84c;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(201,168,76,0.4);padding-bottom:1px;">→ Open Storyboard</a>`;
+    // Poll for real backend progress
+    let attempts = 0;
+    const MAX = 150; // 5 min at 2s interval
+    while (attempts < MAX) {
+      await new Promise(r => setTimeout(r, 2000));
+      attempts++;
+      try {
+        const sRes  = await levFetch(`${IV_BASE}/ideas/develop-status/${jobId}`);
+        const sData = await sRes.json();
+
+        if (sData.status === "complete") {
+          const sceneCount = sData.scene_count || 0;
+          const story      = sData.story || {};
+          const proj       = encodeURIComponent(story.title || "");
+          const sbHref     = `storyboard.html?project=${proj}`;
+          if (cardStat) {
+            cardStat.style.color = "#4caf50";
+            cardStat.innerHTML   = `✓ ${sceneCount} scenes &nbsp;<a href="${sbHref}" style="color:#c9a84c;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(201,168,76,0.4);padding-bottom:1px;">→ Open Storyboard</a>`;
+          }
+          if (formStat) formStat.innerHTML = `<span style="color:#4caf50;">✓ ${sceneCount} scenes built</span>`;
+          if (story.title) localStorage.setItem("levram_active_project", story.title);
+          _clearBtn();
+          window.refreshBattery?.();
+          await ivLoadIdeas();
+          break;
+        } else if (sData.status === "failed") {
+          throw new Error(sData.error || "Development failed");
+        } else {
+          _setStatus(sData.step || "Working…");
+        }
+      } catch (pollErr) {
+        // Only re-throw real failures, not network hiccups
+        if (pollErr.message?.startsWith("Development failed") || pollErr.message?.startsWith("Error:")) {
+          throw pollErr;
+        }
+      }
     }
-    if (formStat) formStat.innerHTML = `<span style="color:#4caf50;">✓ ${sceneCount} scenes built</span>`;
-    if (data.story?.title) localStorage.setItem("levram_active_project", data.story.title);
-    window.refreshBattery?.();
-    await ivLoadIdeas();
+    if (attempts >= MAX) throw new Error("Timed out after 5 minutes");
   } catch (err) {
     if (cardStat) { cardStat.style.color = "var(--imperial-red)"; cardStat.textContent = "Error: " + err.message; }
     if (formStat) formStat.textContent = "Error: " + err.message;

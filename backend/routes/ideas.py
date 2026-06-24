@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
@@ -9,6 +9,7 @@ from backend.db import ideas_col, characters_col
 
 router = APIRouter()
 DATA_FILE = Path("data/ideas.json")
+_DEV_JOBS: dict = {}
 
 
 class IdeaPayload(BaseModel):
@@ -154,59 +155,86 @@ async def _fetch_char_appearance(char_id: str) -> str:
         return ""
 
 
+async def _run_develop(job_id: str, idea_id: str, body: DevelopRequest, idea: dict):
+    def _upd(**kw): _DEV_JOBS[job_id].update(kw)
+    try:
+        _upd(status="running", step="Analyzing concept…")
+        target_sec = int(body.target_minutes * 60)
+        num_scenes = max(10, round(target_sec / 7))
+
+        _upd(step="Looking up character appearances…")
+        char1_appearance = await _fetch_char_appearance(body.character_id)
+        char2_appearance = await _fetch_char_appearance(body.character2_id)
+
+        _upd(step="Fetching location context…")
+        from backend.routes.ai import get_location_context
+        location_context = await get_location_context(body.location_name)
+
+        char_label = body.character_name or "cast"
+        _upd(step=f"Writing story — {num_scenes} scenes, {body.target_minutes} min…")
+        story = await _gpt_develop(
+            concept           = idea["rawIdea"],
+            genre             = idea.get("genre", "sci-fi action"),
+            character_name    = body.character_name,
+            char2_name        = body.character2_name,
+            char1_appearance  = char1_appearance,
+            char2_appearance  = char2_appearance,
+            num_scenes        = num_scenes,
+            scene_seconds     = body.scene_seconds,
+            target_minutes    = body.target_minutes,
+            location_name     = body.location_name,
+            location_context  = location_context,
+        )
+
+        _upd(step="Calculating reel cuts…")
+        scenes = story.get("scenes", [])
+        actual_total_sec = sum(int(s.get("duration_seconds", 7)) for s in scenes)
+        n = len(scenes)
+        story["num_scenes"]    = n
+        story["actual_scenes"] = n
+        story["target_minutes"]= body.target_minutes
+        story["est_seconds"]   = actual_total_sec
+        story["est_minutes"]   = round(actual_total_sec / 60, 1)
+        story["reel_60s"]      = _top_scene_indices(scenes, 60, 5)
+        story["reel_30s"]      = _top_scene_indices(scenes, 30, 5)
+        story["reel_15s"]      = _top_scene_indices(scenes, 15, 5)
+
+        _upd(step="Saving to database…")
+        patch = {"story": story, "status": "developed",
+                 "target_minutes": body.target_minutes,
+                 "scene_seconds": body.scene_seconds}
+        if body.character_id:
+            patch["character_id"]   = body.character_id
+            patch["character_name"] = body.character_name
+        if body.character2_id:
+            patch["character2_id"]   = body.character2_id
+            patch["character2_name"] = body.character2_name
+        await _patch_idea_any(idea_id, patch)
+
+        _upd(status="complete", story=story, scene_count=n,
+             step=f"Done — {n} scenes built")
+    except Exception as e:
+        _upd(status="failed", error=str(e)[:400], step=f"Error: {str(e)[:80]}")
+
+
 @router.post("/ideas/{idea_id}/develop")
-async def develop_idea(idea_id: str, body: DevelopRequest):
+async def develop_idea(idea_id: str, body: DevelopRequest, background_tasks: BackgroundTasks):
     idea = await _get_idea_any(idea_id)
     if not idea:
         raise HTTPException(404, "Idea not found")
 
-    target_sec = int(body.target_minutes * 60)
-    num_scenes = max(10, round(target_sec / 7))
+    job_id = str(uuid.uuid4())
+    _DEV_JOBS[job_id] = {"status": "starting", "step": "Reading idea…", "idea_id": idea_id}
+    background_tasks.add_task(_run_develop, job_id, idea_id, body, idea)
+    return {"success": True, "job_id": job_id}
 
-    # Look up full character appearance so image prompts know what the performers look like
-    char1_appearance = await _fetch_char_appearance(body.character_id)
-    char2_appearance = await _fetch_char_appearance(body.character2_id)
 
-    from backend.routes.ai import get_location_context
-    location_context = await get_location_context(body.location_name)
-
-    story = await _gpt_develop(
-        concept           = idea["rawIdea"],
-        genre             = idea.get("genre", "sci-fi action"),
-        character_name    = body.character_name,
-        char2_name        = body.character2_name,
-        char1_appearance  = char1_appearance,
-        char2_appearance  = char2_appearance,
-        num_scenes        = num_scenes,
-        scene_seconds     = body.scene_seconds,
-        target_minutes    = body.target_minutes,
-        location_name     = body.location_name,
-        location_context  = location_context,
-    )
-
-    scenes = story.get("scenes", [])
-    actual_total_sec = sum(int(s.get("duration_seconds", 7)) for s in scenes)
-    num_scenes  = len(scenes)
-    story["num_scenes"]      = num_scenes
-    story["actual_scenes"]   = num_scenes
-    story["target_minutes"]  = body.target_minutes
-    story["est_seconds"]     = actual_total_sec
-    story["est_minutes"]     = round(actual_total_sec / 60, 1)
-    story["reel_60s"]        = _top_scene_indices(scenes, 60,  5)
-    story["reel_30s"]        = _top_scene_indices(scenes, 30,  5)
-    story["reel_15s"]        = _top_scene_indices(scenes, 15,  5)
-
-    patch = {"story": story, "status": "developed",
-             "target_minutes": body.target_minutes,
-             "scene_seconds": body.scene_seconds}
-    if body.character_id:
-        patch["character_id"]    = body.character_id
-        patch["character_name"]  = body.character_name
-    if body.character2_id:
-        patch["character2_id"]   = body.character2_id
-        patch["character2_name"] = body.character2_name
-    await _patch_idea_any(idea_id, patch)
-    return {"success": True, "story": story}
+@router.get("/ideas/develop-status/{job_id}")
+async def develop_status(job_id: str):
+    job = _DEV_JOBS.get(job_id)
+    if not job:
+        return {"error": "Job not found"}
+    return job
 
 
 @router.patch("/ideas/{idea_id}")

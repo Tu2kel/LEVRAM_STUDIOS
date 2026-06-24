@@ -17,7 +17,7 @@ async function sbLoadMeta() {
     ]);
     const cData = await cRes.json();
     const lData = await lRes.json();
-    _sbChars = (cData.characters || []).map(c => c.name).filter(Boolean).sort();
+    _sbChars = (cData.characters || []).filter(c => c.name).sort((a, b) => a.name.localeCompare(b.name));
     _sbLocs  = (lData.locations  || []).map(l => l.name).filter(Boolean).sort();
   } catch (_) {
     // non-fatal — dropdowns will still show typed value
@@ -25,8 +25,15 @@ async function sbLoadMeta() {
 }
 
 function _charOptions(current) {
-  const opts = ["", ...(_sbChars.includes(current) || !current ? _sbChars : [current, ..._sbChars])];
+  const names = _sbChars.map(c => c.name);
+  const opts  = ["", ...(names.includes(current) || !current ? names : [current, ...names])];
   return opts.map(n => `<option value="${n}"${n === current ? " selected" : ""}>${n || "— none —"}</option>`).join("");
+}
+
+function _sbCharId(name) {
+  if (!name) return "";
+  const lc = name.trim().toLowerCase();
+  return _sbChars.find(c => c.name.toLowerCase() === lc)?.id || "";
 }
 
 function _locOptions(current) {
@@ -330,6 +337,8 @@ async function sbRegenShot(shotId) {
           location:       shot.location || shot.environment || "",
         }],
         character_name:  shot.character || "",
+        character_id:    shot.character_id  || _sbCharId(shot.character),
+        character2_id:   shot.character2_id || _sbCharId(shot.character2 || shot.char2),
         keyframes_only:  true,
         project:         shot.project || "",
         clear_project:   false,
@@ -597,6 +606,8 @@ async function sbGenMissing() {
           location:      s.location || s.environment || "",
         })),
         character_name: shots[0]?.character || "",
+        character_id:   shots[0]?.character_id || _sbCharId(shots[0]?.character),
+        character2_id:  shots[0]?.character2_id || _sbCharId(shots[0]?.character2 || shots[0]?.char2),
         keyframes_only: true,
         project:        _sbProject || shots[0]?.project || "",
         clear_project:  false,

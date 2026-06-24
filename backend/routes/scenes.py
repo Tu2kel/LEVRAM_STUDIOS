@@ -7,6 +7,7 @@ import uuid
 from typing import Optional
 
 from backend.db import scenes_col, ideas_col
+from backend.config import VENICE_CREATIVE_MODEL
 
 router = APIRouter()
 
@@ -594,7 +595,7 @@ async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
 
     def _call_hermes():
         resp = client.chat.completions.create(
-            model="hermes-3-llama-3.1-405b",
+            model=VENICE_CREATIVE_MODEL,
             messages=[
                 {"role": "system", "content": "You write cinematic image generation prompts. Return the prompt only — no commentary, no labels."},
                 {"role": "user", "content": rewrite_prompt},
@@ -711,7 +712,7 @@ async def enhance_prompt(payload: dict):
     try:
         if venice_key:
             client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
-            model  = "hermes-3-llama-3.1-405b"
+            model  = VENICE_CREATIVE_MODEL
         elif oai_key:
             client = OpenAI(api_key=oai_key)
             model  = "gpt-4o-mini"
@@ -757,7 +758,7 @@ async def import_script(payload: dict):
     oai_key    = os.getenv("OPENAI_API_KEY")
     if venice_key:
         client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
-        model  = "hermes-3-llama-3.1-405b"
+        model  = VENICE_CREATIVE_MODEL
     elif oai_key:
         client = OpenAI(api_key=oai_key)
         model  = "gpt-4o-mini"
@@ -983,7 +984,7 @@ async def write_scene(payload: dict):
     try:
         if venice_key:
             client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
-            model  = "hermes-3-llama-3.1-405b"
+            model  = VENICE_CREATIVE_MODEL
         elif oai_key:
             client = OpenAI(api_key=oai_key)
             model  = "gpt-4o-mini"

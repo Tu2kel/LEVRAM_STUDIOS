@@ -14,7 +14,7 @@ DEFAULT_MODEL = os.getenv("RL_AGENT_MODEL", "dolphin-mistral")
 # Venice.ai — uncensored platform
 VENICE_BASE        = "https://api.venice.ai/api/v1"
 VENICE_MODEL       = os.getenv("RL_AGENT_VENICE_MODEL", "venice-uncensored")        # Lena (adult)
-KELE_VENICE_MODEL  = os.getenv("KELE_VENICE_MODEL", "hermes-3-llama-3.1-405b")      # KEL-E (main studio)
+KELE_VENICE_MODEL  = os.getenv("KELE_VENICE_MODEL") or os.getenv("VENICE_CREATIVE_MODEL", "dolphin-2.9.2-qwen2-72b")
 
 SYSTEM_PROMPT = """You are Lena — creative director embedded inside LEVRAM Studios, an adult AI fantasy studio production app.
 

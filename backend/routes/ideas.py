@@ -6,6 +6,7 @@ from math import ceil
 import json, uuid, asyncio, os
 
 from backend.db import ideas_col, characters_col
+from backend.config import VENICE_CREATIVE_MODEL
 
 router = APIRouter()
 DATA_FILE = Path("data/ideas.json")
@@ -296,7 +297,7 @@ async def revise_idea(idea_id: str, body: ReviseRequest):
     venice_key = os.getenv("VENICE_API_KEY")
     if venice_key:
         client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
-        model  = "hermes-3-llama-3.1-405b"
+        model = VENICE_CREATIVE_MODEL
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model  = "gpt-4o-mini"
@@ -558,11 +559,11 @@ async def _gpt_develop(
     if is_adult and venice_key:
         # RL content — Hermes 405B, fully uncensored
         client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
-        model  = "hermes-3-llama-3.1-405b"
+        model = VENICE_CREATIVE_MODEL
     elif venice_key:
         # Main studio — Hermes 405B, largest uncensored creative writing model on Venice
         client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
-        model  = "hermes-3-llama-3.1-405b"
+        model = VENICE_CREATIVE_MODEL
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model  = "gpt-4o-mini"

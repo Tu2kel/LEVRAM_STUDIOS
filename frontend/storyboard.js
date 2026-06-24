@@ -1,11 +1,13 @@
 const SB_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
-let _sbAllShots  = [];
-let _sbFilter    = "all";
-let _sbProject   = "";
-let _sbView      = "script";  // "script" | "director"
-let _sbChars     = [];        // [{id, name}, ...]
-let _sbLocs      = [];        // [{name}, ...]
+let _sbAllShots    = [];
+let _sbFilter      = "all";
+let _sbProject     = "";
+let _sbView        = "script";  // "script" | "director"
+let _sbChars       = [];        // [{id, name}, ...]
+let _sbLocs        = [];        // [{name}, ...]
+let _sbSelectMode  = false;
+let _sbSelected    = new Set(); // selected shot IDs
 
 // ── Meta (characters + locations for dropdowns) ────────────────
 
@@ -182,9 +184,12 @@ function sbCardHTML(shot) {
   }
 
   const regenBtnClass = sbIsFail(sol) ? "regen-btn" : "";
+  const isSelectedD   = _sbSelected.has(id);
 
   return `
-    <div id="sb-card-${id}" class="sb-card ${cardEdge}" data-id="${id}">
+    <div id="sb-card-${id}" class="sb-card ${cardEdge}${isSelectedD ? " sb-selected" : ""}" data-id="${id}"
+         onclick="_sbSelectMode && sbToggleCard('${id}')">
+      ${_sbSelectMode ? `<div class="sb-select-check">${isSelectedD ? "☑" : "☐"}</div>` : ""}
       <div class="sb-card-num-bar">
         <span class="sb-card-num">${shotNum}</span>
         <span class="sb-sol-badge ${solClass}">${solText}</span>
@@ -489,8 +494,12 @@ function sbScriptCardHTML(shot) {
 
   const esc = s => (s || "").replace(/`/g, "\\`").replace(/\$/g, "\\$");
 
+  const isSelected = _sbSelected.has(id);
+
   return `
-<div class="sb-shot-card ${hasKey ? "has-key" : "no-key"}" id="ssc-${id}">
+<div class="sb-shot-card ${hasKey ? "has-key" : "no-key"}${isSelected ? " sb-selected" : ""}" id="ssc-${id}"
+     onclick="_sbSelectMode && sbToggleCard('${id}')">
+  ${_sbSelectMode ? `<div class="sb-select-check">${isSelected ? "☑" : "☐"}</div>` : ""}
   <div class="sb-shot-header">
     <span class="sb-shot-num">SHOT ${num}</span>
     <div class="sb-shot-chars">${charTags || '<span style="color:var(--text-dim);font-size:10px;letter-spacing:1px;">No Characters</span>'}</div>
@@ -836,6 +845,90 @@ async function sbWriteScene(shotId) {
   }
 }
 window.sbWriteScene = sbWriteScene;
+
+// ── Multi-select ───────────────────────────────────────────────
+
+function sbToggleSelectMode() {
+  _sbSelectMode = !_sbSelectMode;
+  _sbSelected.clear();
+
+  const bar    = document.getElementById("sb-select-bar");
+  const togS   = document.getElementById("sb-select-toggle-script");
+  const togD   = document.getElementById("sb-select-toggle-director");
+
+  if (_sbSelectMode) {
+    bar?.style.setProperty("display", "flex");
+    togS && (togS.textContent = "✕ Cancel Select") && togS.classList.add("active");
+    togD && (togD.textContent = "✕ Cancel Select") && togD.classList.add("active");
+    document.body.classList.add("sb-select-mode");
+  } else {
+    bar?.style.setProperty("display", "none");
+    togS && (togS.textContent = "☐ Select") && togS.classList.remove("active");
+    togD && (togD.textContent = "☐ Select") && togD.classList.remove("active");
+    document.body.classList.remove("sb-select-mode");
+  }
+
+  if (_sbView === "script") sbRenderScript(); else sbRenderFiltered();
+}
+
+function sbToggleCard(id) {
+  if (!_sbSelectMode) return false;
+  if (_sbSelected.has(id)) _sbSelected.delete(id); else _sbSelected.add(id);
+  _sbUpdateSelectBar();
+  // Toggle selected class on the card
+  const card = document.getElementById(`ssc-${id}`) || document.getElementById(`sb-card-${id}`);
+  card?.classList.toggle("sb-selected", _sbSelected.has(id));
+  return true;
+}
+
+function _sbUpdateSelectBar() {
+  const n = _sbSelected.size;
+  const countEl = document.getElementById("sb-select-count");
+  const delBtn  = document.getElementById("sb-select-del");
+  if (countEl) countEl.textContent = `${n} selected`;
+  if (delBtn)  delBtn.textContent  = n ? `🗑 Delete ${n} Shot${n !== 1 ? "s" : ""}` : "🗑 Delete Selected";
+  if (delBtn)  delBtn.disabled     = n === 0;
+}
+
+function sbSelectAll() {
+  sbGetProjectShots().forEach(s => _sbSelected.add(s.id));
+  _sbUpdateSelectBar();
+  document.querySelectorAll(".sb-shot-card, .sb-card").forEach(el => el.classList.add("sb-selected"));
+}
+
+function sbSelectNone() {
+  _sbSelected.clear();
+  _sbUpdateSelectBar();
+  document.querySelectorAll(".sb-shot-card, .sb-card").forEach(el => el.classList.remove("sb-selected"));
+}
+
+async function sbDeleteSelected() {
+  const ids = [..._sbSelected];
+  if (!ids.length) return;
+  if (!confirm(`Delete ${ids.length} shot${ids.length !== 1 ? "s" : ""}? This cannot be undone.`)) return;
+
+  const btn = document.getElementById("sb-select-del");
+  if (btn) { btn.textContent = "Deleting…"; btn.disabled = true; }
+
+  let failed = 0;
+  for (const id of ids) {
+    try {
+      const res = await levFetch(`${SB_BASE}/scene/${id}`, { method: "DELETE" });
+      if (!res.ok) failed++;
+      else _sbAllShots = _sbAllShots.filter(s => s.id !== id);
+    } catch (_) { failed++; }
+  }
+
+  _sbSelected.clear();
+  sbToggleSelectMode(); // exit select mode, re-render
+  if (failed) alert(`${failed} shot${failed !== 1 ? "s" : ""} failed to delete — check logs.`);
+}
+
+window.sbToggleSelectMode = sbToggleSelectMode;
+window.sbToggleCard       = sbToggleCard;
+window.sbSelectAll        = sbSelectAll;
+window.sbSelectNone       = sbSelectNone;
+window.sbDeleteSelected   = sbDeleteSelected;
 
 // ── Import Script ──────────────────────────────────────────────
 

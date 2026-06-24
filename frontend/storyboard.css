@@ -895,3 +895,95 @@ select.sb-field-input option {
   color: var(--text-dim);
   letter-spacing: 1px;
 }
+
+/* ── Multi-select ──────────────────────────────────────────────── */
+.sb-select-toggle {
+  margin-left: auto;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.sb-select-toggle:hover, .sb-select-toggle.active {
+  border-color: var(--imperial-red);
+  color: var(--imperial-red);
+}
+
+.sb-select-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 52px;
+  background: #0e0e0e;
+  border-top: 1px solid var(--imperial-red);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  z-index: 200;
+}
+#sb-select-count {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  min-width: 80px;
+}
+.sb-select-all-btn, .sb-select-none-btn, .sb-select-cancel-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.sb-select-all-btn:hover  { border-color: rgba(201,168,76,0.5); color: var(--gold); }
+.sb-select-none-btn:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+.sb-select-cancel-btn:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+.sb-select-del-btn {
+  margin-left: auto;
+  background: rgba(180,30,30,0.15);
+  border: 1px solid var(--imperial-red);
+  color: var(--imperial-red);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 6px 18px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sb-select-del-btn:hover:not(:disabled) { background: rgba(180,30,30,0.35); }
+.sb-select-del-btn:disabled { opacity: 0.35; cursor: default; }
+
+/* Card selected state */
+.sb-shot-card.sb-selected,
+.sb-card.sb-selected {
+  outline: 2px solid var(--imperial-red);
+  outline-offset: -2px;
+}
+.sb-select-check {
+  position: absolute;
+  top: 8px; right: 8px;
+  font-size: 18px;
+  color: var(--imperial-red);
+  pointer-events: none;
+  z-index: 10;
+}
+/* In select mode: pointer cursor on cards, disable inner interactions */
+body.sb-select-mode .sb-shot-card,
+body.sb-select-mode .sb-card { cursor: pointer; user-select: none; }
+body.sb-select-mode .sb-shot-body,
+body.sb-select-mode .sb-card-body,
+body.sb-select-mode .ssc-card-footer,
+body.sb-select-mode .sb-card-footer { pointer-events: none; }
+/* Keep relative positioning so the check overlay works */
+.sb-shot-card, .sb-card { position: relative; }

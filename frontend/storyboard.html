@@ -61,6 +61,7 @@
     <div class="sb-stat" id="sb-keyed-stat">Keyed: <strong id="sb-stat-keyed">—</strong></div>
     <button class="sb-gen-missing-btn" id="sb-gen-missing" onclick="sbGenMissing()">⚡ Generate Missing Keyframes</button>
     <span id="sb-gen-status" class="sb-gen-status"></span>
+    <button class="sb-select-toggle" id="sb-select-toggle-script" onclick="sbToggleSelectMode()">☐ Select</button>
   </div>
 
   <!-- Director view stats/filters -->
@@ -75,6 +76,16 @@
       <button class="sb-filter-btn" data-filter="fail">✗ Fail</button>
       <button class="sb-filter-btn" data-filter="nodata">⏳ No Data</button>
     </div>
+    <button class="sb-select-toggle" id="sb-select-toggle-director" onclick="sbToggleSelectMode()">☐ Select</button>
+  </div>
+
+  <!-- Multi-select delete bar (appears at bottom when selections exist) -->
+  <div id="sb-select-bar" class="sb-select-bar" style="display:none;">
+    <span id="sb-select-count">0 selected</span>
+    <button class="sb-select-all-btn" onclick="sbSelectAll()">Select All</button>
+    <button class="sb-select-none-btn" onclick="sbSelectNone()">Clear</button>
+    <button class="sb-select-del-btn" id="sb-select-del" onclick="sbDeleteSelected()">🗑 Delete Selected</button>
+    <button class="sb-select-cancel-btn" onclick="sbToggleSelectMode()">Cancel</button>
   </div>
 
   <!-- Script view -->

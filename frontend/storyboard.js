@@ -910,8 +910,14 @@ async function sbDeleteSelected() {
   const btn = document.getElementById("sb-select-del");
   if (btn) { btn.textContent = "Deleting…"; btn.disabled = true; }
 
+  // Idea-vault shot IDs are "{idea_id}_{index:03d}". Deleting lower indices first
+  // shifts the remaining indices and causes subsequent deletes to miss. Sort
+  // descending by index so we always remove from the tail first.
+  const _idxOf = id => { const p = id.split("_"); return parseInt(p[p.length - 1]) || 0; };
+  const sorted = [...ids].sort((a, b) => _idxOf(b) - _idxOf(a));
+
   let failed = 0;
-  for (const id of ids) {
+  for (const id of sorted) {
     try {
       const res = await levFetch(`${SB_BASE}/scene/${id}`, { method: "DELETE" });
       if (!res.ok) failed++;

@@ -191,22 +191,27 @@ async def create_character(payload: CharacterPayload, x_studio: str = Header(def
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Dedup: return existing character if same name+studio already exists
+    _mongo_dedup_ok = False
     if characters_col is not None:
-        if x_studio == "levram":
-            dedup_query = {
-                "name": {"$regex": f"^{re.escape(name_clean)}$", "$options": "i"},
-                "$or": [{"studio": "levram"}, {"studio": {"$exists": False}}],
-            }
-        else:
-            dedup_query = {
-                "name": {"$regex": f"^{re.escape(name_clean)}$", "$options": "i"},
-                "studio": x_studio,
-            }
-        existing_doc = await characters_col.find_one(dedup_query)
-        if existing_doc:
-            docs = await characters_col.find({"studio": x_studio}).to_list(None)
-            return {"success": True, "character": _strip(existing_doc), "characters": [_strip(d) for d in docs]}
-    else:
+        try:
+            if x_studio == "levram":
+                dedup_query = {
+                    "name": {"$regex": f"^{re.escape(name_clean)}$", "$options": "i"},
+                    "$or": [{"studio": "levram"}, {"studio": {"$exists": False}}],
+                }
+            else:
+                dedup_query = {
+                    "name": {"$regex": f"^{re.escape(name_clean)}$", "$options": "i"},
+                    "studio": x_studio,
+                }
+            existing_doc = await characters_col.find_one(dedup_query)
+            _mongo_dedup_ok = True
+            if existing_doc:
+                docs = await characters_col.find({"studio": x_studio}).to_list(None)
+                return {"success": True, "character": _strip(existing_doc), "characters": [_strip(d) for d in docs]}
+        except Exception as e:
+            print(f"[CHAR DEDUP] MongoDB failed ({e}), skipping dedup")
+    if not _mongo_dedup_ok:
         data = _json_load()
         existing_doc = next(
             (c for c in data["characters"]
@@ -223,9 +228,12 @@ async def create_character(payload: CharacterPayload, x_studio: str = Header(def
     if not character.get("lora_trigger"):
         character["lora_trigger"] = name_clean.upper().replace(" ", "_")
     if characters_col is not None:
-        await characters_col.insert_one(character)
-        docs = await characters_col.find({"studio": x_studio}).to_list(None)
-        return {"success": True, "character": _strip(character), "characters": [_strip(d) for d in docs]}
+        try:
+            await characters_col.insert_one(character)
+            docs = await characters_col.find({"studio": x_studio}).to_list(None)
+            return {"success": True, "character": _strip(character), "characters": [_strip(d) for d in docs]}
+        except Exception as e:
+            print(f"[CHAR CREATE] MongoDB failed ({e}), falling back to JSON")
     data = _json_load()
     data["characters"].append(character)
     _json_save(data)
@@ -240,13 +248,18 @@ async def update_character(character_id: str, payload: CharacterPayload):
     updates = {**payload.model_dump(), "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     updates["name"] = updates["name"].strip()
     if characters_col is not None:
-        result = await characters_col.find_one_and_update(
-            {"id": character_id}, {"$set": updates}, return_document=True
-        )
-        if not result:
-            raise HTTPException(status_code=404, detail="Character not found")
-        docs = await characters_col.find({}).to_list(None)
-        return {"success": True, "character": _strip(result), "characters": [_strip(d) for d in docs]}
+        try:
+            result = await characters_col.find_one_and_update(
+                {"id": character_id}, {"$set": updates}, return_document=True
+            )
+            if not result:
+                raise HTTPException(status_code=404, detail="Character not found")
+            docs = await characters_col.find({}).to_list(None)
+            return {"success": True, "character": _strip(result), "characters": [_strip(d) for d in docs]}
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"[CHAR UPDATE] MongoDB failed ({e}), falling back to JSON")
     data = _json_load()
     idx = next((i for i, c in enumerate(data["characters"]) if c.get("id") == character_id), None)
     if idx is None:
@@ -259,11 +272,16 @@ async def update_character(character_id: str, payload: CharacterPayload):
 @router.delete("/characters/{character_id}")
 async def delete_character(character_id: str):
     if characters_col is not None:
-        result = await characters_col.delete_one({"id": character_id})
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Character not found")
-        docs = await characters_col.find({}).to_list(None)
-        return {"success": True, "characters": [_strip(d) for d in docs]}
+        try:
+            result = await characters_col.delete_one({"id": character_id})
+            if result.deleted_count == 0:
+                raise HTTPException(status_code=404, detail="Character not found")
+            docs = await characters_col.find({}).to_list(None)
+            return {"success": True, "characters": [_strip(d) for d in docs]}
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"[CHAR DELETE] MongoDB failed ({e}), falling back to JSON")
     data = _json_load()
     before = len(data["characters"])
     data["characters"] = [c for c in data["characters"] if c.get("id") != character_id]
@@ -569,7 +587,7 @@ async def reset_lora(character_id: str):
 @router.post("/character-lab/generate")
 async def generate_character_preview(payload: dict):
     from backend.routes.image_gen import (
-        _full_lock_generate, _ws_pulid, _ws_generate_image, RefImage,
+        _full_lock_generate, _runway_gen4_image, _ws_generate_image, RefImage,
     )
 
     prompt    = payload.get("prompt") or ""
@@ -624,12 +642,12 @@ async def generate_character_preview(payload: dict):
             engine = "full_lock"
             local_url = result["imageUrl"]
         elif face_ref:
-            # Face lock only via WaveSpeed PuLID
-            _fr = face_ref  # capture for lambda
+            # Face lock via Runway Gen-4 Turbo
+            _fr = face_ref
             result = await loop.run_in_executor(
-                None, lambda: _ws_pulid(prompt, [_fr], "2:3", "", "levram")
+                None, lambda: _runway_gen4_image(prompt, [_fr], "portrait", "", "runway_gen4_turbo", "levram")
             )
-            engine = "ws_pulid"
+            engine = "runway_gen4_turbo"
             local_url = result["imageUrl"]
         else:
             # No refs — plain WaveSpeed FLUX

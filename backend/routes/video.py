@@ -539,21 +539,14 @@ async def export_timeline(payload: ExportTimelinePayload):
 
 # Text-to-Video models
 FAL_T2V_MODELS = {
-    "wan21":        "fal-ai/wan/v2.1/1.3b/text-to-video",   # fast, open-source
-    "wan21_14b":    "fal-ai/wan/v2.1/14b/text-to-video",    # highest quality open-source
-    "hunyuan":      "fal-ai/hunyuan-video",                  # strong consistency, free
-    "cogvideox":    "fal-ai/cogvideox-5b",                   # open-source, good motion
-    "runway_gen4":  "fal-ai/runway-gen4.5/text-to-video",   # Runway Gen-4.5 T2V — paid
+    "wan21_14b":   "fal-ai/wan/v2.1/14b/text-to-video",   # best open-source quality
+    "runway_gen4": "fal-ai/runway-gen4.5/text-to-video",  # Runway Gen-4.5 T2V — paid
 }
 
-# Image-to-Video models — lock the character's face via a keyframe
+# Image-to-Video models — animate a keyframe into a clip
 FAL_I2V_MODELS = {
-    "wan21_i2v":       "fal-ai/wan-i2v",                               # Wan 2.1 I2V — free, fast draft
-    "wan21_14b_i2v":   "fal-ai/wan/v2.2-a14b/image-to-video",         # Wan 2.2 14B — free, best open
-    "kling_26":        "fal-ai/kling-video/v2.6/pro/image-to-video",   # Kling 2.6 Pro — production
-    "kling_o1":        "fal-ai/kling-video/o1/image-to-video",         # Kling O1 — dual keyframe (start+end)
-    "runway_turbo":    "fal-ai/runway-gen4-turbo/image-to-video",      # Runway Turbo — paid
-    "runway_gen4_i2v": "fal-ai/runway-gen4.5/image-to-video",         # Runway Gen-4.5 — paid, best
+    "wan21_14b_i2v":   "fal-ai/wan/v2.2-a14b/image-to-video",  # best open-source I2V
+    "runway_gen4_i2v": "fal-ai/runway-gen4.5/image-to-video",  # Runway Gen-4.5 — paid, best
 }
 
 # WaveSpeed I2V models — cloud GPU, no local VRAM needed, cheaper than fal.ai

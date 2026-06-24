@@ -461,14 +461,15 @@ body {
   min-width: 160px;
 }
 
-/* ── Script list ──────────────────────────────────── */
+/* ── Script list — 2-3 cards per row ─────────────── */
 .sb-script-list {
-  max-width: 860px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 24px 20px 60px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 16px;
+  align-items: start;
 }
 
 .sb-shot-card {

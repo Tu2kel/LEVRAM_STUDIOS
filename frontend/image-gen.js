@@ -2,39 +2,37 @@
 const IG_BASE = window.LEVRAM_CONFIG?.api || "http://127.0.0.1:8000";
 
 const IG_ENGINE_HINTS = {
-  full_lock:            "🔒 FULL LOCK — Seedream locks body/outfit/proportions, then face swap locks the face. Select a character that has body reference photos uploaded. Best character consistency available.",
-  dalle3:               "Uses your OpenAI key — best prompt accuracy.",
-  fal_flux:             "fal.ai FLUX Dev — photorealism.",
-  comfy:                "Checking ComfyUI connection…",
-  consistent_character: "★ BEST FOR CHARACTERS — Load 1 face photo in Person 1, describe the scene. Same character every generation.",
-  ws_flux:              "⚡ WaveSpeed FLUX Dev — fast, pay per generation ($0.012/img).",
-  ws_pulid:             "⚡ WaveSpeed PuLID — face-locked generation. Load a face photo in Person 1 first.",
-  venice_flux:          "🔴 Venice.ai — truly uncensored. Free tier: 15/day (blurred). Pro $18/mo: 1,000/day. Best for LS Redlight.",
-  novita_pro:           "🔴 NovitaAI PRO — PornMaster model, most explicit adult content. ~$0.015/img. Requires NOVITA_API_KEY.",
-  novita_photo:         "🔴 NovitaAI Photo — epiCPhotogasm XL++, explicit photorealistic women. ~$0.015/img. Requires NOVITA_API_KEY.",
-  novita_realism:       "🔴 NovitaAI Realism — epiCRealism, photorealistic portrait quality. ~$0.015/img. Requires NOVITA_API_KEY.",
-  novita_anime:         "🔴 NovitaAI Anime — Meinahentai v4, explicit anime/hentai style. ~$0.015/img. Requires NOVITA_API_KEY.",
-  novita_asian:         "🔴 NovitaAI Asian — MajicMix Realistic, Asian photorealism, distinct facial structure. ~$0.015/img.",
-  novita_hybrid:        "🔴 NovitaAI Hybrid — RevAnimated, anime-realistic blend. Between real and illustrated. ~$0.015/img.",
+  // ── Main Studio ──────────────────────────────────────────────────────────────
+  runway_gen4_turbo:    "🔒 RUNWAY GEN-4 TURBO — Primary character lock. Up to 3 reference images. Upload character photo in Person 1. ~$0.05/img.",
+  runway_gen4:          "🔒 RUNWAY GEN-4 — Max quality character lock. Up to 3 reference images. ~$0.10/img.",
+  full_lock:            "🔒 FULL LOCK — Seedream locks full body/outfit/proportions, then face swap locks the face. Select a character with body reference photos uploaded.",
+  ideogram_character:   "🔒 IDEOGRAM CHARACTER — Single-image identity lock. Advanced facial + hair detection builds an identity map. No LoRA training. $0.10–$0.20/img.",
+  ws_nano_banana:       "🔒 NANO BANANA 2 — Gemini 3.1 Flash Image. Up to 5 characters in one scene. Pro quality at flash speed. $0.07–$0.15/img.",
+  // ── Redlight ─────────────────────────────────────────────────────────────────
+  venice_flux:          "🔴 Venice.ai — Truly uncensored. Free tier: 15/day. Pro $18/mo: 1,000/day.",
+  novita_realism:       "🔴 NovitaAI Realism — epiCRealism, photorealistic portrait quality. ~$0.015/img.",
+  novita_anime:         "🔴 NovitaAI Anime — Meinahentai v4, explicit anime style. ~$0.015/img.",
+  novita_asian:         "🔴 NovitaAI Asian — MajicMix Realistic, Asian photorealism with distinct facial structure. ~$0.015/img.",
 };
 
 const IG_VIDEO_ENGINE_HINTS = {
-  wan:           "Wan 2.1 1.3B — local ComfyUI. Free, requires ComfyUI running.",
-  wan21:         "Wan 2.1 1.3B — fal.ai cloud. Free, fast, ~3 min.",
-  wan21_14b:     "Wan 2.1 14B — fal.ai cloud. Free, best open-source quality, ~8 min.",
-  wan21:         "Wan 2.1 — fal.ai cloud. Free, fast, solid motion, ~3 min.",
-  cogvideox:     "CogVideoX 5B — fal.ai cloud. Free, cinematic style, ~5 min.",
-  runway_gen4:   "Runway Gen-4.5 ✦ — fal.ai cloud. Paid per clip. T2V + I2V. Highest quality.",
+  wan21_14b:         "Wan 2.1 14B — fal.ai cloud. Best open-source quality. ~8 min.",
+  wan21_14b_i2v:     "Wan 2.2 14B I2V — fal.ai cloud. Best open-source image-to-video. Animate a keyframe.",
+  runway_gen4:       "Runway Gen-4.5 T2V ✦ — fal.ai cloud. Paid per clip. Highest quality text-to-video.",
+  runway_gen4_i2v:   "Runway Gen-4.5 I2V ✦ — fal.ai cloud. Paid per clip. Best image-to-video. Animate your keyframe.",
+  ws_wan22:          "WaveSpeed Wan 2.2 I2V — cheaper than fal.ai. $0.01/s. Animate a keyframe.",
+  ws_wan27:          "WaveSpeed Wan 2.7 I2V — latest Wan model via WaveSpeed.",
+  ws_wan22_spicy:    "🔴 WaveSpeed Wan 2.2 Spicy — NSFW image-to-video. Redlight mode.",
 };
 
-// Default engine: Venice for RL mode, WaveSpeed FLUX for main studio
-const _igDefaultEngine = () => (window.RL?.isActive?.()) ? "venice_flux" : "ws_flux";
+// Default: Venice for Redlight mode, Runway Gen-4 Turbo for main studio
+const _igDefaultEngine = () => (window.RL?.isActive?.()) ? "venice_flux" : "runway_gen4_turbo";
 const _IG_VALID_ENGINES = new Set([
-  "full_lock",
-  "dalle3","fal_flux","comfy","consistent_character",
-  "ws_flux","ws_pulid","venice_flux",
-  "novita_pro","novita_photo","novita_realism","novita_anime",
-  "novita_asian","novita_hybrid",
+  // Main Studio
+  "runway_gen4_turbo","runway_gen4","full_lock",
+  "ideogram_character","ws_nano_banana",
+  // Redlight
+  "venice_flux","novita_realism","novita_anime","novita_asian",
 ]);
 let igActiveEngine = localStorage.getItem("ig-engine") || _igDefaultEngine();
 if (!_IG_VALID_ENGINES.has(igActiveEngine)) {
@@ -606,6 +604,8 @@ async function igGenerateImage() {
   }
 
   const engineLabel = {
+    runway_gen4_turbo: "Runway Gen-4 Turbo", runway_gen4: "Runway Gen-4",
+    full_lock: "Full Lock",
     dalle3: "DALL-E 3", fal_flux: "fal.ai FLUX", comfy: "ComfyUI",
     ws_flux: "WaveSpeed FLUX", ws_pulid: "WaveSpeed PuLID",
     venice_flux: "Venice FLUX",

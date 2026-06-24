@@ -14,28 +14,6 @@ router = APIRouter()
 
 IMAGE_DIR = Path("output/renders/images")
 
-# ── Aspect ratio maps ──────────────────────────────────────────
-DALLE_SIZES = {
-    "widescreen": "1792x1024",
-    "cinematic":  "1792x1024",
-    "portrait":   "1024x1792",
-    "square":     "1024x1024",
-}
-
-FAL_SIZES = {
-    "widescreen": "landscape_16_9",
-    "cinematic":  "landscape_16_9",
-    "portrait":   "portrait_16_9",
-    "square":     "square_hd",
-}
-
-COMFY_SIZES = {
-    "widescreen": (768, 512),
-    "cinematic":  (896, 384),
-    "portrait":   (512, 768),
-    "square":     (512, 512),
-}
-
 # ── WaveSpeed ─────────────────────────────────────────────────
 WAVESPEED_API_BASE = "https://api.wavespeed.ai/api/v3"
 
@@ -46,147 +24,57 @@ WS_IMG_SIZES = {
     "square":     {"width": 1024, "height": 1024},
 }
 
-WS_IMG_MODELS = {
-    "ws_flux":             "wavespeed-ai/flux-dev",
-    "ws_flux_schnell":     "wavespeed-ai/flux-schnell",
-    "ws_flux_ultra":       "wavespeed-ai/flux-dev-ultra-fast",
-    "ws_flux2":            "wavespeed-ai/flux-2-dev/text-to-image",
-    "ws_flux_pro":         "wavespeed-ai/flux-1.1-pro",
-    "ws_pulid":            "wavespeed-ai/flux-pulid",
-    "ws_flux_uncensored":  "wavespeed-ai/flux-dev",              # No spicy image model — safety checker off handles it
+# Runway Gen-4 hosted on WaveSpeed (same key)
+WS_RUNWAY_MODELS = {
+    "runway_gen4":       "runwayml/gen4-image",
+    "runway_gen4_turbo": "runwayml/gen4-image-turbo",
 }
 
-# ── Topview ───────────────────────────────────────────────────
-TOPVIEW_API_BASE = "https://api.topview.ai/api/v1"
+RUNWAY_ASPECTS = {
+    "widescreen": "16:9",
+    "cinematic":  "16:9",
+    "portrait":   "9:16",
+    "square":     "1:1",
+}
 
-TV_IMG_SIZES = {
+# ── Nano Banana 2 (Gemini 3.1 Flash Image) ───────────────────
+NB_IMG_SIZES = {
     "widescreen": {"width": 1280, "height": 720},
     "cinematic":  {"width": 1280, "height": 544},
     "portrait":   {"width": 720,  "height": 1280},
     "square":     {"width": 1024, "height": 1024},
 }
 
-TV_IMG_MODELS = {
-    "tv_nano":      "nano-banana-2",
-    "tv_nano_pro":  "nano-banana-pro",
-    "tv_seedream":  "seedream-5.0",
-    "tv_flux":      "flux-1-dev",
+# ── Venice ────────────────────────────────────────────────────
+VENICE_KEY      = os.getenv("VENICE_API_KEY", "")
+VENICE_IMG_BASE = "https://api.venice.ai/api/v1"
+
+VENICE_IMG_SIZES = {
+    "widescreen": (1280, 720),
+    "cinematic":  (1280, 544),
+    "portrait":   (720,  1280),
+    "square":     (1024, 1024),
+}
+
+# ── Novita (Redlight only) ────────────────────────────────────
+NOVITA_KEY      = os.getenv("NOVITA_API_KEY", "")
+NOVITA_IMG_BASE = "https://api.novita.ai/v3/async"
+
+NOVITA_MODELS = {
+    "novita_realism": "epicrealism_naturalSinRC1VAE_106430.safetensors",
+    "novita_anime":   "meinahentai_v4_70340.safetensors",
+    "novita_asian":   "majicmixRealistic_v6_65516.safetensors",
+}
+
+NOVITA_IMG_SIZES = {
+    "widescreen": (768, 512),
+    "cinematic":  (768, 432),
+    "portrait":   (512, 768),
+    "square":     (512, 512),
 }
 
 
-def _tv_submit_poll(endpoint: str, payload: dict, timeout_secs: int = 120) -> dict:
-    """Submit to Topview API, poll until complete. Returns result dict."""
-    import json, time, urllib.error
-    api_key = os.getenv("TOPVIEW_API_KEY")
-    if not api_key:
-        raise RuntimeError("TOPVIEW_API_KEY not set — add it to Railway Variables and .env")
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type":  "application/json",
-    }
-    submit_req = urllib.request.Request(
-        f"{TOPVIEW_API_BASE}/{endpoint}",
-        data=json.dumps(payload).encode(),
-        headers=headers,
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(submit_req, timeout=30) as r:
-            submit = json.loads(r.read())
-    except urllib.request.HTTPError as e:
-        raise RuntimeError(f"Topview submit {e.code}: {e.read().decode()[:300]}")
-
-    task_id = (submit.get("data") or {}).get("task_id") or submit.get("task_id")
-    if not task_id:
-        raise RuntimeError(f"Topview returned no task_id: {submit}")
-
-    for _ in range(timeout_secs):
-        time.sleep(1)
-        poll_req = urllib.request.Request(
-            f"{TOPVIEW_API_BASE}/task/result?task_id={task_id}",
-            headers=headers,
-        )
-        with urllib.request.urlopen(poll_req, timeout=30) as r:
-            poll = json.loads(r.read())
-        data   = poll.get("data") or {}
-        status = data.get("status", "")
-        if status in ("completed", "success", "COMPLETED", "SUCCESS"):
-            return data
-        if status in ("failed", "error", "FAILED", "ERROR", "cancelled"):
-            raise RuntimeError(f"Topview task {status}: {data.get('error', 'unknown')}")
-
-    raise RuntimeError("Topview generation timed out")
-
-
-def _tv_generate_image(prompt: str, aspect: str, style: str,
-                       engine: str = "tv_nano", studio: str = "levram") -> dict:
-    model   = TV_IMG_MODELS.get(engine, TV_IMG_MODELS["tv_nano"])
-    size    = TV_IMG_SIZES.get(aspect, TV_IMG_SIZES["widescreen"])
-    full    = f"{prompt}, {style}".strip(", ") if style else prompt
-
-    result  = _tv_submit_poll("image/generate", {
-        "model":                 model,
-        "prompt":                full,
-        "width":                 size["width"],
-        "height":                size["height"],
-        "num_inference_steps":   28,
-        "guidance_scale":        3.5,
-        "enable_safety_checker": False,
-    })
-
-    img_url = (result.get("images") or [{}])[0].get("url") or result.get("url") or ""
-    if not img_url:
-        raise RuntimeError(f"Topview returned no image URL: {result}")
-
-    image_bytes = _download_url(img_url)
-    _, out_url  = _save_bytes(image_bytes, prefix=f"tv_{engine.split('_')[-1]}", studio=studio)
-    return {"imageUrl": out_url, "prompt": full, "engine": engine, "model": model}
-
-
-def _tv_nano_pulid(prompt: str, face_refs: list, aspect: str,
-                   style: str = "", studio: str = "levram") -> dict:
-    """Topview Nano Banana with face reference — character-locked generation."""
-    import base64 as _b64m
-    size     = TV_IMG_SIZES.get(aspect, TV_IMG_SIZES["widescreen"])
-    full     = f"{prompt}, {style}".strip(", ") if style else prompt
-    face_b64 = face_refs[0].base64
-    mime     = face_refs[0].mediaType
-
-    result = _tv_submit_poll("image/generate", {
-        "model":                 TV_IMG_MODELS["tv_nano"],
-        "prompt":                full,
-        "width":                 size["width"],
-        "height":                size["height"],
-        "reference_images":      [{"data": f"data:{mime};base64,{face_b64}", "type": "face"}],
-        "num_inference_steps":   28,
-        "guidance_scale":        3.5,
-        "enable_safety_checker": False,
-    })
-
-    img_url = (result.get("images") or [{}])[0].get("url") or result.get("url") or ""
-    if not img_url:
-        raise RuntimeError(f"Topview Nano PuLID returned no image URL: {result}")
-
-    image_bytes = _download_url(img_url)
-    _, out_url  = _save_bytes(image_bytes, prefix="tv_nanopulid", studio=studio)
-    return {"imageUrl": out_url, "prompt": full, "engine": "tv_nano_pulid", "model": "nano-banana-2"}
-
-
-# ── fal.ai model IDs (standby)
-FAL_MODELS = {
-    "fal_flux":         "fal-ai/flux/dev",
-    "fal_flux_lora":    "fal-ai/flux-lora",
-    "fal_flux_schnell": "fal-ai/flux/schnell",
-    "fal_flux_pro":     "fal-ai/flux-pro",
-    "fal_flux_pro11":   "fal-ai/flux-pro/v1.1",
-    "fal_sd3":          "fal-ai/stable-diffusion-v3-medium",
-}
-
-# Engines that need a reference image (not in FAL_MODELS standard path)
-REFERENCE_ENGINES = {"consistent_character", "instantid"}
-
-
+# ── Data models ───────────────────────────────────────────────
 class RefImage(BaseModel):
     base64: str
     mediaType: str = "image/jpeg"
@@ -198,14 +86,14 @@ class ImageGenPayload(BaseModel):
     style: str = "cinematic photorealistic"
     negative_prompt: str = ""
     aspect: str = "widescreen"
-    engine: str = "fal_flux"
+    engine: str = "runway_gen4_turbo"
     reference_images:   list[RefImage] = []
-    face_references_1:  list[RefImage] = []  # Person 1 face photos
-    face_references_2:  list[RefImage] = []  # Person 2 face photos
-    # legacy — kept for backward compat; ignored if _1/_2 present
-    face_references:    list[RefImage] = []
+    face_references_1:  list[RefImage] = []
+    face_references_2:  list[RefImage] = []
+    face_references:    list[RefImage] = []  # legacy compat
 
 
+# ── Core helpers ──────────────────────────────────────────────
 def _save_bytes(image_bytes: bytes, prefix: str = "levram", studio: str = "levram") -> tuple[str, str]:
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     ts  = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -223,13 +111,8 @@ def _download_url(url: str) -> bytes:
         return r.read()
 
 
-# ══════════════════════════════════════════════════════════════
-# WaveSpeed — Primary image provider
-# ══════════════════════════════════════════════════════════════
-
 def _ws_to_public_url(b64data: str, media_type: str, prefix: str = "ref") -> str:
     """Save base64 bytes to output dir and return a public Railway URL."""
-    import json as _json
     ext      = "jpg" if "jpeg" in media_type else media_type.split("/")[-1]
     filename = f"{prefix}_{uuid.uuid4().hex[:12]}.{ext}"
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -286,67 +169,109 @@ def _ws_submit_poll(model_id: str, payload: dict, timeout_secs: int = 120) -> li
     raise RuntimeError("WaveSpeed image generation timed out")
 
 
-def _ws_generate_image(prompt: str, aspect: str, style: str,
-                       engine: str = "ws_flux", lora_url: str = "", lora_trigger: str = "",
+# ══════════════════════════════════════════════════════════════
+# Runway Gen-4 — Primary character lock (via WaveSpeed)
+# ══════════════════════════════════════════════════════════════
+def _runway_gen4_image(prompt: str, face_refs: list, aspect: str,
+                       style: str = "", engine: str = "runway_gen4_turbo",
                        studio: str = "levram") -> dict:
-    model_id    = WS_IMG_MODELS.get(engine, WS_IMG_MODELS["ws_flux"])
-    size        = WS_IMG_SIZES.get(aspect, WS_IMG_SIZES["widescreen"])
-    full_prompt = f"{lora_trigger} {prompt}".strip() if lora_trigger else prompt
-    if style:
-        full_prompt = f"{full_prompt}, {style}"
+    model_id     = WS_RUNWAY_MODELS.get(engine, WS_RUNWAY_MODELS["runway_gen4_turbo"])
+    aspect_ratio = RUNWAY_ASPECTS.get(aspect, "16:9")
+    full_prompt  = f"{prompt}, {style}".strip(", ") if style else prompt
 
-    is_schnell = "schnell" in engine
-    payload = {
-        "prompt":                 full_prompt,
-        "width":                  size["width"],
-        "height":                 size["height"],
-        "num_inference_steps":    4 if is_schnell else 28,
-        "guidance_scale":         0.0 if is_schnell else 3.5,
-        "enable_safety_checker":  False,
-        "seed":                   -1,
+    ref_urls = []
+    for ref in face_refs[:3]:
+        try:
+            ref_urls.append(_ws_to_public_url(ref.base64, ref.mediaType, prefix="runwayref"))
+        except Exception:
+            pass
+
+    outputs = _ws_submit_poll(model_id, {
+        "prompt":           full_prompt,
+        "aspect_ratio":     aspect_ratio,
+        "resolution":       "1080p",
+        "reference_images": ref_urls,
+        "seed":             0,
+    }, timeout_secs=180)
+
+    if not outputs:
+        raise RuntimeError("Runway Gen-4 returned no image")
+
+    image_bytes = _download_url(outputs[0])
+    prefix      = "runway_gen4t" if "turbo" in engine else "runway_gen4"
+    _, out_url  = _save_bytes(image_bytes, prefix=prefix, studio=studio)
+    return {"imageUrl": out_url, "prompt": full_prompt, "engine": engine, "model": model_id}
+
+
+# ══════════════════════════════════════════════════════════════
+# Ideogram Character — Single-image identity lock
+# ══════════════════════════════════════════════════════════════
+def _ideogram_character(prompt: str, face_refs: list, aspect: str,
+                         style: str = "", studio: str = "levram") -> dict:
+    full_prompt = f"{prompt}, {style}".strip(", ") if style else prompt
+
+    payload: dict = {
+        "prompt":     full_prompt,
+        "style_type": "REALISTIC",
     }
-    if lora_url:
-        payload["loras"] = [{"path": lora_url, "scale": 0.9}]
 
-    outputs = _ws_submit_poll(model_id, payload)
+    if face_refs:
+        try:
+            ref_url = _ws_to_public_url(face_refs[0].base64, face_refs[0].mediaType, prefix="ideogram_ref")
+            payload["image_url"] = ref_url
+        except Exception:
+            pass
+
+    size = WS_IMG_SIZES.get(aspect, WS_IMG_SIZES["widescreen"])
+    payload["width"]  = size["width"]
+    payload["height"] = size["height"]
+
+    outputs = _ws_submit_poll("ideogram-ai/ideogram-character", payload, timeout_secs=180)
     if not outputs:
-        raise RuntimeError("WaveSpeed returned no image")
+        raise RuntimeError("Ideogram Character returned no image")
 
     image_bytes = _download_url(outputs[0])
-    _, output_url = _save_bytes(image_bytes, prefix=engine.replace("ws_", "ws"), studio=studio)
-    return {"imageUrl": output_url, "prompt": prompt, "engine": engine, "model": model_id}
+    _, out_url  = _save_bytes(image_bytes, prefix="ideogram", studio=studio)
+    return {"imageUrl": out_url, "prompt": full_prompt, "engine": "ideogram_character", "model": "ideogram-ai/ideogram-character"}
 
 
-def _ws_pulid(prompt: str, face_refs: list, aspect: str, style: str = "", studio: str = "levram") -> dict:
-    """WaveSpeed FLUX PuLID — character-locked generation from face reference."""
-    face_url    = _ws_to_public_url(face_refs[0].base64, face_refs[0].mediaType, prefix="pulid")
-    size        = WS_IMG_SIZES.get(aspect, WS_IMG_SIZES["widescreen"])
-    full_prompt = f"{prompt}, {style}" if style else prompt
+# ══════════════════════════════════════════════════════════════
+# Nano Banana 2 (Gemini 3.1 Flash Image) — Multi-character lock
+# ══════════════════════════════════════════════════════════════
+def _ws_nano_banana(prompt: str, face_refs: list, aspect: str,
+                    style: str = "", studio: str = "levram") -> dict:
+    full_prompt = f"{prompt}, {style}".strip(", ") if style else prompt
+    size = NB_IMG_SIZES.get(aspect, NB_IMG_SIZES["widescreen"])
 
-    outputs = _ws_submit_poll("wavespeed-ai/flux-pulid", {
-        "prompt":              full_prompt,
-        "image":               face_url,
-        "width":               size["width"],
-        "height":              size["height"],
-        "num_inference_steps": 28,
-        "guidance_scale":      3.5,
-        "true_cfg":            1.0,
-    })
+    payload: dict = {
+        "prompt": full_prompt,
+        "width":  size["width"],
+        "height": size["height"],
+    }
+
+    if face_refs:
+        ref_urls = []
+        for ref in face_refs[:5]:
+            try:
+                ref_urls.append(_ws_to_public_url(ref.base64, ref.mediaType, prefix="nbref"))
+            except Exception:
+                pass
+        if ref_urls:
+            payload["reference_images"] = ref_urls
+
+    outputs = _ws_submit_poll("google/nano-banana-2/text-to-image", payload, timeout_secs=180)
     if not outputs:
-        raise RuntimeError("WaveSpeed PuLID returned no image")
+        raise RuntimeError("Nano Banana 2 returned no image")
 
     image_bytes = _download_url(outputs[0])
-    _, output_url = _save_bytes(image_bytes, prefix="pulid", studio=studio)
-    return {"imageUrl": output_url, "prompt": prompt, "engine": "ws_pulid", "model": "wavespeed-ai/flux-pulid"}
+    _, out_url  = _save_bytes(image_bytes, prefix="nanobana", studio=studio)
+    return {"imageUrl": out_url, "prompt": full_prompt, "engine": "ws_nano_banana", "model": "google/nano-banana-2/text-to-image"}
 
 
+# ══════════════════════════════════════════════════════════════
+# Full Lock — Seedream body + WaveSpeed face swap
+# ══════════════════════════════════════════════════════════════
 def _ws_seedream_edit(prompt: str, body_ref_urls: list, studio: str = "levram") -> list:
-    """WaveSpeed Seedream Edit Sequential — full body character consistency.
-
-    Passes a reference image to Seedream which locks the character's complete
-    appearance (face, outfit, hair, body proportions) while generating a new
-    scene described by the prompt.
-    """
     outputs = _ws_submit_poll("bytedance/seedream-v5.0-lite/edit-sequential", {
         "prompt":     f"1 image. Show Figure 1 in the following scene: {prompt}. Preserve the character's exact appearance, face, outfit, and features.",
         "images":     body_ref_urls,
@@ -358,7 +283,6 @@ def _ws_seedream_edit(prompt: str, body_ref_urls: list, studio: str = "levram") 
 
 
 def _ws_face_swap(base_image_path: str, face_ref, studio: str = "levram") -> tuple:
-    """WaveSpeed face swap — replace face in base image with reference face."""
     import base64 as _b64mod
     base_b64 = _b64mod.b64encode(Path(base_image_path).read_bytes()).decode()
     base_url = _ws_to_public_url(base_b64, "image/png", prefix="swap_base")
@@ -376,111 +300,67 @@ def _ws_face_swap(base_image_path: str, face_ref, studio: str = "levram") -> tup
     return saved_path, output_url
 
 
-# ── fal.ai (FLUX family + SD3) — STANDBY while FAL_DISABLED ──
-def _generate_fal(prompt: str, aspect: str, style: str, engine: str,
-                  lora_url: str = "", lora_trigger: str = "") -> dict:
-    try:
-        import fal_client
-    except ImportError:
-        raise RuntimeError("fal-client not installed — pip install fal-client")
+async def _full_lock_generate(
+    character_id: str, prompt: str, face_refs: list,
+    aspect: str, style: str, studio: str,
+) -> dict:
+    char = await _get_character(character_id)
+    if not char:
+        raise RuntimeError("Character not found. Check the character_id.")
 
-    api_key = os.getenv("FAL_KEY")
-    if not api_key:
-        raise RuntimeError("FAL_KEY not set. Add it to Railway Variables.")
-    os.environ["FAL_KEY"] = api_key
+    body_refs_local = char.get("body_reference_images") or []
+    domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+    loop   = asyncio.get_event_loop()
 
-    # If a character LoRA is available, always use the LoRA model
-    if lora_url:
-        engine   = "fal_flux_lora"
-        model_id = FAL_MODELS["fal_flux_lora"]
-    else:
-        model_id = FAL_MODELS.get(engine, FAL_MODELS["fal_flux"])
+    public_body_urls = []
+    if domain:
+        for ref_url in body_refs_local:
+            local_path = Path(ref_url.lstrip("/"))
+            if local_path.exists():
+                public_body_urls.append(f"https://{domain}{ref_url}")
 
-    base_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
-    # Prepend the trigger word so the LoRA fires correctly
-    full_prompt = f"{lora_trigger}, {base_prompt}" if lora_trigger else base_prompt
-    image_size  = FAL_SIZES.get(aspect, "landscape_16_9")
-    steps       = 4 if "schnell" in engine else 30
+    if not public_body_urls:
+        b64_refs = await _get_b64_refs(character_id)
+        for entry in b64_refs[:3]:
+            try:
+                pub_url = _ws_to_public_url(
+                    entry["data"], entry.get("mime", "image/jpeg"), prefix="bodyref"
+                )
+                public_body_urls.append(pub_url)
+            except Exception:
+                pass
 
-    args = {
-        "prompt":                full_prompt,
-        "image_size":            image_size,
-        "num_inference_steps":   steps,
-        "guidance_scale":        3.5,
-        "num_images":            1,
-        "enable_safety_checker": False,
-    }
-    if lora_url:
-        args["loras"] = [{"path": lora_url, "scale": 1.0}]
+    if not public_body_urls:
+        raise RuntimeError(
+            f"No body reference images for '{char.get('name', character_id)}'. "
+            "Upload full-body photos in Character Lab → Body Reference section first."
+        )
 
-    result      = fal_client.run(model_id, arguments=args)
-    imgs_fal    = result.get("images") or []
-    if not imgs_fal:
-        raise RuntimeError(f"fal.ai returned no images: {result}")
-    image_url   = imgs_fal[0].get("url") or imgs_fal[0].get("image_url") or imgs_fal[0]
-    image_bytes = _download_url(image_url)
-    prefix      = engine.replace("fal_", "")
-    _, output_url = _save_bytes(image_bytes, prefix=prefix)
-    return {"imageUrl": output_url, "prompt": full_prompt, "engine": engine, "model": model_id}
-
-
-# ── DALL-E 3 (fallback when OpenAI key present, no fal key) ──
-def _generate_dalle3(prompt: str, aspect: str, style: str) -> dict:
-    from openai import OpenAI
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY not set.")
-
-    full_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
-    size = DALLE_SIZES.get(aspect, "1792x1024")
-
-    client = OpenAI(api_key=api_key)
-    resp = client.images.generate(
-        model="dall-e-3",
-        prompt=full_prompt,
-        size=size,
-        quality="standard",
-        n=1,
+    outputs = await loop.run_in_executor(
+        None, lambda: _ws_seedream_edit(prompt, public_body_urls[:3], studio)
     )
-    image_url = resp.data[0].url
-    revised   = resp.data[0].revised_prompt or full_prompt
-    image_bytes = _download_url(image_url)
-    _, output_url = _save_bytes(image_bytes, prefix="dalle3")
-    return {"imageUrl": output_url, "prompt": revised, "engine": "dalle3", "model": "dall-e-3"}
+    if not outputs:
+        raise RuntimeError("Seedream body lock returned no image.")
 
+    seedream_bytes      = _download_url(outputs[0])
+    saved_path, out_url = _save_bytes(seedream_bytes, prefix="locked_body", studio=studio)
 
-# ── ComfyUI local ─────────────────────────────────────────────
-def _generate_comfy(prompt: str, aspect: str, style: str, character: str) -> dict:
-    from backend.services.comfy_service import generate_comfy_keyframe
-    w, h = COMFY_SIZES.get(aspect, (768, 512))
-    queue_item = {
-        "id": str(uuid.uuid4()),
-        "shotId": f"imagegen-{uuid.uuid4().hex[:8]}",
-        "shot": {
-            "character":   character or "",
-            "shotDesc":    prompt,
-            "shotPrompt":  prompt,
-            "renderStyle": style,
-            "scene":       "Image Gen",
-            "shot_number": "IMAGE-GEN",
-        },
+    if face_refs:
+        _, out_url = await loop.run_in_executor(
+            None, lambda: _ws_face_swap(saved_path, face_refs[0], studio)
+        )
+
+    return {
+        "imageUrl": out_url,
+        "prompt":   prompt,
+        "engine":   "full_lock",
+        "model":    "seedream-edit-sequential + wavespeed-face-swap",
     }
-    result = generate_comfy_keyframe(queue_item, width=w, height=h)
-    out_url = result.get("outputUrl") or ("/" + result.get("outputPath", ""))
-    return {"imageUrl": out_url, "prompt": result.get("promptUsed", prompt), "engine": "comfy", "model": "comfyui"}
 
 
-# ── Venice.ai image generation ────────────────────────────────
-VENICE_KEY      = os.getenv("VENICE_API_KEY", "")
-VENICE_IMG_BASE = "https://api.venice.ai/api/v1"
-
-VENICE_IMG_SIZES = {
-    "widescreen": (1280, 720),
-    "cinematic":  (1280, 544),
-    "portrait":   (720,  1280),
-    "square":     (1024, 1024),
-}
-
+# ══════════════════════════════════════════════════════════════
+# Venice — Uncensored (Redlight mode)
+# ══════════════════════════════════════════════════════════════
 def _venice_generate_image(prompt: str, aspect: str, style: str, studio: str = "levram") -> dict:
     import json as _json, urllib.error
     if not VENICE_KEY:
@@ -503,21 +383,15 @@ def _venice_generate_image(prompt: str, aspect: str, style: str, studio: str = "
     req = urllib.request.Request(
         f"{VENICE_IMG_BASE}/image/generate",
         data=body,
-        headers={
-            "Authorization": f"Bearer {VENICE_KEY}",
-            "Content-Type":  "application/json",
-        },
+        headers={"Authorization": f"Bearer {VENICE_KEY}", "Content-Type": "application/json"},
         method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=90) as r:
             data = _json.loads(r.read())
     except urllib.error.HTTPError as e:
-        body_err = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Venice {e.code}: {body_err[:400]}")
+        raise RuntimeError(f"Venice {e.code}: {e.read().decode()[:400]}")
 
-    # Venice proprietary endpoint returns {images: [{b64_json: ...}]}
-    # Venice OpenAI-compat endpoint returns {data: [{b64_json: ...}]}
     images = data.get("images") or data.get("data") or []
     if not images:
         raise RuntimeError(f"Venice returned no images: {data}")
@@ -536,115 +410,25 @@ def _venice_generate_image(prompt: str, aspect: str, style: str, studio: str = "
     return {"imageUrl": out_url, "prompt": full_prompt, "engine": "venice_flux", "model": "venice-sd35"}
 
 
-def _venice_body_ref(prompt: str, body_ref_bytes: bytes, aspect: str = "cinematic", studio: str = "levram") -> dict:
-    """Venice plain gen with character-preserving prompt — body-ref fallback when Seedream is dry.
-    Venice doesn't support reference image conditioning, so we enrich the prompt and generate."""
-    return _venice_generate_image(prompt, aspect, "cinematic photorealistic", studio=studio)
-
-
-def _novita_body_ref(prompt: str, body_ref_bytes: bytes, aspect: str = "cinematic", studio: str = "levram") -> dict:
-    """Novita img2img — body/character consistency via denoising init image."""
-    import json as _json, time, base64 as _b64n, urllib.error
-    if not NOVITA_KEY:
-        raise RuntimeError("NOVITA_API_KEY not set")
-
-    w, h = NOVITA_IMG_SIZES.get(aspect, NOVITA_IMG_SIZES["cinematic"])
-    b64_str = _b64n.b64encode(body_ref_bytes).decode()
-    full    = f"Preserve the character's exact appearance, outfit, face, and features. {prompt}, cinematic photorealistic"
-
-    body = _json.dumps({
-        "extra": {"response_image_type": "jpeg"},
-        "request": {
-            "model_name":          "epicphotogasm_xPlusPlus_135412.safetensors",
-            "prompt":              full,
-            "negative_prompt":     "blurry, low quality, watermark, different outfit, different person, bad anatomy",
-            "width":               w,
-            "height":              h,
-            "image_num":           1,
-            "steps":               25,
-            "seed":                -1,
-            "guidance_scale":      7.5,
-            "sampler_name":        "Euler a",
-            "image_base64":        b64_str,
-            "strength":            0.60,
-        }
-    }).encode()
-
-    headers = {"Authorization": f"Bearer {NOVITA_KEY}", "Content-Type": "application/json"}
-    req = urllib.request.Request(f"{NOVITA_IMG_BASE}/img2img", data=body, headers=headers, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            submit = _json.loads(r.read())
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"Novita img2img submit {e.code}: {e.read().decode()[:300]}")
-
-    task_id = submit.get("task_id")
-    if not task_id:
-        raise RuntimeError(f"Novita img2img no task_id: {submit}")
-
-    for _ in range(120):
-        time.sleep(1)
-        poll = urllib.request.Request(
-            f"https://api.novita.ai/v3/async/task-result?task_id={task_id}",
-            headers={"Authorization": f"Bearer {NOVITA_KEY}"},
-        )
-        with urllib.request.urlopen(poll, timeout=20) as r:
-            result = _json.loads(r.read())
-        status = result.get("task", {}).get("status", "")
-        if status == "TASK_STATUS_SUCCEED":
-            imgs = result.get("images") or []
-            if not imgs:
-                raise RuntimeError("Novita img2img succeeded but returned no images")
-            img_url = imgs[0].get("image_url") or imgs[0].get("url") or imgs[0]
-            img_bytes = _download_url(img_url)
-            _, out_url = _save_bytes(img_bytes, prefix="novita_bodyref", studio=studio)
-            return {"imageUrl": out_url, "prompt": full, "engine": "novita_bodyref", "model": "epicphotogasm_xPlusPlus"}
-        if status in ("TASK_STATUS_FAILED", "TASK_STATUS_CANCELED"):
-            raise RuntimeError(f"Novita img2img {status}: {result}")
-
-    raise RuntimeError("Novita img2img timed out")
-
-
-# ── NovitaAI — uncensored adult content, FLUX + Pony models ──
-NOVITA_KEY      = os.getenv("NOVITA_API_KEY", "")
-NOVITA_IMG_BASE = "https://api.novita.ai/v3/async"
-
-NOVITA_MODELS = {
-    "novita_pro":     "epicphotogasm_x_131265.safetensors",              # explicit photorealistic
-    "novita_photo":   "epicphotogasm_xPlusPlus_135412.safetensors",      # explicit photorealistic ++
-    "novita_realism": "epicrealism_naturalSinRC1VAE_106430.safetensors", # photorealistic
-    "novita_anime":   "meinahentai_v4_70340.safetensors",                # anime NSFW
-    "novita_asian":   "majicmixRealistic_v6_65516.safetensors",           # Asian photorealism
-    "novita_hybrid":  "revAnimated_v122.safetensors",                      # anime-realistic hybrid
-    # Legacy aliases
-    "novita_flux":    "epicphotogasm_xPlusPlus_135412.safetensors",
-    "novita_pony":    "epicphotogasm_x_131265.safetensors",
-}
-
-NOVITA_IMG_SIZES = {
-    "widescreen": (768, 512),
-    "cinematic":  (768, 432),
-    "portrait":   (512, 768),
-    "square":     (512, 512),
-}
-
+# ══════════════════════════════════════════════════════════════
+# Novita — Redlight explicit content
+# ══════════════════════════════════════════════════════════════
 def _novita_generate_image(prompt: str, aspect: str, style: str,
-                           engine: str = "novita_photo", studio: str = "levram") -> dict:
+                           engine: str = "novita_realism", studio: str = "levram") -> dict:
     import json as _json, time, urllib.error
     if not NOVITA_KEY:
         raise RuntimeError("NOVITA_API_KEY not set")
 
-    model   = NOVITA_MODELS.get(engine, NOVITA_MODELS["novita_flux"])
-    w, h    = NOVITA_IMG_SIZES.get(aspect, NOVITA_IMG_SIZES["widescreen"])
-    full    = f"{prompt}, {style}".strip(", ") if style else prompt
-    is_flux = "flux" in engine
+    model = NOVITA_MODELS.get(engine, NOVITA_MODELS["novita_realism"])
+    w, h  = NOVITA_IMG_SIZES.get(aspect, NOVITA_IMG_SIZES["widescreen"])
+    full  = f"{prompt}, {style}".strip(", ") if style else prompt
 
     body = _json.dumps({
         "extra": {"response_image_type": "jpeg"},
         "request": {
             "model_name":      model,
             "prompt":          full,
-            "negative_prompt": "" if is_flux else "blurry, low quality, watermark, censored",
+            "negative_prompt": "blurry, low quality, watermark, censored",
             "width":           w,
             "height":          h,
             "image_num":       1,
@@ -658,11 +442,7 @@ def _novita_generate_image(prompt: str, aspect: str, style: str,
         }
     }).encode()
 
-    headers = {
-        "Authorization": f"Bearer {NOVITA_KEY}",
-        "Content-Type":  "application/json",
-    }
-
+    headers = {"Authorization": f"Bearer {NOVITA_KEY}", "Content-Type": "application/json"}
     req = urllib.request.Request(f"{NOVITA_IMG_BASE}/txt2img", data=body, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
@@ -674,7 +454,6 @@ def _novita_generate_image(prompt: str, aspect: str, style: str,
     if not task_id:
         raise RuntimeError(f"Novita returned no task_id: {submit}")
 
-    # Poll until done
     for _ in range(120):
         time.sleep(1)
         poll_req = urllib.request.Request(
@@ -689,7 +468,6 @@ def _novita_generate_image(prompt: str, aspect: str, style: str,
             if not imgs:
                 raise RuntimeError("Novita succeeded but returned no images")
             img_url = imgs[0].get("image_url") or imgs[0].get("url") or imgs[0]
-            print(f"[Novita] image record: {imgs[0]}")
             image_bytes = _download_url(img_url)
             _, out_url  = _save_bytes(image_bytes, prefix=f"novita_{engine.split('_')[-1]}", studio=studio)
             return {"imageUrl": out_url, "prompt": full, "engine": engine, "model": model}
@@ -699,118 +477,7 @@ def _novita_generate_image(prompt: str, aspect: str, style: str,
     raise RuntimeError("Novita generation timed out")
 
 
-# ── Upload bytes to fal.ai storage → returns public URL ──────
-def _fal_upload(data: bytes, media_type: str) -> str:
-    import fal_client
-    return fal_client.upload(data, media_type)
-
-
-# ── Consistent Character — locks appearance across scenes ────
-def _generate_consistent_character(prompt: str, face_refs: list[RefImage], aspect: str, style: str = "") -> dict:
-    try:
-        import fal_client
-    except ImportError:
-        raise RuntimeError("fal-client not installed")
-
-    api_key = os.getenv("FAL_KEY")
-    if not api_key:
-        raise RuntimeError("FAL_KEY not set")
-    os.environ["FAL_KEY"] = api_key
-
-    # Upload the reference image
-    primary_bytes = _b64.b64decode(face_refs[0].base64)
-    subject_url   = _fal_upload(primary_bytes, face_refs[0].mediaType)
-
-    full_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
-    image_size = FAL_SIZES.get(aspect, "landscape_16_9")
-    result = fal_client.run("fal-ai/flux-pulid", arguments={
-        "reference_image_url": subject_url,
-        "prompt":              full_prompt,
-        "image_size":          image_size,
-        "num_inference_steps": 35,
-        "guidance_scale":      6.0,
-        "id_weight":           0.8,
-        "negative_prompt":     "cartoon, illustration, stylized, anime, unrealistic, extra fingers, too many fingers, six fingers, fused fingers, deformed hands, mutated hands, malformed hands",
-        "enable_safety_checker": False,
-    })
-    imgs        = result.get("images") or []
-    img_url     = (imgs[0].get("url") if imgs else None) or result.get("image", {}).get("url") or ""
-    if not img_url:
-        raise RuntimeError(f"No image URL from flux-pulid: {list(result.keys())}")
-    image_bytes = _download_url(img_url)
-    _, output_url = _save_bytes(image_bytes, prefix="consistent")
-    return {"imageUrl": output_url, "prompt": prompt, "engine": "consistent_character", "model": "fal-ai/flux-pulid"}
-
-
-# ── InstantID — high-fidelity single-person face identity ────
-def _generate_instantid(prompt: str, face_refs: list[RefImage], aspect: str, style: str) -> dict:
-    try:
-        import fal_client
-    except ImportError:
-        raise RuntimeError("fal-client not installed — pip install fal-client")
-
-    api_key = os.getenv("FAL_KEY")
-    if not api_key:
-        raise RuntimeError("FAL_KEY not set")
-    os.environ["FAL_KEY"] = api_key
-
-    full_prompt = f"{style}: {prompt}" if style and style not in prompt else prompt
-    image_size  = FAL_SIZES.get(aspect, "landscape_16_9")
-
-    # Upload the best face reference so InstantID gets a proper URL
-    primary_bytes = _b64.b64decode(face_refs[0].base64)
-    face_url = _fal_upload(primary_bytes, face_refs[0].mediaType)
-
-    result = fal_client.run("fal-ai/instantid", arguments={
-        "face_image_url":       face_url,
-        "prompt":               full_prompt,
-        "negative_prompt":      "blurry, distorted face, bad anatomy, cartoon, anime",
-        "image_size":           image_size,
-        "num_inference_steps":  30,
-        "guidance_scale":       5.0,
-        "ip_adapter_scale":     0.8,
-        "controlnet_conditioning_scale": 0.8,
-        "num_images":           1,
-        "enable_safety_checker": False,
-    })
-    imgs = result.get("images") or []
-    if not imgs:
-        raise RuntimeError(f"InstantID returned no images: {result}")
-    image_bytes = _download_url(imgs[0].get("url") or imgs[0].get("image_url") or imgs[0])
-    _, output_url = _save_bytes(image_bytes, prefix="instantid")
-    return {"imageUrl": output_url, "prompt": full_prompt, "engine": "instantid", "model": "fal-ai/instantid"}
-
-
-# ── Face Swap (fal.ai) — paste a face onto an existing image ──
-def _face_swap(base_image_path: str, face_ref: RefImage) -> tuple:
-    """Returns (saved_path, output_url) of the swapped image."""
-    try:
-        import fal_client
-    except ImportError:
-        raise RuntimeError("fal-client not installed — pip install fal-client")
-
-    api_key = os.getenv("FAL_KEY")
-    if not api_key:
-        raise RuntimeError("FAL_KEY not set")
-    os.environ["FAL_KEY"] = api_key
-
-    # Upload both images so fal.ai gets proper URLs (not huge data payloads)
-    base_bytes = Path(base_image_path).read_bytes()
-    base_url   = _fal_upload(base_bytes, "image/png")
-    face_bytes = _b64.b64decode(face_ref.base64)
-    face_url   = _fal_upload(face_bytes, face_ref.mediaType)
-
-    result = fal_client.run("fal-ai/face-swap", arguments={
-        "base_image_url": base_url,
-        "swap_image_url": face_url,
-    })
-    img_url     = (result.get("image") or {}).get("url") or result["images"][0]["url"]
-    image_bytes = _download_url(img_url)
-    saved_path, output_url = _save_bytes(image_bytes, prefix="faceswap")
-    return saved_path, output_url
-
-
-# ── Reference image prompt enhancement (GPT-4o Vision) ───────
+# ── Prompt enhancement via GPT-4o Vision ─────────────────────
 def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> str:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or not refs:
@@ -833,7 +500,7 @@ def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> 
                 ),
             }
         ]
-        for ref in refs[:10]:  # cap at 10 reference images
+        for ref in refs[:10]:
             content.append({
                 "type": "image_url",
                 "image_url": {"url": f"data:{ref.mediaType};base64,{ref.base64}", "detail": "low"},
@@ -850,290 +517,110 @@ def _enhance_prompt_with_refs(prompt: str, refs: list[RefImage], style: str) -> 
         return prompt
 
 
-# ── Full character lock: Seedream body → face swap face ───────
-async def _full_lock_generate(
-    character_id: str, prompt: str, face_refs: list,
-    aspect: str, style: str, studio: str,
-) -> dict:
-    """
-    Two-step lock:
-      1. Seedream Edit — locks body shape, outfit, proportions from uploaded body refs
-      2. WaveSpeed face swap — stamps the character's face on top of the body-locked image
+# ══════════════════════════════════════════════════════════════
+# Route
+# ══════════════════════════════════════════════════════════════
+_RL_ENGINES   = {"venice_flux", "novita_realism", "novita_anime", "novita_asian"}
+_MAIN_ENGINES = {"runway_gen4_turbo", "runway_gen4", "full_lock", "ideogram_character", "ws_nano_banana"}
 
-    Requires: body reference images uploaded via Character Lab.
-    Face ref is optional — skipped if not supplied (body-lock only).
-    """
-    char = await _get_character(character_id)
-    if not char:
-        raise RuntimeError("Character not found. Check the character_id.")
-
-    body_refs_local = char.get("body_reference_images") or []
-    domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
-    loop   = asyncio.get_event_loop()
-
-    # Build public URLs for Seedream (needs publicly reachable URLs, not local paths)
-    public_body_urls = []
-    if domain:
-        for ref_url in body_refs_local:
-            local_path = Path(ref_url.lstrip("/"))
-            if local_path.exists():
-                public_body_urls.append(f"https://{domain}{ref_url}")
-
-    # Railway restarted and wiped FS — recover from b64 backups
-    if not public_body_urls:
-        b64_refs = await _get_b64_refs(character_id)
-        for entry in b64_refs[:3]:
-            try:
-                pub_url = _ws_to_public_url(
-                    entry["data"], entry.get("mime", "image/jpeg"), prefix="bodyref"
-                )
-                public_body_urls.append(pub_url)
-            except Exception:
-                pass
-
-    if not public_body_urls:
-        raise RuntimeError(
-            f"No body reference images for '{char.get('name', character_id)}'. "
-            "Upload full-body photos in Character Lab → Body Reference section first."
-        )
-
-    # Step 1: Seedream Edit — body/outfit/shape lock
-    outputs = await loop.run_in_executor(
-        None, lambda: _ws_seedream_edit(prompt, public_body_urls[:3], studio)
-    )
-    if not outputs:
-        raise RuntimeError("Seedream body lock returned no image.")
-
-    seedream_bytes     = _download_url(outputs[0])
-    saved_path, out_url = _save_bytes(seedream_bytes, prefix="locked_body", studio=studio)
-
-    # Step 2: Face swap — paste character's face onto the body-locked image
-    if face_refs:
-        _, out_url = await loop.run_in_executor(
-            None, lambda: _ws_face_swap(saved_path, face_refs[0], studio)
-        )
-
-    return {
-        "imageUrl": out_url,
-        "prompt":   prompt,
-        "engine":   "full_lock",
-        "model":    "seedream-edit-sequential + wavespeed-face-swap",
-    }
-
-
-# ── Route ─────────────────────────────────────────────────────
 @router.post("/image-gen/generate")
 async def generate_image(payload: ImageGenPayload, x_studio: str = Header(default="levram")):
     engine = payload.engine
     loop   = asyncio.get_event_loop()
 
-    face1  = payload.face_references_1
+    face1  = payload.face_references_1 or payload.face_references
     face2  = payload.face_references_2
 
-    # Enhance prompt with any scene reference images
+    # Enhance prompt with scene reference images
     prompt = payload.prompt
     if payload.reference_images:
         prompt = await loop.run_in_executor(
             None, _enhance_prompt_with_refs, prompt, payload.reference_images, payload.style
         )
 
-    lora_url = lora_trigger = ""
+    # ── Redlight engines ──────────────────────────────────────
+    if engine == "venice_flux":
+        if not VENICE_KEY:
+            raise HTTPException(400, "VENICE_API_KEY not set")
+        fn = lambda: _venice_generate_image(prompt, payload.aspect, payload.style, x_studio)
 
-    # ── Face reference path ───────────────────────────────────
-    # Novita and Venice are txt2img-only — no face-ref routing
-    _supports_face_ref = engine not in NOVITA_MODELS and engine != "venice_flux"
-    if (face1 or face2) and _supports_face_ref:
-        try:
-            # Topview Nano — multi-reference character lock
-            if engine in TV_IMG_MODELS or engine == "tv_nano_pulid":
-                if face1:
-                    result = await loop.run_in_executor(
-                        None, _tv_nano_pulid, prompt, face1, payload.aspect, payload.style, x_studio
-                    )
-                    return {"success": True, **result}
+    elif engine in NOVITA_MODELS:
+        if not NOVITA_KEY:
+            raise HTTPException(400, "NOVITA_API_KEY not set")
+        fn = lambda: _novita_generate_image(prompt, payload.aspect, payload.style, engine, x_studio)
 
-            # Consistent Character — explicit fal.ai selection
-            if engine == "consistent_character" and face1:
-                result = await loop.run_in_executor(
-                    None, _generate_consistent_character, prompt, face1, payload.aspect, payload.style
-                )
-                return {"success": True, **result}
-
-            # WaveSpeed PuLID — single person
-            if face1 and not face2:
-                result = await loop.run_in_executor(
-                    None, _ws_pulid, prompt, face1, payload.aspect, payload.style, x_studio
-                )
-                return {"success": True, **result}
-
-            # Two people — base image then face-swap each person in
-            base_result = await loop.run_in_executor(
-                None, _ws_generate_image, prompt, payload.aspect, payload.style, "ws_flux", "", "", x_studio
-            )
-            base_path = str(IMAGE_DIR / Path(base_result["imageUrl"]).name)
-            saved_path, swap1_url = await loop.run_in_executor(
-                None, _ws_face_swap, base_path, face1[0], x_studio
-            )
-            if face2:
-                _, final_url = await loop.run_in_executor(
-                    None, _ws_face_swap, saved_path, face2[0], x_studio
-                )
-            else:
-                final_url = swap1_url
-            return {"success": True, "imageUrl": final_url, "engine": "ws_faceswap-2p",
-                    "model": "wavespeed-ai/image-face-swap"}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-
-    # ── Main routing — explicit, no hidden fallbacks ──────────
-    if engine == "full_lock":
+    # ── Full body + face lock ─────────────────────────────────
+    elif engine == "full_lock":
         if not payload.character_id:
-            raise HTTPException(status_code=400, detail="full_lock requires a character_id — select a character first.")
+            raise HTTPException(400, "full_lock requires a character_id — select a character first.")
         if not os.getenv("WAVESPEED_KEY"):
-            raise HTTPException(status_code=400, detail="WAVESPEED_KEY not set — required for full_lock.")
+            raise HTTPException(400, "WAVESPEED_KEY not set")
         try:
             result = await _full_lock_generate(
                 payload.character_id, prompt, face1, payload.aspect, payload.style, x_studio
             )
             return {"success": True, **result}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-    elif engine in TV_IMG_MODELS:
-        if not os.getenv("TOPVIEW_API_KEY"):
-            raise HTTPException(status_code=400, detail="TOPVIEW_API_KEY not set — add it to Railway Variables and .env")
-        fn = lambda: _tv_generate_image(prompt, payload.aspect, payload.style, engine, x_studio)
-    elif engine == "venice_flux":
-        if not VENICE_KEY:
-            raise HTTPException(status_code=400, detail="VENICE_API_KEY not set")
-        fn = lambda: _venice_generate_image(prompt, payload.aspect, payload.style, x_studio)
-    elif engine in NOVITA_MODELS:
-        if not NOVITA_KEY:
-            raise HTTPException(status_code=400, detail="NOVITA_API_KEY not set")
-        fn = lambda: _novita_generate_image(prompt, payload.aspect, payload.style, engine, x_studio)
-    elif engine in WS_IMG_MODELS:
-        fn = lambda: _ws_generate_image(prompt, payload.aspect, payload.style, engine, lora_url, lora_trigger, x_studio)
-    elif engine in FAL_MODELS:
-        fn = lambda: _generate_fal(prompt, payload.aspect, payload.style, engine, lora_url, lora_trigger)
-    elif engine == "dalle3":
-        fn = lambda: _generate_dalle3(prompt, payload.aspect, payload.style)
-    elif engine == "comfy":
-        fn = lambda: _generate_comfy(prompt, payload.aspect, payload.style, payload.character)
-    elif engine == "consistent_character":
-        raise HTTPException(status_code=400, detail="Consistent Character requires a Person 1 face photo.")
-    else:
-        raise HTTPException(status_code=400, detail=f"Unknown engine: {engine}")
+            raise HTTPException(500, str(e))
 
-    loop = asyncio.get_event_loop()
+    # ── Runway Gen-4 — with or without face refs ──────────────
+    elif engine in WS_RUNWAY_MODELS:
+        refs = (face1 + face2)[:3] if face2 else face1[:3]
+        try:
+            result = await loop.run_in_executor(
+                None, _runway_gen4_image, prompt, refs, payload.aspect, payload.style, engine, x_studio
+            )
+            return {"success": True, **result}
+        except Exception as e:
+            raise HTTPException(500, str(e))
+
+    # ── Ideogram Character — single-image identity lock ───────
+    elif engine == "ideogram_character":
+        try:
+            result = await loop.run_in_executor(
+                None, _ideogram_character, prompt, face1, payload.aspect, payload.style, x_studio
+            )
+            return {"success": True, **result}
+        except Exception as e:
+            raise HTTPException(500, str(e))
+
+    # ── Nano Banana 2 — multi-character (up to 5) ─────────────
+    elif engine == "ws_nano_banana":
+        refs = (face1 + face2)[:5] if face2 else face1[:5]
+        try:
+            result = await loop.run_in_executor(
+                None, _ws_nano_banana, prompt, refs, payload.aspect, payload.style, x_studio
+            )
+            return {"success": True, **result}
+        except Exception as e:
+            raise HTTPException(500, str(e))
+
+    else:
+        raise HTTPException(400, f"Unknown engine: {engine}")
+
     try:
         result = await loop.run_in_executor(None, fn)
         return {"success": True, **result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(500, str(e))
 
 
 @router.get("/image-gen/models")
 def list_models():
-    """Return available image generation engines."""
     return {
         "success": True,
-        "default": "ws_flux",
+        "default": "runway_gen4_turbo",
         "engines": [
-            # ── Full Character Lock ───────────────────────────────────────────────
-            {"id": "full_lock",      "label": "★ Full Lock — Body + Face 🔒",      "provider": "WaveSpeed", "speed": "slow",  "quality": "best", "note": "Seedream locks body/outfit → face swap locks face. Select a character with body refs uploaded."},
-            # ── Topview ──────────────────────────────────────────────────────────
-            {"id": "tv_nano_pulid",  "label": "★ Nano Banana — Character Lock 🎯", "provider": "Topview", "speed": "fast",  "quality": "best", "note": "Multi-reference face lock. Unlimited on Business plan."},
-            {"id": "tv_nano",        "label": "Nano Banana 2 🎯",                  "provider": "Topview", "speed": "fast",  "quality": "high", "note": "Unlimited on Business plan."},
-            {"id": "tv_nano_pro",    "label": "Nano Banana Pro 🎯",                "provider": "Topview", "speed": "fast",  "quality": "best", "note": "Unlimited on Business plan."},
-            {"id": "tv_seedream",    "label": "Seedream 5.0 🎯",                   "provider": "Topview", "speed": "fast",  "quality": "high", "note": "Shape lock. Unlimited on Business plan."},
-            # ── WaveSpeed ────────────────────────────────────────────────────────
-            {"id": "ws_pulid",           "label": "PuLID — Character Lock ⚡",     "provider": "WaveSpeed", "speed": "fast",  "quality": "high", "note": "Face-locked generation. $0.03/img."},
-            {"id": "ws_flux",            "label": "FLUX Dev ⚡",                   "provider": "WaveSpeed", "speed": "fast",  "quality": "high", "note": "$0.012/img"},
-            {"id": "ws_flux_schnell",    "label": "FLUX Schnell ⚡ (draft)",       "provider": "WaveSpeed", "speed": "turbo", "quality": "good", "note": "Fastest draft. $0.003/img"},
-            {"id": "ws_flux_uncensored", "label": "FLUX Uncensored 🌶",            "provider": "WaveSpeed", "speed": "fast",  "quality": "high", "note": "No filter — Redlight mode. $0.012/img"},
-            # ── OpenAI ───────────────────────────────────────────────────────────
-            {"id": "dalle3",             "label": "DALL-E 3",                      "provider": "OpenAI",    "speed": "medium","quality": "high", "note": "Uses OpenAI key"},
-            # ── RL only ──────────────────────────────────────────────────────────
-            {"id": "venice_flux",        "label": "Venice.ai 🔴",                  "provider": "Venice",    "speed": "medium","quality": "high", "note": "Uncensored. Pro $18/mo."},
-            {"id": "novita_photo",       "label": "Novita Photo 🔴",               "provider": "Novita",    "speed": "medium","quality": "high", "note": "Explicit photorealistic. ~$0.015/img"},
-            {"id": "novita_realism",     "label": "Novita Realism 🔴",             "provider": "Novita",    "speed": "medium","quality": "high", "note": "Explicit portrait. ~$0.015/img"},
-            {"id": "novita_anime",       "label": "Novita Anime 🔴",               "provider": "Novita",    "speed": "medium","quality": "good", "note": "Explicit anime. ~$0.015/img"},
+            # ── Main Studio ───────────────────────────────────────────────────────
+            {"id": "runway_gen4_turbo",  "label": "★ Runway Gen-4 Turbo 🔒",     "provider": "Runway / WaveSpeed", "speed": "fast",   "quality": "best", "note": "Primary character lock. Up to 3 refs. ~$0.05/img."},
+            {"id": "runway_gen4",        "label": "★ Runway Gen-4 🔒",           "provider": "Runway / WaveSpeed", "speed": "medium", "quality": "best", "note": "Max quality character lock. Up to 3 refs. ~$0.10/img."},
+            {"id": "full_lock",          "label": "Full Lock — Body + Face 🔒",  "provider": "WaveSpeed",          "speed": "slow",   "quality": "best", "note": "Seedream body lock → face swap. Requires body refs in Character Lab."},
+            {"id": "ideogram_character", "label": "Ideogram Character 🔒",       "provider": "WaveSpeed",          "speed": "medium", "quality": "best", "note": "Single-image identity lock. Face + hair map. $0.10–$0.20/img."},
+            {"id": "ws_nano_banana",     "label": "Nano Banana 2 🔒",            "provider": "WaveSpeed",          "speed": "fast",   "quality": "best", "note": "Gemini 3.1 Flash Image. Up to 5 characters. $0.07–$0.15/img."},
+            # ── Redlight ─────────────────────────────────────────────────────────
+            {"id": "venice_flux",        "label": "Venice.ai 🔴",               "provider": "Venice",             "speed": "medium", "quality": "high", "note": "Uncensored. Free 15/day, Pro $18/mo."},
+            {"id": "novita_realism",     "label": "Novita Realism 🔴",          "provider": "Novita",             "speed": "medium", "quality": "high", "note": "Photorealistic. ~$0.015/img."},
+            {"id": "novita_anime",       "label": "Novita Anime 🔴",            "provider": "Novita",             "speed": "medium", "quality": "good", "note": "Anime style. ~$0.015/img."},
+            {"id": "novita_asian",       "label": "Novita Asian 🔴",            "provider": "Novita",             "speed": "medium", "quality": "high", "note": "Asian facial structure lock. ~$0.015/img."},
         ],
     }
-
-
-@router.get("/image-gen/gallery")
-def get_gallery(x_studio: str = Header(default="levram")):
-    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    all_imgs = sorted(IMAGE_DIR.glob("*.png"), key=lambda f: f.stat().st_mtime, reverse=True)
-    is_rl = x_studio == "redlight"
-    images = [f for f in all_imgs if f.name.startswith("rl_") == is_rl]
-    return {
-        "success": True,
-        "images": [
-            {
-                "url":      "/output/renders/images/" + f.name,
-                "filename": f.name,
-                "created":  datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H:%M"),
-                "engine":   f.name.split("_")[0] if "_" in f.name else "unknown",
-            }
-            for f in images[:60]
-        ],
-    }
-
-
-@router.delete("/image-gen/gallery/{filename}")
-def delete_gallery_image(filename: str):
-    # Reject any path traversal attempts
-    if "/" in filename or "\\" in filename or ".." in filename:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-    target = IMAGE_DIR / filename
-    if not target.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    target.unlink()
-    return {"success": True, "deleted": filename}
-
-
-class FaceSwapPayload(BaseModel):
-    image_url:         str               # existing output path e.g. /output/renders/images/flux_....png
-    face_references_1: list[RefImage] = []
-    face_references_2: list[RefImage] = []
-
-
-@router.post("/image-gen/face-swap")
-async def face_swap_on_image(payload: FaceSwapPayload):
-    """Apply face swap to an already-generated image without regenerating it."""
-    face1 = payload.face_references_1
-    face2 = payload.face_references_2
-
-    if not face1 and not face2:
-        raise HTTPException(status_code=400, detail="No face references provided")
-
-    # Resolve local file path from URL like /output/renders/images/flux_....png
-    filename = Path(payload.image_url).name
-    if "/" in filename or ".." in filename:
-        raise HTTPException(status_code=400, detail="Invalid image path")
-    base_path = str(IMAGE_DIR / filename)
-    if not Path(base_path).exists():
-        raise HTTPException(status_code=404, detail="Source image not found")
-
-    loop = asyncio.get_event_loop()
-    try:
-        current_path = base_path
-
-        swap_fn = _ws_face_swap
-
-        if face1:
-            saved_path, swap_url = await loop.run_in_executor(
-                None, swap_fn, current_path, face1[0]
-            )
-            current_path = saved_path
-
-        if face2:
-            _, swap_url = await loop.run_in_executor(
-                None, swap_fn, current_path, face2[0]
-            )
-
-        provider = "wavespeed-ai/image-face-swap" if FAL_DISABLED else "fal-ai/face-swap"
-        return {"success": True, "imageUrl": swap_url, "engine": "faceswap", "model": provider}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

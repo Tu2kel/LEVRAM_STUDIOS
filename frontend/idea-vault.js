@@ -331,9 +331,9 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
     const jobId = data.job_id;
     _setStatus("Starting…");
 
-    // Poll for real backend progress
+    // Poll for real backend progress — status stored on the idea document, visible to any worker
     let attempts = 0;
-    const MAX = 150; // 5 min at 2s interval
+    const MAX = 300; // 10 min at 2s interval
     while (attempts < MAX) {
       await new Promise(r => setTimeout(r, 2000));
       attempts++;
@@ -343,15 +343,15 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
 
         if (sData.status === "complete") {
           const sceneCount = sData.scene_count || 0;
-          const story      = sData.story || {};
-          const proj       = encodeURIComponent(story.title || "");
+          const title      = sData.story_title || "";
+          const proj       = encodeURIComponent(title);
           const sbHref     = `storyboard.html?project=${proj}`;
           if (cardStat) {
             cardStat.style.color = "#4caf50";
             cardStat.innerHTML   = `✓ ${sceneCount} scenes &nbsp;<a href="${sbHref}" style="color:#c9a84c;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(201,168,76,0.4);padding-bottom:1px;">→ Open Storyboard</a>`;
           }
           if (formStat) formStat.innerHTML = `<span style="color:#4caf50;">✓ ${sceneCount} scenes built</span>`;
-          if (story.title) localStorage.setItem("levram_active_project", story.title);
+          if (title) localStorage.setItem("levram_active_project", title);
           _clearBtn();
           window.refreshBattery?.();
           await ivLoadIdeas();
@@ -362,13 +362,12 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
           _setStatus(sData.step || "Working…");
         }
       } catch (pollErr) {
-        // Only re-throw real failures, not network hiccups
         if (pollErr.message?.startsWith("Development failed") || pollErr.message?.startsWith("Error:")) {
           throw pollErr;
         }
       }
     }
-    if (attempts >= MAX) throw new Error("Timed out after 5 minutes");
+    if (attempts >= MAX) throw new Error("Timed out after 10 minutes");
   } catch (err) {
     if (cardStat) { cardStat.style.color = "var(--imperial-red)"; cardStat.textContent = "Error: " + err.message; }
     if (formStat) formStat.textContent = "Error: " + err.message;

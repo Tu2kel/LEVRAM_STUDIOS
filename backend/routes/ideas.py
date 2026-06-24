@@ -10,7 +10,6 @@ from backend.config import VENICE_CREATIVE_MODEL
 
 router = APIRouter()
 DATA_FILE = Path("data/ideas.json")
-_DEV_JOBS: dict = {}
 
 
 class IdeaPayload(BaseModel):
@@ -156,23 +155,24 @@ async def _fetch_char_appearance(char_id: str) -> str:
         return ""
 
 
-async def _run_develop(job_id: str, idea_id: str, body: DevelopRequest, idea: dict):
-    def _upd(**kw): _DEV_JOBS[job_id].update(kw)
+async def _run_develop(idea_id: str, body: DevelopRequest, idea: dict):
+    async def _upd(**kw):
+        await _patch_idea_any(idea_id, {"_dev_job": kw})
+
     try:
-        _upd(status="running", step="Analyzing concept…")
+        await _upd(status="running", step="Analyzing concept…")
         target_sec = int(body.target_minutes * 60)
         num_scenes = max(10, round(target_sec / 7))
 
-        _upd(step="Looking up character appearances…")
+        await _upd(status="running", step="Looking up character appearances…")
         char1_appearance = await _fetch_char_appearance(body.character_id)
         char2_appearance = await _fetch_char_appearance(body.character2_id)
 
-        _upd(step="Fetching location context…")
+        await _upd(status="running", step="Fetching location context…")
         from backend.routes.ai import get_location_context
         location_context = await get_location_context(body.location_name)
 
-        char_label = body.character_name or "cast"
-        _upd(step=f"Writing story — {num_scenes} scenes, {body.target_minutes} min…")
+        await _upd(status="running", step=f"Writing story — {num_scenes} scenes, {body.target_minutes} min…")
         story = await _gpt_develop(
             concept           = idea["rawIdea"],
             genre             = idea.get("genre", "sci-fi action"),
@@ -187,7 +187,7 @@ async def _run_develop(job_id: str, idea_id: str, body: DevelopRequest, idea: di
             location_context  = location_context,
         )
 
-        _upd(step="Calculating reel cuts…")
+        await _upd(status="running", step="Calculating reel cuts…")
         scenes = story.get("scenes", [])
         actual_total_sec = sum(int(s.get("duration_seconds", 7)) for s in scenes)
         n = len(scenes)
@@ -200,7 +200,7 @@ async def _run_develop(job_id: str, idea_id: str, body: DevelopRequest, idea: di
         story["reel_30s"]      = _top_scene_indices(scenes, 30, 5)
         story["reel_15s"]      = _top_scene_indices(scenes, 15, 5)
 
-        _upd(step="Saving to database…")
+        await _upd(status="running", step="Saving to database…")
         patch = {"story": story, "status": "developed",
                  "target_minutes": body.target_minutes,
                  "scene_seconds": body.scene_seconds}
@@ -212,10 +212,10 @@ async def _run_develop(job_id: str, idea_id: str, body: DevelopRequest, idea: di
             patch["character2_name"] = body.character2_name
         await _patch_idea_any(idea_id, patch)
 
-        _upd(status="complete", story=story, scene_count=n,
-             step=f"Done — {n} scenes built")
+        await _upd(status="complete", step=f"Done — {n} scenes built", scene_count=n,
+                   story_title=story.get("title", ""))
     except Exception as e:
-        _upd(status="failed", error=str(e)[:400], step=f"Error: {str(e)[:80]}")
+        await _upd(status="failed", error=str(e)[:400], step=f"Error: {str(e)[:80]}")
 
 
 @router.post("/ideas/{idea_id}/develop")
@@ -224,18 +224,19 @@ async def develop_idea(idea_id: str, body: DevelopRequest, background_tasks: Bac
     if not idea:
         raise HTTPException(404, "Idea not found")
 
-    job_id = str(uuid.uuid4())
-    _DEV_JOBS[job_id] = {"status": "starting", "step": "Reading idea…", "idea_id": idea_id}
-    background_tasks.add_task(_run_develop, job_id, idea_id, body, idea)
-    return {"success": True, "job_id": job_id}
+    await _patch_idea_any(idea_id, {"_dev_job": {"status": "starting", "step": "Reading idea…"}})
+    background_tasks.add_task(_run_develop, idea_id, body, idea)
+    # Return the idea_id as the job_id — status is stored on the idea document
+    return {"success": True, "job_id": idea_id}
 
 
 @router.get("/ideas/develop-status/{job_id}")
 async def develop_status(job_id: str):
-    job = _DEV_JOBS.get(job_id)
-    if not job:
+    # job_id IS the idea_id — read status directly from the idea document
+    idea = await _get_idea_any(job_id)
+    if not idea:
         return {"error": "Job not found"}
-    return job
+    return idea.get("_dev_job") or {"status": "starting", "step": "Reading idea…"}
 
 
 @router.patch("/ideas/{idea_id}")

@@ -904,18 +904,114 @@ async def import_script(payload: dict):
 
 @router.delete("/scene/{scene_id}")
 async def delete_scene(scene_id: str):
-    if scenes_col is not None:
-        result = await scenes_col.delete_many({"id": scene_id})
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")
-        return {"success": True, "scene_id": scene_id}
+    found_anywhere = False
 
+    # 1. MongoDB
+    if scenes_col is not None:
+        try:
+            result = await scenes_col.delete_many({"id": scene_id})
+            if result.deleted_count > 0:
+                found_anywhere = True
+        except Exception as e:
+            print(f"[SCENE DELETE] MongoDB failed ({e}), continuing to file fallback")
+
+    # 2. Main timeline JSON (where orchestrator/storyboard shots live)
+    if TIMELINE_FILE.exists():
+        try:
+            data = json.loads(TIMELINE_FILE.read_text())
+            shots = data.get("shots", [])
+            before = len(shots)
+            shots = [s for s in shots if s.get("id") != scene_id]
+            if len(shots) < before:
+                found_anywhere = True
+                # Renumber
+                for i, s in enumerate(shots, 1):
+                    s["shot_number"] = f"SC-{i:03d}"
+                TIMELINE_FILE.write_text(json.dumps({"shots": shots}, indent=2))
+        except Exception as e:
+            print(f"[SCENE DELETE] Timeline file error ({e})")
+
+    # 3. Legacy shot-builder files
     SCENES_DIR.mkdir(parents=True, exist_ok=True)
-    matches = list(SCENES_DIR.glob(f"*_{scene_id}_*.json"))
-    if not matches:
+    for f in SCENES_DIR.glob(f"*_{scene_id}_*.json"):
+        try:
+            f.unlink()
+            found_anywhere = True
+        except Exception:
+            pass
+
+    if not found_anywhere:
         raise HTTPException(status_code=404, detail=f"Scene {scene_id} not found")
-    deleted = []
-    for f in matches:
-        f.unlink()
-        deleted.append(str(f))
-    return {"success": True, "scene_id": scene_id, "deleted": deleted}
+    return {"success": True, "scene_id": scene_id}
+
+
+@router.post("/scene/write-scene")
+async def write_scene(payload: dict):
+    """AI agent: given a scene description + characters, writes dialogue and camera motion."""
+    import os
+    from openai import OpenAI
+
+    description = (payload.get("description") or "").strip()
+    char1       = (payload.get("character") or "").strip()
+    char2       = (payload.get("character2") or "").strip()
+    tone        = (payload.get("tone") or "cinematic dark superhero").strip()
+
+    if not description:
+        raise HTTPException(status_code=400, detail="description required")
+
+    cast_line = ""
+    if char1 and char2:
+        cast_line = f"Characters in scene: {char1} and {char2}."
+    elif char1:
+        cast_line = f"Character in scene: {char1}."
+
+    system = (
+        "You are a screenwriter and cinematographer for a dark superhero film production pipeline. "
+        "Given a visual scene description, you write two things:\n"
+        "1. DIALOGUE: spoken lines for the characters in this scene (or 'No dialogue — silent scene' if none fits)\n"
+        "2. MOTION: a single sentence describing camera motion and action choreography for video generation "
+        "(e.g. 'Slow push-in on face, rack focus to hand as veins pulse outward — hold on close-up')\n\n"
+        "Tone: dark, cinematic, grounded — no jokes, no exposition dumps.\n"
+        "Output ONLY valid JSON: {\"dialogue\": \"...\", \"motion\": \"...\"}\n"
+        "No markdown, no code blocks, no extra text."
+    )
+    user_msg = f"Tone: {tone}\n{cast_line}\n\nScene:\n{description}"
+
+    venice_key = os.getenv("VENICE_API_KEY", "")
+    oai_key    = os.getenv("OPENAI_API_KEY", "")
+
+    try:
+        if venice_key:
+            client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+            model  = "hermes-3-llama-3.1-405b"
+        elif oai_key:
+            client = OpenAI(api_key=oai_key)
+            model  = "gpt-4o-mini"
+        else:
+            raise HTTPException(status_code=503, detail="No AI key configured")
+
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user",   "content": user_msg},
+            ],
+            max_tokens=300,
+            temperature=0.8,
+        )
+        raw = resp.choices[0].message.content.strip()
+        # Strip code fences if model wraps anyway
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        result = json.loads(raw)
+        return {
+            "success":  True,
+            "dialogue": result.get("dialogue", ""),
+            "motion":   result.get("motion", ""),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

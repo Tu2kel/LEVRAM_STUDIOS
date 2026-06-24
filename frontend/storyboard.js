@@ -504,7 +504,10 @@ function sbScriptCardHTML(shot) {
         onblur="sbSaveField('${id}','shotDesc',this.value)">${desc}</textarea>
     </div>
     <div class="sb-field-row">
-      <div class="sb-field-label">Dialogue</div>
+      <div class="sb-field-label" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Dialogue</span>
+        <button class="sb-write-btn" id="sb-write-${id}" onclick="sbWriteScene('${id}')" title="AI fills dialogue + camera motion from the scene description">✨ Write</button>
+      </div>
       <textarea class="sb-field-input dialogue" rows="2"
         data-shot="${id}" data-field="dialogue"
         placeholder="No dialogue — silent scene"
@@ -792,6 +795,47 @@ async function sbDeleteShot(id) {
 
 window.sbAddShot    = sbAddShot;
 window.sbDeleteShot = sbDeleteShot;
+
+async function sbWriteScene(shotId) {
+  const shot = _sbAllShots.find(s => s.id === shotId);
+  if (!shot) return;
+
+  const btn = document.getElementById(`sb-write-${shotId}`);
+  if (btn) { btn.textContent = "Writing…"; btn.disabled = true; }
+
+  try {
+    const res  = await levFetch(`${SB_BASE}/scene/write-scene`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        description: shot.shotDesc || shot.shot_description || "",
+        character:   shot.character || "",
+        character2:  shot.character2 || shot.char2 || "",
+        tone:        "cinematic dark superhero",
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "Write failed");
+
+    // Fill dialogue textarea
+    const diagEl = document.querySelector(`[data-shot="${shotId}"][data-field="dialogue"]`);
+    if (diagEl && data.dialogue) {
+      diagEl.value = data.dialogue;
+      sbSaveField(shotId, "dialogue", data.dialogue);
+    }
+    // Fill motion textarea
+    const motEl = document.querySelector(`[data-shot="${shotId}"][data-field="motion_prompt"]`);
+    if (motEl && data.motion) {
+      motEl.value = data.motion;
+      sbSaveField(shotId, "motion_prompt", data.motion);
+    }
+    if (btn) { btn.textContent = "✓ Done"; setTimeout(() => { btn.textContent = "✨ Write"; btn.disabled = false; }, 1800); }
+  } catch (err) {
+    console.error("[SB] write-scene failed:", err);
+    if (btn) { btn.textContent = "Error"; setTimeout(() => { btn.textContent = "✨ Write"; btn.disabled = false; }, 2500); }
+  }
+}
+window.sbWriteScene = sbWriteScene;
 
 // ── Import Script ──────────────────────────────────────────────
 

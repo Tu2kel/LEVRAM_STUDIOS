@@ -932,7 +932,42 @@ async def delete_scene(scene_id: str):
         except Exception as e:
             print(f"[SCENE DELETE] Timeline file error ({e})")
 
-    # 3. Legacy shot-builder files
+    # 3. Idea Vault embedded story.scenes  (ID format: {idea_id}_{index:03d})
+    if not found_anywhere and "_" in scene_id:
+        try:
+            parts     = scene_id.rsplit("_", 1)
+            idea_id   = parts[0]
+            scene_idx = int(parts[1])
+
+            if ideas_col is not None:
+                idea = await ideas_col.find_one({"id": idea_id})
+            else:
+                from pathlib import Path as _P
+                _ideas_file = _P("data/ideas.json")
+                _all = json.loads(_ideas_file.read_text()).get("ideas", []) if _ideas_file.exists() else []
+                idea = next((x for x in _all if x.get("id") == idea_id), None)
+
+            if idea:
+                scenes = list((idea.get("story") or {}).get("scenes", []))
+                if 0 <= scene_idx < len(scenes):
+                    scenes.pop(scene_idx)
+                    if ideas_col is not None:
+                        await ideas_col.update_one(
+                            {"id": idea_id},
+                            {"$set": {"story.scenes": scenes}}
+                        )
+                    else:
+                        _ideas_file = _P("data/ideas.json")
+                        _data = json.loads(_ideas_file.read_text())
+                        for _idea in _data.get("ideas", []):
+                            if _idea.get("id") == idea_id:
+                                (_idea.get("story") or {})["scenes"] = scenes
+                        _ideas_file.write_text(json.dumps(_data, indent=2))
+                    found_anywhere = True
+        except Exception as e:
+            print(f"[SCENE DELETE] Idea story splice failed ({e})")
+
+    # 4. Legacy shot-builder files
     SCENES_DIR.mkdir(parents=True, exist_ok=True)
     for f in SCENES_DIR.glob(f"*_{scene_id}_*.json"):
         try:

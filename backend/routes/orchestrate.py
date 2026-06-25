@@ -137,7 +137,7 @@ async def _fetch_location_ref_url(loc_name: str) -> str:
 async def _gen_image(prompt: str, character_id: str, location_ref_url: str = "") -> str:
     """Returns local /output/renders/images/... URL. Routes through WaveSpeed."""
     from backend.routes.image_gen import (
-        _ws_generate_image, _ws_pulid, WS_IMG_SIZES, _ws_to_public_url
+        _ws_generate_image, WS_IMG_SIZES, _ws_to_public_url
     )
     import base64 as _b64mod
     loop = asyncio.get_event_loop()
@@ -268,68 +268,53 @@ async def _gen_image(prompt: str, character_id: str, location_ref_url: str = "")
                             print(f"[BODY_REF] {_provider} body-ref failed ({_prov_err}), trying next")
                 print(f"[BODY_REF] all body-ref providers failed, falling back to PuLID/plain")
 
-    # ── Face-only lock via PuLID (fallback when no full body ref) ──────────────
-    print(f"[PULID] char_id={character_id} db_char={'found' if db_char else 'MISSING'} refs={refs} preview={byo_ref_url[:60] if byo_ref_url else 'none'}")
+    # ── Face-only lock via Runway Gen-4 (fallback when no full body ref) ─────────
+    print(f"[RUNWAY] char_id={character_id} db_char={'found' if db_char else 'MISSING'} refs={refs} preview={byo_ref_url[:60] if byo_ref_url else 'none'}")
     if byo_ref_url or refs:
-        from backend.routes.image_gen import _ws_to_public_url, _ws_submit_poll, _download_url, _save_bytes, IMAGE_DIR
+        from backend.routes.image_gen import _runway_gen4_image, _download_url, RefImage
         import datetime as _dt
         import base64 as _b64f
 
-        # Read the face ref from disk → upload to WaveSpeed CDN → use that URL.
-        # Same approach as render_queue.py — no Railway public domain needed.
-        face_url = ""
+        face_bytes = None
+        face_mime  = "image/jpeg"
 
-        # 1. BYO preview already an http URL — use directly
+        # 1. BYO preview — download if http URL, read if local path
         if byo_ref_url and byo_ref_url.startswith("http"):
-            face_url = byo_ref_url
-
-        # 2. Read from disk (byo_ref local path)
-        if not face_url and byo_ref_url:
+            try:
+                face_bytes = await loop.run_in_executor(None, lambda: _download_url(byo_ref_url))
+            except Exception:
+                pass
+        if not face_bytes and byo_ref_url:
             _p = Path(byo_ref_url.lstrip("/"))
             if _p.exists():
-                _b64str = _b64f.b64encode(_p.read_bytes()).decode()
-                face_url = await loop.run_in_executor(
-                    None, lambda: _ws_to_public_url(_b64str, "image/jpeg", prefix="pulid")
-                )
-                print(f"[PULID] uploaded byo preview to WS CDN → {face_url}")
+                face_bytes = _p.read_bytes()
 
-        # 3. Read face ref from disk → upload to WaveSpeed CDN
-        if not face_url:
+        # 2. Fall back to character reference images on disk
+        if not face_bytes:
             for _ref_path in refs:
                 _p = Path(_ref_path.lstrip("/"))
                 if _p.exists():
-                    _b64str = _b64f.b64encode(_p.read_bytes()).decode()
-                    face_url = await loop.run_in_executor(
-                        None, lambda: _ws_to_public_url(_b64str, "image/jpeg", prefix="pulid")
-                    )
-                    print(f"[PULID] uploaded ref from disk to WS CDN → {face_url}")
+                    face_bytes = _p.read_bytes()
                     break
 
-        print(f"[PULID] face_url={face_url!r}")
+        print(f"[RUNWAY] face_bytes={'ok' if face_bytes else 'MISSING'}")
 
-        if face_url:
+        if face_bytes:
             try:
-                outputs = await loop.run_in_executor(None, lambda: _ws_submit_poll(
-                    "wavespeed-ai/flux-pulid", {
-                        "prompt":              f"{prompt}, cinematic photorealistic",
-                        "image":               face_url,
-                        "width":               1280, "height": 720,
-                        "num_inference_steps": 28,
-                        "guidance_scale":      3.5,
-                        "true_cfg":            1.0,
-                    }
-                ))
-                remote_url = outputs[0] if outputs else ""
-                if not remote_url:
-                    raise RuntimeError("WaveSpeed PuLID returned no image")
-                IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-                ts    = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-                fname = f"orch_{ts}_{uuid.uuid4().hex[:6]}.jpg"
-                image_bytes = await loop.run_in_executor(None, lambda: _download_url(remote_url))
-                (IMAGE_DIR / fname).write_bytes(image_bytes)
-                return "/output/renders/images/" + fname
-            except Exception as _pulid_err:
-                print(f"[PULID] WaveSpeed failed ({_pulid_err}), falling to plain gen")
+                _face_ref = RefImage(
+                    base64=_b64f.b64encode(face_bytes).decode(),
+                    mediaType=face_mime,
+                )
+                result = await loop.run_in_executor(
+                    None, lambda: _runway_gen4_image(
+                        f"{prompt}, cinematic photorealistic",
+                        [_face_ref], "widescreen", "", "runway_gen4_turbo"
+                    )
+                )
+                print(f"[RUNWAY] Runway Gen-4 succeeded → {result['imageUrl']}")
+                return result["imageUrl"]
+            except Exception as _runway_err:
+                print(f"[RUNWAY] Runway Gen-4 failed ({_runway_err}), falling to plain gen")
 
     # ── Plain generation — cascade WaveSpeed → Novita → Venice ──────────────────
     from backend.routes.image_gen import _venice_generate_image, _novita_generate_image
@@ -826,13 +811,15 @@ async def _run_pipeline(job_id: str, payload: dict):
                     step=f"{label} ✔ Shot {i+1} — {mode_tag}"
                          f"{', voiced' if audio_url else ''}{_sol_tag}")
 
-        total_done = len(_JOBS[job_id].get("shots", []))
+        total_done   = len(_JOBS[job_id].get("shots", []))
+        total_failed = len(shots) - total_done
+        _fail_note   = f" ({total_failed} failed — check logs)" if total_failed else ""
         if keyframes_only:
-            _update(job_id, status="keyframes_ready", progress=len(shots),
-                    step=f"✔ {total_done} keyframes ready — review and approve to animate")
+            _update(job_id, status="keyframes_ready", progress=total_done, total=len(shots),
+                    step=f"✔ {total_done}/{len(shots)} keyframes ready{_fail_note}")
         else:
             # ── 7. Auto-export: pick music + assemble final episode ────────────
-            _update(job_id, status="exporting", progress=len(shots),
+            _update(job_id, status="exporting", progress=total_done, total=len(shots),
                     step=f"✔ {total_done} shots done — Assembling film…")
             episode_url = ""
             auto_music_url = ""

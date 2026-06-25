@@ -268,6 +268,23 @@ def _ws_nano_banana(prompt: str, face_refs: list, aspect: str,
     return {"imageUrl": out_url, "prompt": full_prompt, "engine": "ws_nano_banana", "model": "google/nano-banana-2/text-to-image"}
 
 
+def _ws_generate_image(prompt: str, aspect: str, style: str, studio: str = "levram") -> dict:
+    """Plain text-to-image via WaveSpeed Flux. No character refs. Fallback in the generation cascade."""
+    full_prompt = f"{prompt}, {style}".strip(", ") if style else prompt
+    size = WS_IMG_SIZES.get(aspect, WS_IMG_SIZES["widescreen"])
+    outputs = _ws_submit_poll("wavespeed-ai/flux-dev-fast", {
+        "prompt": full_prompt,
+        "width":  size["width"],
+        "height": size["height"],
+        "num_inference_steps": 20,
+    }, timeout_secs=120)
+    if not outputs:
+        raise RuntimeError("WaveSpeed Flux returned no image")
+    image_bytes = _download_url(outputs[0])
+    _, out_url  = _save_bytes(image_bytes, prefix="ws_flux", studio=studio)
+    return {"imageUrl": out_url, "prompt": full_prompt, "engine": "ws_flux", "model": "wavespeed-ai/flux-dev-fast"}
+
+
 # ══════════════════════════════════════════════════════════════
 # Full Lock — Seedream body + WaveSpeed face swap
 # ══════════════════════════════════════════════════════════════

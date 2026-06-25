@@ -157,7 +157,7 @@ def _story_scenes_to_shots(idea: dict) -> list[dict]:
             "project":      project,
             "shotDesc":     sc.get("description") or sc.get("shot_description") or "",
             "shot_description": sc.get("description") or sc.get("shot_description") or "",
-            "shot_prompt":  sc.get("image_prompt") or "",
+            "shot_prompt":  sc.get("shot_prompt") or sc.get("image_prompt") or "",
             "dialogue":     sc.get("dialogue") or "",
             "motion_prompt": sc.get("motion") or sc.get("motion_prompt") or "",
             "character":    sc.get("character") or char1,

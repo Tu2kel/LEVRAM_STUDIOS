@@ -667,7 +667,16 @@ async function sbPollGenMissing(jobId, total) {
           else _sbAllShots.push(newShot);
         });
         sbRenderScript();
-        if (st) st.textContent = `✓ Done — ${data.progress || total} keyframes generated`;
+        const succeeded = (data.shots || []).length;
+        const attempted = data.total || total;
+        const errNote   = data.errors?.length ? ` — ${data.errors[0].slice(0, 80)}` : "";
+        if (succeeded === 0) {
+          if (st) st.textContent = `✗ 0/${attempted} generated — all failed${errNote}`;
+        } else if (succeeded < attempted) {
+          if (st) st.textContent = `⚠ ${succeeded}/${attempted} keyframes generated${errNote}`;
+        } else {
+          if (st) st.textContent = `✓ Done — ${succeeded} keyframes generated`;
+        }
         if (btn) btn.disabled = false;
         return;
       }

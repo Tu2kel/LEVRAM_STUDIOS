@@ -10,6 +10,7 @@ from backend.config import VENICE_CREATIVE_MODEL
 
 router = APIRouter()
 DATA_FILE = Path("data/ideas.json")
+_DEV_JOBS: dict = {}   # in-memory fast path; MongoDB is the durable fallback
 
 
 class IdeaPayload(BaseModel):
@@ -157,7 +158,11 @@ async def _fetch_char_appearance(char_id: str) -> str:
 
 async def _run_develop(idea_id: str, body: DevelopRequest, idea: dict):
     async def _upd(**kw):
-        await _patch_idea_any(idea_id, {"_dev_job": kw})
+        _DEV_JOBS[idea_id] = kw          # always write in-memory — never throws
+        try:
+            await _patch_idea_any(idea_id, {"_dev_job": kw})   # best-effort MongoDB
+        except Exception as _e:
+            print(f"[DEV_JOB] MongoDB status write failed (non-fatal): {_e}")
 
     try:
         await _upd(status="running", step="Analyzing concept…")
@@ -215,7 +220,11 @@ async def _run_develop(idea_id: str, body: DevelopRequest, idea: dict):
         await _upd(status="complete", step=f"Done — {n} scenes built", scene_count=n,
                    story_title=story.get("title", ""))
     except Exception as e:
-        await _upd(status="failed", error=str(e)[:400], step=f"Error: {str(e)[:80]}")
+        print(f"[DEV_JOB] _run_develop failed: {e}")
+        try:
+            await _upd(status="failed", error=str(e)[:400], step=f"Error: {str(e)[:80]}")
+        except Exception:
+            _DEV_JOBS[idea_id] = {"status": "failed", "error": str(e)[:400], "step": f"Error: {str(e)[:80]}"}
 
 
 @router.post("/ideas/{idea_id}/develop")
@@ -224,19 +233,27 @@ async def develop_idea(idea_id: str, body: DevelopRequest, background_tasks: Bac
     if not idea:
         raise HTTPException(404, "Idea not found")
 
-    await _patch_idea_any(idea_id, {"_dev_job": {"status": "starting", "step": "Reading idea…"}})
+    _DEV_JOBS[idea_id] = {"status": "starting", "step": "Reading idea…"}
+    try:
+        await _patch_idea_any(idea_id, {"_dev_job": {"status": "starting", "step": "Reading idea…"}})
+    except Exception:
+        pass
     background_tasks.add_task(_run_develop, idea_id, body, idea)
-    # Return the idea_id as the job_id — status is stored on the idea document
     return {"success": True, "job_id": idea_id}
 
 
 @router.get("/ideas/develop-status/{job_id}")
 async def develop_status(job_id: str):
-    # job_id IS the idea_id — read status directly from the idea document
-    idea = await _get_idea_any(job_id)
-    if not idea:
-        return {"error": "Job not found"}
-    return idea.get("_dev_job") or {"status": "starting", "step": "Reading idea…"}
+    # In-memory first (same worker, instant), then idea document (cross-worker)
+    if job_id in _DEV_JOBS:
+        return _DEV_JOBS[job_id]
+    try:
+        idea = await _get_idea_any(job_id)
+        if idea and idea.get("_dev_job"):
+            return idea["_dev_job"]
+    except Exception:
+        pass
+    return {"status": "starting", "step": "Starting…"}
 
 
 @router.patch("/ideas/{idea_id}")

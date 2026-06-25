@@ -264,6 +264,33 @@ async def rl_agent_chat(payload: ChatPayload, x_studio: str = Header(default="le
     return StreamingResponse(gen, media_type="text/event-stream")
 
 
+@router.get("/venice/models")
+async def venice_models():
+    """Return the live Venice model list, filtered to text/chat models."""
+    if not VENICE_KEY:
+        return {"success": False, "models": [], "error": "No VENICE_API_KEY set"}
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{VENICE_BASE}/models",
+                headers={"Authorization": f"Bearer {VENICE_KEY}"},
+            )
+            data = resp.json()
+        raw = data.get("data") or data.get("models") or []
+        # Keep only text/chat models — Venice also lists image/embedding models
+        text_models = [
+            {"id": m["id"], "name": m.get("name") or m["id"]}
+            for m in raw
+            if m.get("type") in ("text", "chat", None)
+            and "image" not in m.get("type", "")
+            and "embed" not in m.get("type", "")
+            and "embed" not in m.get("id", "")
+        ]
+        return {"success": True, "models": text_models}
+    except Exception as e:
+        return {"success": False, "models": [], "error": str(e)}
+
+
 @router.get("/rl-agent/models")
 async def rl_agent_models(x_studio: str = Header(default="levram")):
     if x_studio != "redlight":

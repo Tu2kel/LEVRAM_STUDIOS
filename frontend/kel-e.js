@@ -137,17 +137,40 @@ When asked for only ONE section, output only that section's format without === h
   }
 
   // ── Model loader ───────────────────────────────────────────────────────────
+  const FALLBACK_MODELS = [
+    { id: "hermes-3-llama-3.1-405b", name: "Hermes 3 405B" },
+    { id: "llama-3.3-70b",           name: "Llama 3.3 70B" },
+    { id: "deepseek-v3.2",           name: "DeepSeek V3.2" },
+    { id: "gemma-4-uncensored",      name: "Gemma 4 Uncensored" },
+  ];
+
   async function loadModels() {
     const sel = document.getElementById("kele-model-sel");
     if (!sel) return;
-    sel.innerHTML = `
-      <option value="hermes-3-llama-3.1-405b" selected>Hermes 3 405B</option>
-      <option value="dolphin-2.9.2-qwen2-72b">Dolphin 2.9 72B</option>
-      <option value="llama-3.3-70b">Llama 3.3 70B</option>
-      <option value="deepseek-v3.2">DeepSeek V3.2</option>
-      <option value="gemma-4-uncensored">Gemma 4 Uncensored</option>
-    `;
-    currentModel = "hermes-3-llama-3.1-405b";
+
+    const preferred = "hermes-3-llama-3.1-405b";
+    let models = FALLBACK_MODELS;
+
+    try {
+      const res  = await levFetch(`${IV_BASE}/venice/models`);
+      const data = await res.json();
+      if (data.success && data.models?.length) {
+        models = data.models.map(m => ({ id: m.id, name: m.name || m.id }));
+      }
+    } catch (_) { /* use fallback list */ }
+
+    sel.innerHTML = models.map(m =>
+      `<option value="${m.id}"${m.id === preferred ? " selected" : ""}>${m.name}</option>`
+    ).join("");
+
+    // If preferred not in list, fall back to first
+    if (!models.find(m => m.id === preferred) && models.length) {
+      sel.value  = models[0].id;
+      currentModel = models[0].id;
+    } else {
+      currentModel = preferred;
+      sel.value  = preferred;
+    }
     sel.onchange = () => { currentModel = sel.value; };
   }
 

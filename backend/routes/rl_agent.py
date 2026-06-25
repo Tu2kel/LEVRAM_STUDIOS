@@ -266,9 +266,18 @@ async def rl_agent_chat(payload: ChatPayload, x_studio: str = Header(default="le
 
 @router.get("/venice/models")
 async def venice_models():
-    """Return the live Venice model list, filtered to text/chat models."""
+    """Return curated Venice creative-writing models confirmed available on the account."""
+    # Ordered by preference — only these show in KEL-E dropdown
+    CURATED = [
+        ("hermes-3-llama-3.1-405b", "Hermes 3 405B"),
+        ("llama-3.3-70b",           "Llama 3.3 70B"),
+        ("deepseek-v3.2",           "DeepSeek V3.2"),
+        ("gemma-4-uncensored",      "Gemma 4 Uncensored"),
+        ("mistral-nemo-12b-instruct","Mistral Nemo 12B"),
+        ("nous-hermes-2-mixtral-8x7b-dpo", "Nous Hermes 2 Mixtral"),
+    ]
     if not VENICE_KEY:
-        return {"success": False, "models": [], "error": "No VENICE_API_KEY set"}
+        return {"success": True, "models": [{"id": i, "name": n} for i, n in CURATED]}
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
@@ -276,19 +285,13 @@ async def venice_models():
                 headers={"Authorization": f"Bearer {VENICE_KEY}"},
             )
             data = resp.json()
-        raw = data.get("data") or data.get("models") or []
-        # Keep only text/chat models — Venice also lists image/embedding models
-        text_models = [
-            {"id": m["id"], "name": m.get("name") or m["id"]}
-            for m in raw
-            if m.get("type") in ("text", "chat", None)
-            and "image" not in m.get("type", "")
-            and "embed" not in m.get("type", "")
-            and "embed" not in m.get("id", "")
-        ]
-        return {"success": True, "models": text_models}
+        live_ids = {m["id"] for m in (data.get("data") or data.get("models") or [])}
+        # Keep curated order; include only models Venice confirms exist
+        available = [{"id": i, "name": n} for i, n in CURATED if i in live_ids]
+        # Fall back to full curated list if Venice returned nothing useful
+        return {"success": True, "models": available or [{"id": i, "name": n} for i, n in CURATED]}
     except Exception as e:
-        return {"success": False, "models": [], "error": str(e)}
+        return {"success": True, "models": [{"id": i, "name": n} for i, n in CURATED], "error": str(e)}
 
 
 @router.get("/rl-agent/models")

@@ -142,6 +142,7 @@ When asked for only ONE section, output only that section's format without === h
     if (!sel) return;
     sel.innerHTML = `
       <option value="hermes-3-llama-3.1-405b" selected>Hermes 3 405B</option>
+      <option value="dolphin-2.9.2-qwen2-72b">Dolphin 2.9 72B</option>
       <option value="llama-3.3-70b">Llama 3.3 70B</option>
       <option value="deepseek-v3.2">DeepSeek V3.2</option>
       <option value="gemma-4-uncensored">Gemma 4 Uncensored</option>

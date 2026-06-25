@@ -333,6 +333,7 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
 
     // Poll for real backend progress — status stored on the idea document, visible to any worker
     let attempts = 0;
+    let startingStreak = 0; // how many consecutive "starting" responses (cross-worker detection)
     const MAX = 300; // 10 min at 2s interval
     while (attempts < MAX) {
       await new Promise(r => setTimeout(r, 2000));
@@ -358,7 +359,12 @@ window.ivDevelopIdea = async function ivDevelopIdea(id) {
           break;
         } else if (sData.status === "failed") {
           throw new Error(sData.error || "Development failed");
+        } else if (sData.status === "starting") {
+          startingStreak++;
+          // After 10s stuck on "starting", the worker handling polls likely isn't the one running the task
+          _setStatus(startingStreak >= 5 ? "Working (cross-worker)…" : (sData.step || "Starting…"));
         } else {
+          startingStreak = 0;
           _setStatus(sData.step || "Working…");
         }
       } catch (pollErr) {

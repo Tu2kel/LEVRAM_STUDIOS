@@ -238,8 +238,9 @@ async def develop_idea(idea_id: str, body: DevelopRequest, background_tasks: Bac
     _DEV_JOBS[idea_id] = {"status": "starting", "step": "Reading idea…"}
     try:
         await _patch_idea_any(idea_id, {"_dev_job": {"status": "starting", "step": "Reading idea…"}})
-    except Exception:
-        pass
+        print(f"[DEV_JOB] MongoDB starting-status written for {idea_id}")
+    except Exception as _e:
+        print(f"[DEV_JOB] WARNING: MongoDB write failed at start — cross-worker polls will show 'Starting…' forever: {_e}")
     background_tasks.add_task(_run_develop, idea_id, body, idea)
     return {"success": True, "job_id": idea_id}
 
@@ -927,7 +928,12 @@ async def _gpt_develop(
         return {**header, "scenes": all_scenes}
 
     try:
-        return await loop.run_in_executor(None, _build_story)
+        return await asyncio.wait_for(
+            loop.run_in_executor(None, _build_story),
+            timeout=480,  # 8-minute hard cap (5 calls × 120s OpenAI timeout)
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(500, detail="Story generation timed out — Venice took too long. Try again or switch model.")
     except Exception as e:
         raise HTTPException(500, detail=str(e))
 

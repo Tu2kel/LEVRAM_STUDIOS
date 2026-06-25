@@ -11,7 +11,7 @@ from pathlib import Path
 load_dotenv()
 
 router = APIRouter()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=120.0)
 
 
 class BuildShotPayload(BaseModel):

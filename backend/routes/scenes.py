@@ -542,7 +542,7 @@ async def ai_regen_scene(scene_id: str, body: AiRegenRequest):
     if not venice_key:
         raise HTTPException(status_code=500, detail="VENICE_API_KEY not set")
 
-    client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+    client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1", timeout=120.0)
 
     _story_block = ""
     if story_logline:
@@ -711,10 +711,10 @@ async def enhance_prompt(payload: dict):
 
     try:
         if venice_key:
-            client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+            client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1", timeout=120.0)
             model  = VENICE_CREATIVE_MODEL
         elif oai_key:
-            client = OpenAI(api_key=oai_key)
+            client = OpenAI(api_key=oai_key, timeout=120.0)
             model  = "gpt-4o-mini"
         else:
             raise HTTPException(status_code=503, detail="No AI key configured")
@@ -757,10 +757,10 @@ async def import_script(payload: dict):
     venice_key = os.getenv("VENICE_API_KEY")
     oai_key    = os.getenv("OPENAI_API_KEY")
     if venice_key:
-        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1", timeout=120.0)
         model  = VENICE_CREATIVE_MODEL
     elif oai_key:
-        client = OpenAI(api_key=oai_key)
+        client = OpenAI(api_key=oai_key, timeout=120.0)
         model  = "gpt-4o-mini"
     else:
         raise HTTPException(status_code=503, detail="No AI key configured")
@@ -1018,10 +1018,10 @@ async def write_scene(payload: dict):
 
     try:
         if venice_key:
-            client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+            client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1", timeout=120.0)
             model  = VENICE_CREATIVE_MODEL
         elif oai_key:
-            client = OpenAI(api_key=oai_key)
+            client = OpenAI(api_key=oai_key, timeout=120.0)
             model  = "gpt-4o-mini"
         else:
             raise HTTPException(status_code=503, detail="No AI key configured")

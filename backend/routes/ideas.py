@@ -220,7 +220,9 @@ async def _run_develop(idea_id: str, body: DevelopRequest, idea: dict):
         await _upd(status="complete", step=f"Done — {n} scenes built", scene_count=n,
                    story_title=story.get("title", ""))
     except Exception as e:
+        import traceback
         print(f"[DEV_JOB] _run_develop failed: {e}")
+        print(traceback.format_exc())
         try:
             await _upd(status="failed", error=str(e)[:400], step=f"Error: {str(e)[:80]}")
         except Exception:
@@ -314,10 +316,10 @@ async def revise_idea(idea_id: str, body: ReviseRequest):
     from openai import OpenAI
     venice_key = os.getenv("VENICE_API_KEY")
     if venice_key:
-        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1", timeout=120.0)
         model = VENICE_CREATIVE_MODEL
     else:
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=120.0)
         model  = "gpt-4o-mini"
 
     # Pull structural directives from the original idea so Lena knows the intent
@@ -575,16 +577,15 @@ async def _gpt_develop(
 
     venice_key = os.getenv("VENICE_API_KEY")
     if is_adult and venice_key:
-        # RL content — Hermes 405B, fully uncensored
-        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1", timeout=120.0)
         model = VENICE_CREATIVE_MODEL
     elif venice_key:
-        # Main studio — Hermes 405B, largest uncensored creative writing model on Venice
-        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1")
+        client = OpenAI(api_key=venice_key, base_url="https://api.venice.ai/api/v1", timeout=120.0)
         model = VENICE_CREATIVE_MODEL
     else:
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=120.0)
         model  = "gpt-4o-mini"
+    print(f"[GPT_DEVELOP] Using model={model} is_adult={is_adult}")
 
     lyric_lines    = _count_lyric_lines(concept)
     all_lyrics     = _extract_lyric_lines(concept) if lyric_lines else []
@@ -699,6 +700,7 @@ async def _gpt_develop(
 
     # ── Step 1: Header (title, logline, act_structure) ──────────
     def _call_header():
+        print(f"[GPT_DEVELOP] calling header…")
         performers = character_name or "unnamed"
         if char2_name:
             performers += f" and {char2_name}"
@@ -730,6 +732,7 @@ async def _gpt_develop(
 
     # ── Step 2: Scenes per act (3 separate small calls) ──────────
     def _call_act(act_num: int, beat_count: int, start_index: int, act_desc: str, act_lyrics: list = None):
+        print(f"[GPT_DEVELOP] calling act {act_num} ({beat_count} beats)…")
         if lyric_lines and act_lyrics:
             numbered = "\n".join(f"  {i+1}. {l}" for i, l in enumerate(act_lyrics))
             dialogue_rule = (
@@ -841,6 +844,7 @@ async def _gpt_develop(
     def _build_story():
         try:
             header = _call_header()
+            print(f"[GPT_DEVELOP] header OK: {header.get('title', '?')}")
         except Exception as e:
             raise RuntimeError(f"Story header failed: {e}")
 
@@ -898,6 +902,7 @@ async def _gpt_develop(
                                                (3, a3, act_descs[2], lyric_sets[2])]:
             try:
                 scenes = _call_act(act_num, count, idx, desc, act_lyrics=act_lyr)
+                print(f"[GPT_DEVELOP] act {act_num} returned {len(scenes) if isinstance(scenes, list) else type(scenes)} scenes")
                 if not isinstance(scenes, list):
                     # Hermes wrapped the array — try common keys before giving up
                     for _key in ("scenes", "results", "story", "data", "shots"):
@@ -975,7 +980,9 @@ def _editor_pass(
     # Skip editor if already within bounds and act 3 isn't bloated
     act3 = [s for s in all_scenes if s.get("act") == 3]
     if len(all_scenes) <= max_total and len(act3) / max(len(all_scenes), 1) <= 0.32:
+        print(f"[GPT_DEVELOP] editor skipped — {len(all_scenes)} scenes within bounds")
         return _clean_dialogue(all_scenes)
+    print(f"[GPT_DEVELOP] editor pass — trimming {len(all_scenes)} scenes to {max_total}")
 
     summaries = [
         {"i": s.get("index", idx), "act": s.get("act", 1),
